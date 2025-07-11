@@ -27,37 +27,13 @@ init(){
 	source ./utils.sh
 	source ./globals.sh
 	source ./logging.sh
+  source ./clean_up.sh
 
 	cd ~
 
-	# used to validate for directories on the server	
+	# used to validate for files on the server	
 	ssh $user@$ip "bash ~/mac-deployment/server-scripts/validation.sh"
 }			
-
-clean_up(){
-	rm ~/*.log
-
-	# potentially dangerous!
-	# IMPORTANT: DO NOT REMOVE THE CONDITIONAL CHECK.
-	if [[ -e ~/$script_dir ]]; then
-		echo "Removing installed scripts"
-		rm -rf ~/$script_dir
-	fi
-	
-	if [[ -e ~/$pkg_dir ]]; then
-		echo "Removing installed packages"
-		rm -rf ~/$pkg_dir
-	fi
-	
-	# remove the key from the server
-	echo "Removing from authorized_hosts"
-	ssh $user@$ip "rm ~/.ssh/authorized_keys; touch ~/.ssh/authorized_keys"
-
-	if [[ -e ~/.ssh ]]; then
-		echo "Removing SSH folder"
-		rm -rf ~/.ssh
-	fi
-}
 
 # args:
 # 	$1 (-T): Default false, indicates if TeamViewer should be installed.
@@ -184,15 +160,13 @@ main(){
 	echo "Moving generated log to server"
 	move_log $log_file
 
-	clean_up	
+	clean_up $script_dir $pkg_dir	
 	
 	# i need to research this further, the firewall command exits the script early.
 	# i moved it down to the last step to avoid issues later.
 	# this could be because i am accessing the socket directly instead of running a command?
 	if [[ $(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate | grep -qi "enabled"; echo $?) == 1 ]]; then
 		echo "Enabling Firewall"
-		logger $log_file "Enabling firewall"
-
 		sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 
 		echo "Firewall enabled"
