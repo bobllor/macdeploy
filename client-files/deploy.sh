@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # created by: Tri Nguyen
-# before you run this script, ensure it is on the CLIENT computer rather than the server.
-# this is intended to be ran on the client computer due to the ssh requirement.
+# main deployment script for macOS
 
 get_date(){
 	echo $(date +"%m-%d-%yT%H-%M-%S")
@@ -19,17 +18,15 @@ init(){
 	if [[ ! -e ~/.ssh/ ]]; then
 		# will be using rsa by default
 		ssh-keygen -f ~/.ssh/id_rsa -N ""
+    echo "IMPORTANT: The upcoming password input is the SERVER's password."
 		ssh-copy-id donotmigrate@10.142.46.165
 	fi
-			
+
 	cd ~/client-files
 
 	source ./utils.sh
 	source ./globals.sh
 	source ./logging.sh
-  source ./clean_up.sh
-
-	cd ~
 
 	# used to validate for files on the server	
 	ssh $user@$ip "bash ~/mac-deployment/server-scripts/validation.sh"
@@ -43,17 +40,20 @@ main(){
 
 	log_file="$(get_serial)-$(get_date)".log
 	logger $log_file "Starting deployment for $(get_serial)"
-	logger $log_file "Install TeamViewer: $1 | Admin: $2"
+	logger $log_file "Install TeamViewer: $1 | Admin: $2" 1
 
 	# this will take some time due to the file sizes.
 	if [[ ! -e ~/$pkg_dir ]]; then
 		echo "Installing required packages..."
 		scp -r $user@$ip://Users/$user/mac-deployment/$pkg_dir ~ && logger $log_file "Successfully installed package folders"
 	fi
-	
+  
+  # clarifies what password should be used
+  sudo_prompt="Enter the password for $(whoami): "
+
 	# NOTE: there could be a better way to do this
 	#if [[ $(pkgutil --pkg-info com.apple.pkg.RosettaUpdateAuto) =~ "No receipt" ]]; then
-	sudo softwareupdate --install-rosetta --agree-to-license
+	sudo -p "$sudo_prompt" softwareupdate --install-rosetta --agree-to-license
 	#fi
 
 	regex="(full|teamviewer|office)"
@@ -67,7 +67,7 @@ main(){
 	| while read -r line; do \
 		pkg_name=$(basename $line);
 		if [[ $(check_installed "$line") == 1 ]]; then \
-		sudo installer -pkg $(readlink -f $line) -target / \
+		sudo -p "$sudo_prompt" installer -pkg $(readlink -f $line) -target / \
 		&& logger $log_file "Installed $pkg_name" \
 		|| logger $log_file "Failed to install $pkg_name" 3; else \
 		echo "$pkg_name already installed"; 
@@ -83,7 +83,8 @@ main(){
 	logger $log_file "Starting user account creation process"
 	
 	# addUser is the home directory, fullName is the display name
-	sudo sysadminctl -addUser help.account -fullName "Help.Account" -password "$(cat ~/$script_dir/.hap.txt)"
+	sudo -p "$sudo_prompt" sysadminctl -addUser help.account \
+    -fullName "Help.Account" -password "$(cat ~/$script_dir/.hap.txt)"
 
 	echo ""
 	echo "Valid name formats: First Last | F Last | First.Last | F.Last"
@@ -104,9 +105,9 @@ main(){
 			account_dir=$(echo $username | awk '{print tolower()}')
 			
 			if [[ $2 == 'false' ]]; then
-				sudo sysadminctl -addUser "$account_dir" -fullName "$username" -password "Password1" 
+				sudo -p "$sudo_prompt" sysadminctl -addUser "$account_dir" -fullName "$username" -password "Password1" 
 			else
-				sudo sysadminctl -addUser "$account_dir" -fullName "$username" -password "Password1" -admin
+				sudo -p "$sudo_prompt" sysadminctl -addUser "$account_dir" -fullName "$username" -password "Password1" -admin
 			fi
 			
 			echo "Created user $name_input"
@@ -127,7 +128,7 @@ main(){
 		
 		# probably not needed since we full wipe, but the user
 		# is the one allowed to turn off filevault
-		key_line=$(sudo fdesetup enable -user $(whoami) -verbose 2>&1 /dev/tty | grep -vi fdesetup)
+		key_line=$(sudo -p "$sudo_prompt" fdesetup enable -user $(whoami) -verbose 2>&1 /dev/tty | grep -vi fdesetup)
 
 		# if the stdout is an error then this will not run	
 		if [[ "$(echo $key_line | grep -qi "error"; echo $?)" == 1 ]]; then
@@ -160,17 +161,12 @@ main(){
 	echo "Moving generated log to server"
 	move_log $log_file
 
-	clean_up $script_dir $pkg_dir	
-	
-	# i need to research this further, the firewall command exits the script early.
-	# i moved it down to the last step to avoid issues later.
-	# this could be because i am accessing the socket directly instead of running a command?
-	if [[ $(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate | grep -qi "enabled"; echo $?) == 1 ]]; then
-		echo "Enabling Firewall"
-		sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+	bash ./$support_dir/clean_up.sh	
 
-		echo "Firewall enabled"
-	else
+  # do not move this anywhere else, this must be the last execution
+	if [[ $(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate | grep -qi "enabled"; echo $?) == 1 ]]; then
+    bash ./support-scripts/firewall.sh
+		else
 		echo "Firewall already enabled"
 	fi
 }
