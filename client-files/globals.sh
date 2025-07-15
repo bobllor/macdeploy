@@ -20,3 +20,9 @@ pkg_dir=pkg-files # directory of the pkg files for the software
 script_dir=client-files # directory of the scripts for the deployment
 
 support_dir=support-scripts # directory of the support scripts for deployment
+
+#################
+## CLIENT VARS ##
+#################
+
+pw_prompt="Enter the client admin password: "
