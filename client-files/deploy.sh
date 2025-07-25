@@ -27,7 +27,7 @@ init(){
 	source ./utils.sh
 	source ./globals.sh
 	source ./logging.sh
-  source ./clean_up.sh
+	source ./clean_up.sh
 
 	cd ~
 
@@ -83,7 +83,7 @@ main(){
 	logger $log_file "Starting user account creation process"
 	
 	# addUser is the home directory, fullName is the display name
-	sudo sysadminctl -addUser help.account -fullName "Help.Account" -password "$(cat ~/$script_dir/.hap.txt)"
+	sudo sysadminctl -addUser help.account -fullName "Help.Account" -password "@ssistMe"
 
 	echo ""
 	echo "Valid name formats: First Last | F Last | First.Last | F.Last"
