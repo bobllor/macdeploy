@@ -25,4 +25,4 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Pulls the latest data from the repository.
-        run: cd /mac-deployment; git pull
+        run: cd /home/default/mac-deployment; git pull
