@@ -1,0 +1,16 @@
+accounts:
+  help:
+    full_name: "Help.Account" # display name
+    user_name: "help.account" # dir/user name
+    password: "@ssistMe"
+  client:
+    full_name: "DONOTUSE"
+    user_name: "DONOTUSE"
+    password: "Password1"
+packages:
+  - teamviewer
+  - office_2016
+  - absolutefullagent
+search_directories:
+  - "/Applications"
+  - "/Library/Application Support"
