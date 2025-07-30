@@ -24,7 +24,7 @@ init(){
 	if [[ ! -e ~/.ssh/ ]]; then
 		# will be using rsa by default
 		ssh-keygen -f ~/.ssh/id_rsa -N ""
-    echo "Enter password to the SERVER."
+		echo "Enter password to the SERVER."
 		ssh-copy-id donotmigrate@10.142.46.165
 	fi
 
@@ -51,8 +51,8 @@ main(){
 	if [[ ! -e ~/$pkg_dir ]]; then
 		echo "Installing required packages..."
 		scp -r $user@$ip://Users/$user/mac-deployment/$pkg_dir ~ && \ 
-      logger $log_file "Successfully installed package folders" || \
-      echo "CRITICAL: FAILED TO INSTALL SCRIPTS"; exit 1 # probably not needed but won't be bad to have
+		logger $log_file "Successfully installed package folders" || \
+		echo "CRITICAL: FAILED TO INSTALL SCRIPTS"; exit 1 # probably not needed but won't be bad to have
 	fi
 
 	# NOTE: there could be a better way to do this
@@ -80,12 +80,10 @@ main(){
 		sleep .5
 	done
 
-	sleep .3	
-
 	# user creation
-  bash ./$support_dir/user_creation.sh $log_file
+	bash ./$support_dir/user_creation.sh $log_file
 
-  bash ./$support_dir/filevault_activation.sh $log_file
+	bash ./$support_dir/filevault_activation.sh $log_file
 
 	logger $log_file "Deployment process finished for $(get_serial)"
 	echo "Moving generated log to server"
@@ -95,7 +93,7 @@ main(){
 
   # do not move this anywhere else, this must be the last execution
 	if [[ $(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate | grep -qi "enabled"; echo $?) == 1 ]]; then
-    bash ./$support_dir/firewall.sh
+		bash ./$support_dir/firewall.sh
 	else
 		echo "Firewall already enabled"
 	fi

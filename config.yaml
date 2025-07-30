@@ -7,10 +7,13 @@ accounts:
     full_name: "DONOTUSE"
     user_name: "DONOTUSE"
     password: "Password1"
-packages:
-  - teamviewer
-  - office_2016
-  - absolutefullagent
+packages: # key: package to be installed | value: array of strings that matches these words
+  teamviewer:
+    - "TeamViewer"
+  office_2016:
+    - "Microsoft Word"
+  AbsoluteFullAgent:
+    - "Absolute"
 search_directories:
   - "/Applications"
   - "/Library/Application Support"

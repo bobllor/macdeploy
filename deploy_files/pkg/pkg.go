@@ -7,6 +7,7 @@ import (
 )
 
 // MakePKG creates a map (hashset-like) that represent the names of the packages from the YAML.
+// This is used to install the packages by accessing the pkg in their directory.
 func MakePKG(packages []string, installTeamViewer bool) map[string]bool {
 	packagesMap := make(map[string]bool)
 
@@ -33,9 +34,9 @@ func InstallPKG(pkg string) {
 	if err != nil {
 		panic(err)
 	}
-	arr := strings.Split(string(out), "\n")
+	arr := strings.SplitSeq(string(out), "\n")
 
-	for _, file := range arr {
+	for file := range arr {
 		fileLowered := strings.ToLower(file)
 
 		if strings.Contains(fileLowered, pkg) {
@@ -44,11 +45,12 @@ func InstallPKG(pkg string) {
 	}
 }
 
+// IsInstalled searches for a string in an array of search paths if it is found.
 func IsInstalled(pkg string, searchPaths []string) bool {
-	// this is on a mac, so there are two folders that will be checked:
+	// this is on a mac, there are two folders that will be checked:
 	// 	1. /Applications/ (general applications)
 	//  2. /Library/Application\ Support/ (service files)
-	// majority of applications will be installed in 1, but few do appear only in 2.
+	// you can configure these searches in config.yaml
 	for _, path := range searchPaths {
 		files, err := os.ReadDir(path)
 		if err != nil {
