@@ -21,6 +21,8 @@ func main() {
 		packagesToInstall = append(packagesToInstall, key)
 	}
 
+	pkg.InstallRosetta()
+
 	packagesMap := pkg.MakePKG(packagesToInstall, *installTeamViewer)
 	lol := pkg.IsInstalled("netdrive", []string{"/home/teboc/"})
 	fmt.Println(lol)

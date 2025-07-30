@@ -1,10 +1,39 @@
 package pkg
 
 import (
+	"fmt"
+	"macos-deployment/deploy_files/utils"
 	"os"
 	"os/exec"
 	"strings"
 )
+
+// InstallRosetta installs the Rosetta software required for installing packages.
+// If Rosetta is already installed, then this will be skipped.
+func InstallRosetta() {
+	cmd := "pkgutil --pkgs | grep -i rosetta"
+	roseOut, roseErr := exec.Command("bash", "-c", cmd).Output()
+	if roseErr != nil {
+		// FIXME: add logging here
+		println(string(roseOut))
+		panic(roseErr)
+	}
+
+	if !strings.Contains(strings.ToLower(string(roseOut)), "no receipt") {
+		installOut, installErr := exec.Command("sudo", "softwareupdate", "--install-rosetta", "--agree-to-license").Output()
+		if installErr != nil {
+			// FIXME: add logging here, this is a critical fail and exits the script.
+			println(string(installOut))
+			panic(installErr)
+		}
+
+		println("[INFO] Rosetta has been installed")
+	} else {
+		// FIXME: add logging here
+		println("[INFO] Rosetta is already installed")
+	}
+
+}
 
 // MakePKG creates a map (hashset-like) that represent the names of the packages from the YAML.
 // This is used to install the packages by accessing the pkg in their directory.
@@ -30,7 +59,7 @@ func InstallPKG(pkg string) {
 	// TODO: *.pkg is the condition to find packages, however we need to find the full path later.
 	var filePath string = "./deploy_files/find_files.sh"
 
-	out, err := exec.Command("bash", filePath, "/home/teboc/Pictures", pkg).Output()
+	out, err := exec.Command("bash", filePath, utils.PKGPath, pkg).Output()
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +69,18 @@ func InstallPKG(pkg string) {
 		fileLowered := strings.ToLower(file)
 
 		if strings.Contains(fileLowered, pkg) {
+			// abs path is probably not needed, it's working from home directory
 			println(file, "found")
+			cmd := fmt.Sprintf("sudo installer -pkg %s -target /", file)
+
+			pkgOut, pkgErr := exec.Command("bash", "-c", cmd).Output()
+			if pkgErr != nil {
+				// FIXME: add logging
+				println("Failed to install " + pkg + ".pkg")
+				println(string(pkgOut))
+				println(pkgErr)
+				break
+			}
 		}
 	}
 }
