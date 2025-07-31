@@ -8,4 +8,4 @@ var Home string = os.Getenv("HOME")
 
 var ConfigPath string = "./config.yaml"
 var ScriptDir string = "./client-files"
-var PKGPath string = Home + "/Pictures" // FIXME: remove later for prod
+var PKGPath string = Home + "/pkg-files" // FIXME: for prod this is going to be "Home/pkg-files"

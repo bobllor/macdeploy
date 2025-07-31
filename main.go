@@ -6,6 +6,8 @@ import (
 	"macos-deployment/deploy_files/pkg"
 	"macos-deployment/deploy_files/utils"
 	"macos-deployment/deploy_files/yaml"
+	"os/exec"
+	"strings"
 )
 
 var config utils.Config = yaml.ReadYAML(utils.ConfigPath)
@@ -16,23 +18,36 @@ var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the us
 func main() {
 	flag.Parse()
 
-	var packagesToInstall []string
-	for key := range config.Packages {
-		packagesToInstall = append(packagesToInstall, key)
+	var searchDirFilesArr []map[string]bool
+	for _, searchDir := range config.Search_Directories {
+		searchMap := utils.GetFileMap(searchDir)
+
+		searchDirFilesArr = append(searchDirFilesArr, searchMap)
 	}
 
+	packagesMap := pkg.MakePKG(config.Packages, *installTeamViewer)
+	pkgInstallation(packagesMap, searchDirFilesArr)
+}
+
+func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[string]bool) {
 	pkg.InstallRosetta()
 
-	packagesMap := pkg.MakePKG(packagesToInstall, *installTeamViewer)
-	lol := pkg.IsInstalled("netdrive", []string{"/home/teboc/"})
-	fmt.Println(lol)
+	var findPKGScript string = utils.Home + "/macos-deployment/deploy_files/find_pkgs.sh"
+	scriptOut, scriptErr := exec.Command("bash", findPKGScript, utils.PKGPath).Output()
+	if scriptErr != nil {
+		fmt.Printf("[DEBUG] script: %s | pkg folder: %s\n", findPKGScript, utils.PKGPath)
+		println(string(scriptOut))
+		panic(scriptErr)
+	}
 
-	fmt.Println(packagesMap)
+	foundPKGs := strings.Split(string(scriptOut), "\n")
 
-	pkg.InstallPKG("toki")
+	for pkge, pkgeArr := range packagesMap {
+		fmt.Printf("[INFO] Installing package %s...\n", pkge)
 
-	//helpAccount := config.Accounts["help"]
-
-	//fmt.Println(utils.BuildString(varNames["packages"], packages_regex))
-	//fmt.Println(utils.BuildString(varNames["helpAccount"], helpAccount["full_name"]))
+		isInstalled := pkg.IsInstalled(pkgeArr, searchDirFilesArr)
+		if !isInstalled {
+			pkg.InstallPKG(pkge, foundPKGs)
+		}
+	}
 }

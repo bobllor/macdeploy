@@ -2,25 +2,20 @@ package pkg
 
 import (
 	"fmt"
-	"macos-deployment/deploy_files/utils"
-	"os"
 	"os/exec"
 	"strings"
 )
 
 // InstallRosetta installs the Rosetta software required for installing packages.
 // If Rosetta is already installed, then this will be skipped.
+// This function is required to be called before the package installation is called.
 func InstallRosetta() {
 	cmd := "pkgutil --pkgs | grep -i rosetta"
-	roseOut, roseErr := exec.Command("bash", "-c", cmd).Output()
-	if roseErr != nil {
-		// FIXME: add logging here
-		println(string(roseOut))
-		panic(roseErr)
-	}
+	roseOut, _ := exec.Command("bash", "-c", cmd).Output()
 
-	if !strings.Contains(strings.ToLower(string(roseOut)), "no receipt") {
-		installOut, installErr := exec.Command("sudo", "softwareupdate", "--install-rosetta", "--agree-to-license").Output()
+	if string(roseOut) != "" {
+		installOut, installErr := exec.Command("sudo", "softwareupdate", "--install-rosetta",
+			"--agree-to-license").Output()
 		if installErr != nil {
 			// FIXME: add logging here, this is a critical fail and exits the script.
 			println(string(installOut))
@@ -35,48 +30,47 @@ func InstallRosetta() {
 
 }
 
-// MakePKG creates a map (hashset-like) that represent the names of the packages from the YAML.
+// MakePKG creates a map with keys being the exact pkg file name and values being an array of strings
+// used to find if a pkg is installed in a given searchDirectory.
 // This is used to install the packages by accessing the pkg in their directory.
-func MakePKG(packages []string, installTeamViewer bool) map[string]bool {
-	packagesMap := make(map[string]bool)
+// The keys in the map are all lowercase.
+//
+// If installTeamViewer is True then TeamViewer is added into the map as a key if it exists.
+// By default TeamViewer is not installed.
+func MakePKG(packages map[string][]string, installTeamViewer bool) map[string][]string {
+	newPackagesMap := make(map[string][]string)
 
-	for _, pkg := range packages {
+	for pkg, pkgArr := range packages {
 		pkgLowered := strings.ToLower(pkg)
 		if !installTeamViewer && strings.Contains(pkgLowered, "teamviewer") {
+			println("[INFO] Removing TeamViewer from installation package")
 			continue
 		}
 
-		packagesMap[pkgLowered] = true
+		newPackagesMap[pkgLowered] = pkgArr
 	}
 
-	return packagesMap
+	return newPackagesMap
 }
 
 // InstallPKG runs a Bash script with arguments to install the given packages.
-func InstallPKG(pkg string) {
+func InstallPKG(pkg string, foundPKGs []string) {
 	// TODO: get the full paths of the packages in the pkg_dir (default installed in the home directory)
 	// TODO: pass path arguments into a bash script to install via bash. copy output to a log.
 	// TODO: *.pkg is the condition to find packages, however we need to find the full path later.
-	var filePath string = "./deploy_files/find_files.sh"
-
-	out, err := exec.Command("bash", filePath, utils.PKGPath, pkg).Output()
-	if err != nil {
-		panic(err)
-	}
-	arr := strings.SplitSeq(string(out), "\n")
-
-	for file := range arr {
+	for _, file := range foundPKGs {
 		fileLowered := strings.ToLower(file)
 
 		if strings.Contains(fileLowered, pkg) {
 			// abs path is probably not needed, it's working from home directory
 			println(file, "found")
-			cmd := fmt.Sprintf("sudo installer -pkg %s -target /", file)
+			cmd := fmt.Sprintf("installer -pkg %s -target /", file)
 
-			pkgOut, pkgErr := exec.Command("bash", "-c", cmd).Output()
+			pkgOut, pkgErr := exec.Command("sudo", "bash", "-c", cmd).Output()
 			if pkgErr != nil {
 				// FIXME: add logging
-				println("Failed to install " + pkg + ".pkg")
+				fmt.Printf("[WARNING] Failed to install %s.pkg\n", pkg)
+				println("[DEBUG] Package: %s | Package Path: %s | Command: %s", pkg, file, cmd)
 				println(string(pkgOut))
 				println(pkgErr)
 				break
@@ -85,24 +79,22 @@ func InstallPKG(pkg string) {
 	}
 }
 
-// IsInstalled searches for a string in an array of search paths if it is found.
-func IsInstalled(pkg string, searchPaths []string) bool {
+// IsInstalled searches for a given package in a search path from a given array of paths.
+// Ensure all keys in searchPaths are lowercase, which can be done by using the function GetFileMap.
+func IsInstalled(pkgNames []string, searchPaths []map[string]bool) bool {
 	// this is on a mac, there are two folders that will be checked:
 	// 	1. /Applications/ (general applications)
 	//  2. /Library/Application\ Support/ (service files)
-	// you can configure these searches in config.yaml
-	for _, path := range searchPaths {
-		files, err := os.ReadDir(path)
-		if err != nil {
-			// TODO: handle this properly
-			panic(err)
-		}
-
-		for _, file := range files {
+	// however if in any event these changes, you can configure it in config.yaml
+	for _, pkg := range pkgNames {
+		// unfortunately double loop is required here due to the array condition.
+		// on the bright side it does exit out early if it finds a match.
+		for _, pathMap := range searchPaths {
 			pkgLowered := strings.ToLower(pkg)
-			fileNameLowered := strings.ToLower(file.Name())
 
-			if strings.Contains(fileNameLowered, pkgLowered) {
+			if _, found := pathMap[pkgLowered]; found {
+				// FIXME: add logging
+				fmt.Printf("[INFO] Package %s is already installed\n", pkg)
 				return true
 			}
 		}

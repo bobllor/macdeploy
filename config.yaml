@@ -15,5 +15,5 @@ packages: # key: package to be installed | value: array of strings that matches 
   AbsoluteFullAgent:
     - "Absolute"
 search_directories:
-  - "/Applications"
-  - "/Library/Application Support"
+  - "/Applications" 
+  - "/Library/Application Support" 
