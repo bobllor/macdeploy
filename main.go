@@ -20,7 +20,11 @@ func main() {
 
 	var searchDirFilesArr []map[string]bool
 	for _, searchDir := range config.Search_Directories {
-		searchMap := utils.GetFileMap(searchDir)
+		searchMap, searchErr := utils.GetFileMap(searchDir)
+		if searchErr != nil {
+			fmt.Printf("[WARNING] Path %s does not exist, skipping path", searchDir)
+			continue
+		}
 
 		searchDirFilesArr = append(searchDirFilesArr, searchMap)
 	}
@@ -43,8 +47,6 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	foundPKGs := strings.Split(string(scriptOut), "\n")
 
 	for pkge, pkgeArr := range packagesMap {
-		fmt.Printf("[INFO] Installing package %s...\n", pkge)
-
 		isInstalled := pkg.IsInstalled(pkgeArr, searchDirFilesArr)
 		if !isInstalled {
 			pkg.InstallPKG(pkge, foundPKGs)

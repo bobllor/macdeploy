@@ -3,10 +3,12 @@ accounts:
     full_name: "Help.Account" # display name
     user_name: "help.account" # dir/user name
     password: "@ssistMe"
+    admin: "no"
   client:
     full_name: "DONOTUSE"
     user_name: "DONOTUSE"
     password: "Password1"
+    admin: "yes"
 packages: # key: package to be installed | value: array of strings that matches these words
   teamviewer:
     - "TeamViewer"
@@ -17,3 +19,5 @@ packages: # key: package to be installed | value: array of strings that matches 
 search_directories:
   - "/Applications" 
   - "/Library/Application Support" 
+file_vault: true
+firewall: true

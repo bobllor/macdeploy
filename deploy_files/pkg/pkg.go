@@ -11,9 +11,11 @@ import (
 // This function is required to be called before the package installation is called.
 func InstallRosetta() {
 	cmd := "pkgutil --pkgs | grep -i rosetta"
+
+	// if rosetta is not installed the exec fails, so errors MUST be ignored.
 	roseOut, _ := exec.Command("bash", "-c", cmd).Output()
 
-	if string(roseOut) != "" {
+	if string(roseOut) == "" {
 		installOut, installErr := exec.Command("sudo", "softwareupdate", "--install-rosetta",
 			"--agree-to-license").Output()
 		if installErr != nil {
@@ -55,26 +57,24 @@ func MakePKG(packages map[string][]string, installTeamViewer bool) map[string][]
 
 // InstallPKG runs a Bash script with arguments to install the given packages.
 func InstallPKG(pkg string, foundPKGs []string) {
-	// TODO: get the full paths of the packages in the pkg_dir (default installed in the home directory)
-	// TODO: pass path arguments into a bash script to install via bash. copy output to a log.
-	// TODO: *.pkg is the condition to find packages, however we need to find the full path later.
 	for _, file := range foundPKGs {
 		fileLowered := strings.ToLower(file)
 
 		if strings.Contains(fileLowered, pkg) {
-			// abs path is probably not needed, it's working from home directory
-			println(file, "found")
-			cmd := fmt.Sprintf("installer -pkg %s -target /", file)
+			fmt.Printf("[INFO] Installing package %s", pkg)
 
+			cmd := fmt.Sprintf("installer -pkg %s -target /", file)
 			pkgOut, pkgErr := exec.Command("sudo", "bash", "-c", cmd).Output()
 			if pkgErr != nil {
 				// FIXME: add logging
 				fmt.Printf("[WARNING] Failed to install %s.pkg\n", pkg)
-				println("[DEBUG] Package: %s | Package Path: %s | Command: %s", pkg, file, cmd)
 				println(string(pkgOut))
 				println(pkgErr)
-				break
 			}
+
+			println("[DEBUG] Package: %s | Package Path: %s | Command: %s", pkg, file, cmd)
+			fmt.Printf("[INFO] Successfully installed %s.pkg", pkg)
+			break
 		}
 	}
 }
