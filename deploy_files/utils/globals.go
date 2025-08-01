@@ -7,5 +7,5 @@ import "os"
 var Home string = os.Getenv("HOME")
 
 var ConfigPath string = "./config.yaml"
-var ScriptDir string = "./client-files"
+var ScriptDir string = "deploy_files"
 var PKGPath string = Home + "/pkg-files" // FIXME: for prod this is going to be "Home/pkg-files"

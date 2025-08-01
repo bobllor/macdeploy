@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"macos-deployment/deploy_files/core/pkg"
-	"macos-deployment/deploy_files/core/users"
+	"macos-deployment/deploy_files/core"
+	"macos-deployment/deploy_files/logger"
 	"macos-deployment/deploy_files/utils"
 	"macos-deployment/deploy_files/yaml"
 	"os/exec"
@@ -22,44 +22,64 @@ func main() {
 	flag.Parse()
 
 	var accounts map[string]utils.User = config.Accounts
-	for key := range accounts {
-		currAccount := accounts[key]
-
-		users.CreateAccount(currAccount, *adminStatus)
-	}
+	accountCreation(accounts)
 
 	var searchDirFilesArr []map[string]bool
 	for _, searchDir := range config.Search_Directories {
 		searchMap, searchErr := utils.GetFileMap(searchDir)
 		if searchErr != nil {
-			fmt.Printf("[WARNING] Path %s does not exist, skipping path", searchDir)
+			msg := fmt.Sprintf("Path %s does not exist, skipping path", searchDir)
+			logger.Log(msg, 4)
 			continue
 		}
 
 		searchDirFilesArr = append(searchDirFilesArr, searchMap)
 	}
 
-	packagesMap := pkg.MakePKG(config.Packages, *installTeamViewer)
-	pkgInstallation(packagesMap, searchDirFilesArr)
+	if len(searchDirFilesArr) > 0 {
+		packagesMap := core.MakePKG(config.Packages, *installTeamViewer)
+		pkgInstallation(packagesMap, searchDirFilesArr)
+	}
+
+	if config.File_Vault {
+		fileVault()
+	}
+}
+
+func accountCreation(accounts map[string]utils.User) {
+	for key := range accounts {
+		currAccount := accounts[key]
+
+		core.CreateAccount(currAccount, *adminStatus)
+	}
 }
 
 func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[string]bool) {
-	pkg.InstallRosetta()
+	core.InstallRosetta()
 
 	var findPKGScript string = utils.Home + "/macos-deployment/deploy_files/find_pkgs.sh"
 	scriptOut, scriptErr := exec.Command("bash", findPKGScript, utils.PKGPath).Output()
+
+	debug := fmt.Sprintf("Script: %s | PKG folder: %s", findPKGScript, utils.PKGPath)
+	logger.Log(debug, 7)
+
 	if scriptErr != nil {
-		fmt.Printf("[DEBUG] script: %s | pkg folder: %s\n", findPKGScript, utils.PKGPath)
-		println(string(scriptOut))
-		panic(scriptErr)
+		scriptErrMsg := "Failed to locate package folder"
+		logger.Log(scriptErrMsg, 3)
+		println(string(scriptOut), scriptErr)
+		return
 	}
 
 	foundPKGs := strings.Split(string(scriptOut), "\n")
 
 	for pkge, pkgeArr := range packagesMap {
-		isInstalled := pkg.IsInstalled(pkgeArr, searchDirFilesArr)
+		isInstalled := core.IsInstalled(pkgeArr, searchDirFilesArr)
 		if !isInstalled {
-			pkg.InstallPKG(pkge, foundPKGs)
+			core.InstallPKG(pkge, foundPKGs)
 		}
 	}
+}
+
+func fileVault() {
+	core.EnableFileVault()
 }

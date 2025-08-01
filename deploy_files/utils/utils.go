@@ -23,8 +23,6 @@ func GetFileMap(dirPath string) (map[string]bool, error) {
 
 	dirEntries, dirErr := os.ReadDir(dirPath)
 	if dirErr != nil {
-		// FIXME: add logging
-		// this is a critical error, if ignored it will always download pkgs no matter what.
 		return nil, dirErr
 	}
 
@@ -41,14 +39,17 @@ func GetFileMap(dirPath string) (map[string]bool, error) {
 	return pathContent, nil
 }
 
-// FormatName
+// FormatName formats a name string as First.Last or F.Last.
+//
+// This function expects the string to consist of only two names, and does not
+// handle any suffxies, bad characters, or special characters outside of "." and " ".
 func FormatName(name string) string {
 	//caser := cases.Title(language.AmericanEnglish)
 	//newStr := caser.String(str)
 	newStr := strings.Trim(name, " ")
 	strBytes := []byte(newStr)
 
-	replaceMap := map[string]bool{".": true, " ": true, ",": true}
+	replaceMap := map[string]bool{".": true, " ": true}
 
 	var delimiterIndex int = 0
 
@@ -67,6 +68,10 @@ func FormatName(name string) string {
 
 	newStr = string(strBytes)
 	strArr := strings.Split(newStr, string(name[delimiterIndex]))
+	nameArrLen := len(strArr)
 
-	return fmt.Sprintf("%s.%s", strArr[0], strArr[len(strArr)-1])
+	firstName := strArr[0]
+	lastName := strArr[nameArrLen-1]
+
+	return fmt.Sprintf("%s.%s", firstName, lastName)
 }
