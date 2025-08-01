@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -13,6 +16,39 @@ func TestRequest(t *testing.T) {
 	}
 
 	println(res.StatusCode)
+}
+
+func TestName(t *testing.T) {
+	names := []string{
+		"john doe", "Will Smith",
+		"lebron.james", "Steven.Curry",
+		"j doe", "W Smith",
+		"l.james", "S.Curry",
+	}
+
+	var fails []string
+	var successes []string
+
+	for _, name := range names {
+		if newName, valid := ValidateName(name); !valid {
+			fmt.Printf("Name: %s, Valid: %s\n", newName, strconv.FormatBool(valid))
+			fails = append(fails, newName)
+		} else {
+			successes = append(successes, FormatName(newName))
+		}
+	}
+
+	stringNames := strings.Join(names, ", ")
+
+	fmt.Printf("Names: %s\n", stringNames)
+
+	if len(fails) > 0 {
+		failedNames := strings.Join(fails, ", ")
+		t.Errorf("Failed names: %s\n", failedNames)
+	}
+
+	formattedNames := strings.Join(successes, ", ")
+	fmt.Printf("Formatted names: %s\n", formattedNames)
 }
 
 /*

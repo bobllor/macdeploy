@@ -1,15 +1,11 @@
 accounts:
   help:
-    full_name: "Help.Account" # display name
-    user_name: "help.account" # dir/user name
+    user_name: "Help.Account"
     password: "@ssistMe"
-    admin: "no"
+    ignore_admin: true
   client:
-    full_name: "DONOTUSE"
-    user_name: "DONOTUSE"
     password: "Password1"
-    admin: "yes"
-packages: # key: package to be installed | value: array of strings that matches these words
+packages:
   teamviewer:
     - "TeamViewer"
   office_2016:

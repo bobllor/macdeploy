@@ -3,12 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"macos-deployment/deploy_files/pkg"
+	"macos-deployment/deploy_files/core/pkg"
+	"macos-deployment/deploy_files/core/users"
 	"macos-deployment/deploy_files/utils"
 	"macos-deployment/deploy_files/yaml"
 	"os/exec"
 	"strings"
 )
+
+// IMPORTANT: all prints and errors will be replaced by logging when i get to it.
 
 var config utils.Config = yaml.ReadYAML(utils.ConfigPath)
 
@@ -17,6 +20,13 @@ var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the us
 
 func main() {
 	flag.Parse()
+
+	var accounts map[string]utils.User = config.Accounts
+	for key := range accounts {
+		currAccount := accounts[key]
+
+		users.CreateAccount(currAccount, *adminStatus)
+	}
 
 	var searchDirFilesArr []map[string]bool
 	for _, searchDir := range config.Search_Directories {
