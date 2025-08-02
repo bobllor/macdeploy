@@ -20,6 +20,9 @@ var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the us
 
 func main() {
 	flag.Parse()
+	initLog()
+
+	logger.Log("test", 1)
 
 	var accounts map[string]utils.User = config.Accounts
 	accountCreation(accounts)
@@ -44,6 +47,12 @@ func main() {
 	if config.File_Vault {
 		fileVault()
 	}
+}
+
+// initLog initializes the serial tag (if exists) and the logger
+func initLog() {
+	utils.SerialTag = utils.GetSerialTag()
+	logger.NewLog(utils.SerialTag)
 }
 
 func accountCreation(accounts map[string]utils.User) {

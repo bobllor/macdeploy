@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"unicode"
@@ -74,4 +75,21 @@ func FormatName(name string) string {
 	lastName := strArr[nameArrLen-1]
 
 	return fmt.Sprintf("%s.%s", firstName, lastName)
+}
+
+// GetSerialTag retrieves the serial tag for the device.
+//
+// This only works on macOS devices.
+// In case of an error, it will return an empty string.
+func GetSerialTag() string {
+	cmd := "ioreg -l | grep IOPlatformSerialNumber"
+	out, err := exec.Command("bash", "-c", cmd).Output()
+	if err != nil {
+		return ""
+	}
+
+	serialTagArr := strings.Split(string(out), "\"")
+	serialTag := serialTagArr[len(serialTagArr)-2]
+
+	return serialTag
 }

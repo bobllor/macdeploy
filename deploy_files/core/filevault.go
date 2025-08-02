@@ -2,32 +2,37 @@ package core
 
 import (
 	"fmt"
+	"macos-deployment/deploy_files/logger"
 	"macos-deployment/deploy_files/utils"
 	"os/exec"
 	"strings"
 )
 
-func EnableFileVault() {
+// EnableFileVault enables FileVault and returns the key generated from the command.
+// If it fails then an empty string is returned.
+func EnableFileVault() string {
 	cmd := "fdesetup isactive"
 	out, _ := exec.Command("bash", "-c", cmd).Output()
 	fileVaultStatus := strings.ToLower(string(out))
 
-	fmt.Printf("[DEBUG] FileVault status: %s", fileVaultStatus)
+	fileVaultMsg := fmt.Sprintf("FileVault status: %s", fileVaultStatus)
+	logger.Log(fileVaultMsg, 6)
 
 	if strings.Contains(fileVaultStatus, "false") {
 		scriptName := "enable_filevault.sh"
 
-		println("[INFO] Enabling FileVault")
+		logger.Log("Enabling FileVault", 6)
 
 		scriptPath := fmt.Sprintf("%s/%s/%s", utils.Home, "macos-deployment/deploy_files", scriptName)
-		out, err := exec.Command("bash", scriptPath).Output()
+		out, err := exec.Command("bash", scriptPath).CombinedOutput()
 
 		outText := string(out)
-		fmt.Printf("[DEBUG] Path: %s, Output: %s", scriptPath, outText)
+		logMsg := fmt.Sprintf("Path: %s, Output: %s", scriptPath, outText)
+		logger.Log(logMsg, 7)
 
 		if err != nil {
 			println(err)
-			return
+			return ""
 		}
 
 		// output is <name> = '<key>'
@@ -36,9 +41,14 @@ func EnableFileVault() {
 		// also println is not the same as fmt.Println...
 		key := outArr[1]
 
-		fmt.Println("[INFO] FileVault enabled")
-		fmt.Printf("[INFO] Generated FileVault key %s", key)
+		logger.Log("FileVault enabled", 6)
+		keyMsg := fmt.Sprintf("Generated FileVault key %s", key)
+		logger.Log(keyMsg, 6)
+
+		return key
 	} else {
-		println("[INFO] Skipping FileVault process: Already enabled")
+		logger.Log("Skipping FileVault process: Already enabled", 6)
 	}
+
+	return ""
 }

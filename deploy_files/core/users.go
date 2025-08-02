@@ -3,6 +3,7 @@ package core
 import (
 	"bufio"
 	"fmt"
+	"macos-deployment/deploy_files/logger"
 	"macos-deployment/deploy_files/utils"
 	"os"
 	"os/exec"
@@ -18,7 +19,7 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 	if userName == "" {
 		reader := bufio.NewReader(os.Stdin)
 
-		fmt.Println("Naming format (case insensitive): FIRST LAST || FIRST.LAST || F LAST || F.LAST)")
+		fmt.Println("\nNaming format (case insensitive): FIRST LAST || FIRST.LAST || F LAST || F.LAST)")
 		fmt.Println("Hit enter if you want to skip the user's entry.")
 		fmt.Print("Enter the client's name: ")
 
@@ -36,7 +37,8 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 		userName = utils.FormatName(userName)
 	}
 
-	fmt.Printf("[INFO] Creating user %s\n", userName)
+	initLog := fmt.Sprintf("Creating user %s", userName)
+	logger.Log(initLog, 6)
 
 	admin := "false"
 	if isAdmin && !user.Ignore_Admin {
@@ -48,11 +50,12 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 	// CreateUserScript takes 3 arguments.
 	_, err := exec.Command("sudo", "bash", CreateUserScript, userName, user.Password, admin).Output()
 	if err != nil {
-		fmt.Println(err)
+		logger.Log(err.Error(), 3)
 		return false
 	}
 
-	fmt.Printf("[INFO] User %s created\n", userName)
+	createdLog := fmt.Sprintf("User %s created", userName)
+	logger.Log(createdLog, 6)
 
 	return true
 }

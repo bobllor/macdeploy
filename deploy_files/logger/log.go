@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
-var logFile string = "temp.log"
+var LogFile string
 
 var WarningLevels map[int]string = map[int]string{
 	0: "EMERGENCY",
@@ -17,6 +18,12 @@ var WarningLevels map[int]string = map[int]string{
 	5: "NOTIFICATION",
 	6: "INFO",
 	7: "DEBUG",
+}
+
+func NewLog(serialTag string) {
+	date := time.Now().Format("01-02T15-04-05")
+
+	LogFile = fmt.Sprintf("%s.%s.log", date, serialTag)
 }
 
 // Log creates and writes to the log file.
@@ -31,8 +38,7 @@ var WarningLevels map[int]string = map[int]string{
 //   - 6: INFO
 //   - 7: DEBUG
 func Log(msg string, level int) {
-	print("hi")
-	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0744)
+	file, err := os.OpenFile(LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0744)
 	if err != nil {
 		panic(err)
 	}
@@ -45,5 +51,9 @@ func Log(msg string, level int) {
 	prefix := fmt.Sprintf("[%s] ", WarningLevels[level])
 	log.SetPrefix(prefix)
 
+	// lazy way to display info to the user.
+	if level == 6 {
+		fmt.Println(msg)
+	}
 	log.Println(msg)
 }
