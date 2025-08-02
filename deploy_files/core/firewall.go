@@ -12,11 +12,11 @@ import (
 // EnableFireWall enables the firewall of the Mac.
 func EnableFireWall() {
 	scriptName := "enable_firewall.sh"
-	scriptPath := fmt.Sprintf("%s/%s/%s", utils.MainDir, utils.ScriptDir, scriptName)
+	scriptPath := fmt.Sprintf("%s/%s/%s", utils.ProjectDir, utils.ScriptDir, scriptName)
 
 	firewallIsOn, err := firewallIsEnabled()
 	if err != nil {
-		firewallErrMsg := fmt.Sprintf("Error executing Firewall check script %s", err.Error())
+		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %s", err.Error()))
 		logger.Log(firewallErrMsg, 3)
 		return
 	}
@@ -26,7 +26,7 @@ func EnableFireWall() {
 	if !firewallIsOn {
 		out, err := exec.Command("bash", scriptPath).CombinedOutput()
 		if err != nil {
-			errMsg := fmt.Sprintf("Failed to enable Firewall | Error: %s", string(out))
+			errMsg := fmt.Sprintf("Failed to enable Firewall | %s", string(out))
 			logger.Log(errMsg, 3)
 
 			return
@@ -43,7 +43,7 @@ func firewallIsEnabled() (bool, error) {
 	cmd := "sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate"
 	out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
 	if err != nil {
-		errMsg := fmt.Sprintf("Failed to check Firewall status | Error: %s", string(out))
+		errMsg := strings.TrimSpace(fmt.Sprintf("Failed to check Firewall status | %s", string(out)))
 		logger.Log(errMsg, 3)
 
 		return false, errors.New(string(out))

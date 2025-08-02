@@ -73,7 +73,6 @@ func FormatName(name string) string {
 // GetSerialTag retrieves the serial tag for the device.
 //
 // This only works on macOS devices.
-// In case of an error, it will return a ERROR string.
 func GetSerialTag() (string, error) {
 	cmd := "ioreg -l | grep IOPlatformSerialNumber"
 	out, err := exec.Command("bash", "-c", cmd).Output()

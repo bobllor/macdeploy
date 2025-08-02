@@ -48,7 +48,7 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	var CreateUserScript string = fmt.Sprintf("%s/%s/%s", utils.MainDir, utils.ScriptDir, "create_user.sh")
+	var CreateUserScript string = fmt.Sprintf("%s/%s/%s", utils.ProjectDir, utils.ScriptDir, "create_user.sh")
 
 	// CreateUserScript takes 3 arguments.
 	_, err := exec.Command("sudo", "bash", CreateUserScript, userName, user.Password, admin).Output()

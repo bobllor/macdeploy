@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// IMPORTANT: all prints and errors will be replaced by logging when i get to it.
+// NOTE: when zipping the files for the HTTP server only include the .sh files in deploy_files
 
 var configPath string = "./config.yaml"
 var config utils.Config = yaml.ReadYAML(configPath)
@@ -81,7 +81,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 
 	pkgScriptName := "find_pkgs.sh"
 
-	var findPKGScript string = fmt.Sprintf("%s/%s/%s", utils.MainDir, utils.ScriptDir, pkgScriptName)
+	var findPKGScript string = fmt.Sprintf("%s/%s/%s", utils.ProjectDir, utils.ScriptDir, pkgScriptName)
 	scriptOut, scriptErr := exec.Command("bash", findPKGScript, utils.PKGPath).Output()
 
 	debug := fmt.Sprintf("Script: %s | PKG folder: %s", findPKGScript, utils.PKGPath)
