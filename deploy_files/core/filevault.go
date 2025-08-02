@@ -13,12 +13,17 @@ import (
 func EnableFileVault() string {
 	cmd := "fdesetup isactive"
 	out, _ := exec.Command("bash", "-c", cmd).Output()
-	fileVaultStatus := strings.ToLower(string(out))
+	fileVaultStatus := strings.TrimSpace(strings.ToLower(string(out)))
+
+	// either some failed happen or this is ran on a non-mac OS
+	if fileVaultStatus == "" {
+		fileVaultStatus = "unknown"
+	}
 
 	fileVaultMsg := fmt.Sprintf("FileVault status: %s", fileVaultStatus)
 	logger.Log(fileVaultMsg, 6)
 
-	if strings.Contains(fileVaultStatus, "false") {
+	if fileVaultStatus == "false" {
 		scriptName := "enable_filevault.sh"
 
 		logger.Log("Enabling FileVault", 6)
@@ -31,7 +36,7 @@ func EnableFileVault() string {
 		logger.Log(logMsg, 7)
 
 		if err != nil {
-			println(err)
+			logger.Log("Failed to execute FileVault script", 3)
 			return ""
 		}
 
@@ -46,8 +51,10 @@ func EnableFileVault() string {
 		logger.Log(keyMsg, 6)
 
 		return key
+	} else if fileVaultStatus == "true" {
+		logger.Log("FileVault is already enabled", 6)
 	} else {
-		logger.Log("Skipping FileVault process: Already enabled", 6)
+		logger.Log("FileVault failed to execute", 3)
 	}
 
 	return ""

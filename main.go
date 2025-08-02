@@ -13,7 +13,8 @@ import (
 
 // IMPORTANT: all prints and errors will be replaced by logging when i get to it.
 
-var config utils.Config = yaml.ReadYAML(utils.ConfigPath)
+var configPath string = "./config.yaml"
+var config utils.Config = yaml.ReadYAML(configPath)
 
 var installTeamViewer = flag.Bool("t", false, "Installs TeamViewer on the device.")
 var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the user.")
@@ -21,8 +22,6 @@ var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the us
 func main() {
 	flag.Parse()
 	initLog()
-
-	logger.Log("test", 1)
 
 	var accounts map[string]utils.User = config.Accounts
 	accountCreation(accounts)
@@ -45,13 +44,23 @@ func main() {
 	}
 
 	if config.File_Vault {
-		fileVault()
+		startFileVault()
+	}
+
+	if config.Firewall {
+		startFirewall()
 	}
 }
 
 // initLog initializes the serial tag (if exists) and the logger
 func initLog() {
-	utils.SerialTag = utils.GetSerialTag()
+	tag, tagErr := utils.GetSerialTag()
+	if tagErr != nil {
+		tag = "UNKNOWN"
+	}
+
+	utils.SerialTag = tag
+
 	logger.NewLog(utils.SerialTag)
 }
 
@@ -64,9 +73,15 @@ func accountCreation(accounts map[string]utils.User) {
 }
 
 func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[string]bool) {
-	core.InstallRosetta()
+	roseErr := core.InstallRosetta()
+	if roseErr != nil {
+		logger.Log("Failed to install Rosetta", 3)
+		return
+	}
 
-	var findPKGScript string = utils.Home + "/macos-deployment/deploy_files/find_pkgs.sh"
+	pkgScriptName := "find_pkgs.sh"
+
+	var findPKGScript string = fmt.Sprintf("%s/%s/%s", utils.MainDir, utils.ScriptDir, pkgScriptName)
 	scriptOut, scriptErr := exec.Command("bash", findPKGScript, utils.PKGPath).Output()
 
 	debug := fmt.Sprintf("Script: %s | PKG folder: %s", findPKGScript, utils.PKGPath)
@@ -75,7 +90,6 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	if scriptErr != nil {
 		scriptErrMsg := "Failed to locate package folder"
 		logger.Log(scriptErrMsg, 3)
-		println(string(scriptOut), scriptErr)
 		return
 	}
 
@@ -89,6 +103,10 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	}
 }
 
-func fileVault() {
+func startFileVault() {
 	core.EnableFileVault()
+}
+
+func startFirewall() {
+	core.EnableFireWall()
 }

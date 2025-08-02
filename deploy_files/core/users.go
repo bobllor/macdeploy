@@ -24,11 +24,14 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 		fmt.Print("Enter the client's name: ")
 
 		input, _ := reader.ReadString('\n')
+
+		fmt.Println("") // for formatting purposes.
+
 		input = input[:len(input)-1]
-		_, validName := utils.ValidateName(input)
+		validName := utils.ValidateName(input)
 
 		if input == "" || !validName {
-			println("[INFO] ")
+			logger.Log("User creation skipped", 6)
 			return false
 		}
 
@@ -45,12 +48,13 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	var CreateUserScript string = utils.Home + "/macos-deployment/deploy_files/create_user.sh"
+	var CreateUserScript string = fmt.Sprintf("%s/%s/%s", utils.MainDir, utils.ScriptDir, "create_user.sh")
 
 	// CreateUserScript takes 3 arguments.
 	_, err := exec.Command("sudo", "bash", CreateUserScript, userName, user.Password, admin).Output()
 	if err != nil {
-		logger.Log(err.Error(), 3)
+		errMsg := fmt.Sprintf("Failed to create user %s | Script exit status: %v", userName, err)
+		logger.Log(errMsg, 3)
 		return false
 	}
 

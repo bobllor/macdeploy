@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,14 +9,6 @@ import (
 	"strings"
 	"unicode"
 )
-
-func CheckError(err error) error {
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // GetPathMap searches the contents of a directory and returns a map of the files.
 // The keys in the map are all lowercase and the extension is removed.
@@ -80,16 +73,16 @@ func FormatName(name string) string {
 // GetSerialTag retrieves the serial tag for the device.
 //
 // This only works on macOS devices.
-// In case of an error, it will return an empty string.
-func GetSerialTag() string {
+// In case of an error, it will return a ERROR string.
+func GetSerialTag() (string, error) {
 	cmd := "ioreg -l | grep IOPlatformSerialNumber"
 	out, err := exec.Command("bash", "-c", cmd).Output()
 	if err != nil {
-		return ""
+		return "", errors.New("cannot find serial tag of the device")
 	}
 
 	serialTagArr := strings.Split(string(out), "\"")
 	serialTag := serialTagArr[len(serialTagArr)-2]
 
-	return serialTag
+	return serialTag, nil
 }

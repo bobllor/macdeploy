@@ -10,12 +10,18 @@ import (
 var yamlConfig utils.Config
 
 // ReadYAML reads the YAML configuration file and returns a struct of the file.
+//
+// If there is an issue with reading the YAML configuration then this will exit the script.
 func ReadYAML(configPath string) utils.Config {
 	content, err := os.ReadFile(configPath)
-	utils.CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 
 	err = yaml.Unmarshal(content, &yamlConfig)
-	utils.CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 
 	return yamlConfig
 }

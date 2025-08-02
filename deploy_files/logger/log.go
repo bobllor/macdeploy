@@ -46,13 +46,13 @@ func Log(msg string, level int) {
 	defer file.Close()
 
 	log.SetOutput(file)
-	log.SetFlags(log.Ltime | log.Lshortfile | log.Lmsgprefix)
+	log.SetFlags(log.Ltime | log.Lmsgprefix)
 
 	prefix := fmt.Sprintf("[%s] ", WarningLevels[level])
 	log.SetPrefix(prefix)
 
 	// lazy way to display info to the user.
-	if level == 6 {
+	if level != 7 {
 		fmt.Println(msg)
 	}
 	log.Println(msg)

@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -30,11 +29,10 @@ func TestName(t *testing.T) {
 	var successes []string
 
 	for _, name := range names {
-		if newName, valid := ValidateName(name); !valid {
-			fmt.Printf("Name: %s, Valid: %s\n", newName, strconv.FormatBool(valid))
-			fails = append(fails, newName)
+		if !ValidateName(name) {
+			fails = append(fails, name)
 		} else {
-			successes = append(successes, FormatName(newName))
+			successes = append(successes, FormatName(name))
 		}
 	}
 

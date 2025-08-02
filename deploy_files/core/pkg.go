@@ -1,35 +1,38 @@
 package core
 
 import (
+	"errors"
 	"fmt"
+	"macos-deployment/deploy_files/logger"
 	"os/exec"
 	"strings"
 )
 
 // InstallRosetta installs the Rosetta software required for installing packages.
 // If Rosetta is already installed, then this will be skipped.
-// This function is required to be called before the package installation is called.
-func InstallRosetta() {
+//
+// Package installations require Rosetta, this is required to be called.
+// If the installation of Rosetta fails then an error will be returned.
+func InstallRosetta() error {
 	cmd := "pkgutil --pkgs | grep -i rosetta"
 
 	// if rosetta is not installed the exec fails, so errors MUST be ignored.
 	roseOut, _ := exec.Command("bash", "-c", cmd).Output()
 
 	if string(roseOut) == "" {
-		installOut, installErr := exec.Command("sudo", "softwareupdate", "--install-rosetta",
+		_, installErr := exec.Command("sudo", "softwareupdate", "--install-rosetta",
 			"--agree-to-license").Output()
 		if installErr != nil {
-			// FIXME: add logging here, this is a critical fail and exits the script.
-			println(string(installOut))
-			panic(installErr)
+			return errors.New("rosetta failed to install")
 		}
 
-		println("[INFO] Rosetta has been installed")
+		logger.Log("Rosetta installed", 6)
 	} else {
 		// FIXME: add logging here
-		println("[INFO] Rosetta is already installed")
+		logger.Log("Rosetta is already installed", 6)
 	}
 
+	return nil
 }
 
 // MakePKG creates a map with keys being the exact pkg file name and values being an array of strings
@@ -45,7 +48,8 @@ func MakePKG(packages map[string][]string, installTeamViewer bool) map[string][]
 	for pkg, pkgArr := range packages {
 		pkgLowered := strings.ToLower(pkg)
 		if !installTeamViewer && strings.Contains(pkgLowered, "teamviewer") {
-			println("[INFO] Removing TeamViewer from installation package")
+			logger.Log("Removing TeamViewer from installation package", 6)
+			logger.Log(fmt.Sprintf("TeamViewer flag: %v", installTeamViewer), 7)
 			continue
 		}
 
@@ -56,24 +60,24 @@ func MakePKG(packages map[string][]string, installTeamViewer bool) map[string][]
 }
 
 // InstallPKG runs a Bash script with arguments to install the given packages.
+//
+// foundPKGs is an array of strings that consist of all packages found in the packages directory.
 func InstallPKG(pkg string, foundPKGs []string) {
 	for _, file := range foundPKGs {
 		fileLowered := strings.ToLower(file)
 
 		if strings.Contains(fileLowered, pkg) {
-			fmt.Printf("[INFO] Installing package %s", pkg)
+			logger.Log(fmt.Sprintf("Installing package %s", pkg), 6)
 
 			cmd := fmt.Sprintf("installer -pkg %s -target /", file)
-			pkgOut, pkgErr := exec.Command("sudo", "bash", "-c", cmd).Output()
+			_, pkgErr := exec.Command("sudo", "bash", "-c", cmd).Output()
 			if pkgErr != nil {
 				// FIXME: add logging
-				fmt.Printf("[WARNING] Failed to install %s.pkg\n", pkg)
-				println(string(pkgOut))
-				println(pkgErr)
+				logger.Log(fmt.Sprintf("Failed to install %s.pkg\n", pkg), 3)
 			}
 
-			println("[DEBUG] Package: %s | Package Path: %s | Command: %s", pkg, file, cmd)
-			fmt.Printf("[INFO] Successfully installed %s.pkg", pkg)
+			logger.Log(fmt.Sprintf("[DEBUG] Package: %s | Package Path: %s | Command: %s", pkg, file, cmd), 7)
+			logger.Log(fmt.Sprintf("Successfully installed %s.pkg", pkg), 6)
 			break
 		}
 	}
@@ -94,7 +98,7 @@ func IsInstalled(pkgNames []string, searchPaths []map[string]bool) bool {
 
 			if _, found := pathMap[pkgLowered]; found {
 				// FIXME: add logging
-				fmt.Printf("[INFO] Package %s is already installed\n", pkg)
+				logger.Log(fmt.Sprintf("Found existing installation for package %s", pkg), 6)
 				return true
 			}
 		}
