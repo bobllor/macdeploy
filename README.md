@@ -1,6 +1,6 @@
 # About
 
-This is the TGS Hardware's macOS deployment server written by Tri Nguyen.
+This is the TGS Hardware's macOS deployment guide.
 
 For more detailed information on how to use, configure, and manage the deployment files visit the TEKsystems Quick Survival Guide or KBXXX on ServiceNow.
 <br />
@@ -19,8 +19,6 @@ Features:
 2. The first root access requirement (1 input).
 3. User creation (1 input).
 4. FileVault activation (2 inputs).
-
-Unfortunately I am unable to automate these due to the security policies of Apple, or the amount of workarounds to do that it isn't worth it.
 
 # Quick Start
 
