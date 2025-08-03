@@ -1,5 +1,6 @@
 from flask import Flask, send_file, Response, request
 from pathlib import Path
+from system.vars import Vars
 import subprocess
 
 app = Flask(__name__)
@@ -11,6 +12,13 @@ def home():
 @app.route("/api/packages/pkg-zip")
 def get_client_files() -> Response:
     '''Returns a ZIP file of the client-files directory.'''
+    with open(f"{Vars.SERVER_DIR}/{Vars.VERSION_FILE}", "r") as file:
+        version: str = file.read()
+
+        print(version)
+
+    # send_file(Vars.YAML_CONFIG)
+    return "wip"
 
 @app.route("/api/fv/")
 def add_filevault_key():
@@ -26,4 +34,5 @@ def add_filevault_key():
     return "Hello"
 
 if __name__ == '__main__':
-    app.run(host="10.173.128.112")
+    host: str = "127.0.0.1"
+    app.run(host=host)
