@@ -1,0 +1,19 @@
+accounts:
+  help:
+    user_name: "Help.Account"
+    password: "@ssistMe"
+    ignore_admin: true
+  client:
+    password: "Password1"
+packages:
+  teamviewer:
+    - "TeamViewer"
+  office_2016:
+    - "Microsoft Word"
+  AbsoluteFullAgent:
+    - "Absolute"
+search_directories:
+  - "/Applications" 
+  - "/Library/Application Support" 
+file_vault: true
+firewall: true
