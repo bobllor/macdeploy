@@ -1,15 +1,27 @@
 import os
+from pathlib import Path
+from enum import Enum
 
-class Vars:
+class Vars(Enum):
+    HOME = os.environ["HOME"]
+    MAIN_PATH = Path(__file__).parents[2] # ensures we are working in the main directory
+
     # server meta
-    VERSION_FILE: str = ".server_version"
-    YAML_CONFIG: str = "config.yaml"
+    PKG_HASH = ".pkg_metadata"
+    YAML_CONFIG = "config.yaml"
+    
+    # file names
+    ZIP_FILE_NAME = "pkgs.zip"
 
-    # default paths
-    HOME: str = os.environ["HOME"]
-    MAIN_DIR: str = f"{HOME}/macos-deployment"
-    SERVER_DIR: str = "server"
+    # directory names
+    FILEVAULT_DIR_NAME = "filevault-keys"
+    PKG_DIR_NAME = "pkg-files"
+    SERVER_DIR_NAME = "server"
+    LOG_DIR_NAME = "logs"
+    ZIP_DIR_NAME = ""
 
-    # zip vars
-    ZIP_PATH: str = ""
-    ZIP_FILE: str = "pkg.zip"
+    # default directory paths
+    FILEVAULT_PATH = f"{MAIN_PATH}/{FILEVAULT_DIR_NAME}"
+    PKG_PATH = f"{MAIN_PATH}/{PKG_DIR_NAME}"
+    SERVER_PATH = "server"
+    ZIP_PATH = ""

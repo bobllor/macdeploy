@@ -5,9 +5,9 @@
 .Trashes
 .fseventsd
 .git
-deploy-sym.sh
 disney
 filevault-keys
 logs
 old-files
 pkg-files
+__pycache__

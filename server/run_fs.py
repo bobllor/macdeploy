@@ -3,6 +3,9 @@ from pathlib import Path
 from system.vars import Vars
 import subprocess
 
+# NOTE: after some testing around, i find the best choice is just to work with relative paths.
+# too many scenarios can break apart the absolute i built! noted!
+
 app = Flask(__name__)
 
 @app.route("/")
@@ -12,12 +15,12 @@ def home():
 @app.route("/api/packages/pkg-zip")
 def get_client_files() -> Response:
     '''Returns a ZIP file of the client-files directory.'''
-    with open(f"{Vars.SERVER_DIR}/{Vars.VERSION_FILE}", "r") as file:
+    with open(f"{Vars.SERVER_DIR.value}/{Vars.VERSION_FILE.value}", "r") as file:
         version: str = file.read()
 
         print(version)
 
-    # send_file(Vars.YAML_CONFIG)
+    # send_file(Vars.YAML_CONFIG.value)
     return "wip"
 
 @app.route("/api/fv/")
@@ -34,5 +37,5 @@ def add_filevault_key():
     return "Hello"
 
 if __name__ == '__main__':
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     app.run(host=host)
