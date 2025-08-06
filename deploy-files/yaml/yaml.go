@@ -1,7 +1,7 @@
 package yaml
 
 import (
-	"macos-deployment/deploy_files/utils"
+	"macos-deployment/deploy-files/utils"
 	"os"
 
 	"github.com/goccy/go-yaml"

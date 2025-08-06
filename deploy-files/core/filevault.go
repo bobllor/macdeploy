@@ -2,8 +2,8 @@ package core
 
 import (
 	"fmt"
-	"macos-deployment/deploy_files/logger"
-	"macos-deployment/deploy_files/utils"
+	"macos-deployment/deploy-files/logger"
+	"macos-deployment/deploy-files/utils"
 	"os/exec"
 	"strings"
 )
@@ -28,7 +28,7 @@ func EnableFileVault() string {
 
 		logger.Log("Enabling FileVault", 6)
 
-		scriptPath := fmt.Sprintf("%s/%s/%s", utils.Home, "macos-deployment/deploy_files", scriptName)
+		scriptPath := fmt.Sprintf("%s/%s/%s", utils.Home, "macos-deployment/deploy-files", scriptName)
 		out, err := exec.Command("bash", scriptPath).CombinedOutput()
 
 		outText := string(out)

@@ -3,15 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"macos-deployment/deploy_files/core"
-	"macos-deployment/deploy_files/logger"
-	"macos-deployment/deploy_files/utils"
-	"macos-deployment/deploy_files/yaml"
+	"macos-deployment/deploy-files/core"
+	"macos-deployment/deploy-files/logger"
+	"macos-deployment/deploy-files/utils"
+	"macos-deployment/deploy-files/yaml"
 	"os/exec"
 	"strings"
 )
 
-// NOTE: when zipping the files for the HTTP server only include the .sh files in deploy_files
+// NOTE: when zipping the files for the HTTP server only include the .sh files in deploy-files
 
 var configPath string = "./config.yaml"
 var config utils.Config = yaml.ReadYAML(configPath)

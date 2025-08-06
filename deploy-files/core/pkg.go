@@ -3,7 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
-	"macos-deployment/deploy_files/logger"
+	"macos-deployment/deploy-files/logger"
 	"os/exec"
 	"strings"
 )
