@@ -4,24 +4,25 @@ from enum import Enum
 
 class Vars(Enum):
     HOME = os.environ["HOME"]
-    MAIN_PATH = Path(__file__).parents[2] # ensures we are working in the main directory
+    _MAIN_PATH = Path(__file__).parents[2] # ensures we are working in the main directory
 
     # server meta
-    PKG_HASH = ".pkg_metadata"
+    PKG_HASH_FILE = ".pkg_metadata"
     YAML_CONFIG = "config.yaml"
     
     # file names
-    ZIP_FILE_NAME = "pkgs.zip"
+    ZIP_FILE_NAME = "deploy.zip"
 
     # directory names
-    FILEVAULT_DIR_NAME = "filevault-keys"
-    PKG_DIR_NAME = "pkg-files"
-    SERVER_DIR_NAME = "server"
-    LOG_DIR_NAME = "logs"
-    ZIP_DIR_NAME = ""
+    _FILEVAULT_DIR_NAME = "filevault-keys"
+    _PKG_DIR_NAME = "pkg-files"
+    _SERVER_DIR_NAME = "server"
+    _LOGS_DIR_NAME = "logs"
+    _ZIP_DIR_NAME = "deploy-zip"
 
     # default directory paths
-    FILEVAULT_PATH = f"{MAIN_PATH}/{FILEVAULT_DIR_NAME}"
-    PKG_PATH = f"{MAIN_PATH}/{PKG_DIR_NAME}"
-    SERVER_PATH = "server"
-    ZIP_PATH = ""
+    FILEVAULT_PATH = f"{_MAIN_PATH}/{_FILEVAULT_DIR_NAME}"
+    PKG_PATH = f"{_MAIN_PATH}/{_PKG_DIR_NAME}"
+    SERVER_PATH = f"{_MAIN_PATH}/{_SERVER_DIR_NAME}"
+    ZIP_PATH = f"{_MAIN_PATH}/{_ZIP_DIR_NAME}"
+    LOGS_PATH = f"{_MAIN_PATH}/{_LOGS_DIR_NAME}"

@@ -10,4 +10,9 @@ filevault-keys
 logs
 old-files
 pkg-files
-__pycache__
+__pycache__/
+*.exe
+*.pyc
+*.log
+deploy-zip
+.pkg_metadata
