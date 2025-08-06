@@ -71,7 +71,7 @@ def add_filevault_key():
     # TODO: add logging here
 
     if not all([key in content for key in ["key", "serial"]]):
-        return 400
+        return "", 400
 
     file_vault_key: str = content.get("key")
     serial_tag: str = content.get("serial")
