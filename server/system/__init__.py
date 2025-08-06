@@ -9,7 +9,7 @@ dir_list: list[str] = [filevault_dir, logs_dir, pkg_dir]
 
 # these directories are checked during runtime as well.
 for ele in dir_list:
-    path: Path = Path(dir)
+    path: Path = Path(ele)
 
     if not path.exists():
         path.mkdir()

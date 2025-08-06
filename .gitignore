@@ -11,6 +11,7 @@ logs
 old-files
 pkg-files
 __pycache__/
+.pytest_cache
 *.exe
 *.pyc
 *.log

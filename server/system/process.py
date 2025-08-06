@@ -1,15 +1,24 @@
 from pathlib import Path
 from .vars import Vars
-from .types import FileTree
-from .utils import get_dir_dict
-import hashlib, zipfile, subprocess, threading
+from .types import Flags
+from .utils import get_dir_list, unlink_children
+import hashlib, zipfile, subprocess, threading, re
 
 class Process:
-    '''Contains the functions for the server to process requests.'''
+    '''Contains the functions for the server to process requests.
+    
+    Parameters
+    ----------
+        pkg_path: Path
+            The Path location to the main packages folder. This is defined inside vars.py as PKG_PATH.
+    '''
     def __init__(self, pkg_path: Path):
-        self.server_files: FileTree = get_dir_dict(pkg_path)
-
+        self.server_files: list[str] = get_dir_list(pkg_path, replace_home=True)
         self._zipping_lock: threading.Lock = threading.Lock()
+
+        self.flags: Flags = {
+            "zip_status": True
+        }
 
         #print(self.server_files)
 
@@ -30,10 +39,28 @@ class Process:
         if not serial_dir.exists():
             self._create_entry(key_entry) 
         else:
-            # this does not remove the parent directory but its contents.
-            print(f"found existing key {serial_dir[0]}")
-            self._unlink_children(path=serial_dir)
+            regex_str: str = r"^([A-Za-z0-9]{4}-?)+$"
+            prev_key: str = ""
+
+            # getting the previous key for logging purposes
+            for child in serial_dir.iterdir():
+                # i dont know the regex for this above LMFAO
+                prev_key_name: str = child.name.strip("-")
+                match_obj: re.Match[str] | None = re.match(regex_str, prev_key_name)
+
+                if match_obj != None:
+                    prev_key = prev_key_name
+                    break
+            
+            key_log: str = f"Found existing key {prev_key}"
+            if prev_key == "": 
+                key_log = f"Error finding key in {serial} directory"
+
+            print(key_log)
+            unlink_children(path=serial_dir)
             self._create_entry(key_entry)
+
+        print(f"Added key {key}")
     
     def generate_hash(self, path: Path, *, data: list[str] = None) -> str:
         '''Generates the hash by using the file name given from a Path.
@@ -60,12 +87,12 @@ class Process:
         the packages available in the ZIP file.
 
         If the ZIP file does not exist, then a new one will be created.
-        .'''
+        '''
         if not zip_path.exists():
             # files to zip: packages folder, go binary
             files_to_zip: str = f"{Vars.PKG_PATH.value}"
             zip_cmd: list[str] = f"zip -f {Vars.ZIP_FILE_NAME.value} {files_to_zip}".split()
-            zip_cmd: list[str] = ["powershell", "-c", "sleep 5"] # temp
+
             threading.Thread(target=self._execute, args=(zip_cmd,)).start()
 
             return
@@ -75,6 +102,7 @@ class Process:
         
         This is blocking by default, run with threading if non-blocking is required.
         '''
+        self.flags["zip_status"] = False
         locked_thread: bool = self._zipping_lock.acquire(blocking=False)
 
         print(locked_thread)
@@ -86,6 +114,7 @@ class Process:
                 print("Command finished")
             finally:    
                 self._zipping_lock.release()
+                self.flags["zip_status"] = True
         else:
             print("New execution attempt initiated, blocking")
             return
@@ -107,14 +136,12 @@ class Process:
         '''Creates the given Path object with its parents.'''
         path.mkdir(parents=True)
         path.touch()
+    
+    @property
+    def flags(self) -> Flags:
+        '''The status flags on operations.
+        By default all flags are True, and under certain operations will they be False.
 
-    def _unlink_children(self, path: Path) -> None:
-        '''Removes all children from a given Path'''
-        if not path.is_dir():
-            path.unlink()
-            return
-
-        for file in path.iterdir():
-            if file.is_dir():
-                self._unlink_children(file)
-                file.rmdir()
+        This is used for conditionals for the endpoints.
+        '''
+        return self.flags
