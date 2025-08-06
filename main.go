@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/logger"
+	"macos-deployment/deploy-files/scripts"
 	"macos-deployment/deploy-files/utils"
 	"macos-deployment/deploy-files/yaml"
 	"os/exec"
@@ -79,12 +80,9 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 		return
 	}
 
-	pkgScriptName := "find_pkgs.sh"
+	scriptOut, scriptErr := exec.Command("bash", scripts.FindPackagesScript, utils.PKGPath).Output()
 
-	var findPKGScript string = fmt.Sprintf("%s/%s/%s", utils.ProjectDir, utils.ScriptDir, pkgScriptName)
-	scriptOut, scriptErr := exec.Command("bash", findPKGScript, utils.PKGPath).Output()
-
-	debug := fmt.Sprintf("Script: %s | PKG folder: %s", findPKGScript, utils.PKGPath)
+	debug := fmt.Sprintf("PKG folder: %s", utils.PKGPath)
 	logger.Log(debug, 7)
 
 	if scriptErr != nil {
