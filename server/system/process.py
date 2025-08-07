@@ -1,6 +1,6 @@
 from pathlib import Path
 from .vars import Vars
-from .types import Flags
+from .types import Flags, LogInfo
 from .utils import get_dir_list, unlink_children
 import hashlib, zipfile, subprocess, threading, re
 
@@ -83,22 +83,50 @@ class Process:
         return hashlib.md5("".join(data).encode()).hexdigest()
     
     def update_zip(self, zip_path: Path) -> None:
-        '''Update a given Path to a ZIP file by checking the current packages with
-        the packages available in the ZIP file.
+        '''Updates a ZIP file with missing packages. This compares the current packages
+        inside the package directory and the packages in the ZIP file, and updates 
+        missing packages to the ZIP file.
 
         If the ZIP file does not exist, then a new one will be created.
         '''
         if not zip_path.exists():
             # files to zip: packages folder, go binary
             files_to_zip: str = f"{Vars.PKG_PATH.value}"
-            zip_cmd: list[str] = f"zip -f {Vars.ZIP_FILE_NAME.value} {files_to_zip}".split()
+            zip_cmd: list[str] = f"zip -r {str(zip_path)} {files_to_zip}".split()
 
-            threading.Thread(target=self._execute, args=(zip_cmd,)).start()
+            threading.Thread(target=self._zip_execute, args=(zip_cmd,)).start()
 
             return
+        
+        zip_file: zipfile.ZipFile = zipfile.ZipFile(zip_path)
+        zip_pkg_files: set[str] = set()
+
+        for file in zip_file.filelist:
+            if not file.is_dir():
+                zip_pkg_files.add(file.filename.lower())
+        
+        missing_pkgs: list[str] = []
+        for file in self.server_files:
+            if not file.lower() in zip_pkg_files:
+                missing_pkgs.append(f"{Vars.PKG_PATH.value}/{file}")
+         
+        update_cmd: list[str] = f"zip -ru {str(zip_path)} {" ".join(missing_pkgs)}".split()
+        threading.Thread(target=self._zip_execute, args=(update_cmd,)).start()
+
+    def add_log(self, log_info: LogInfo) -> None:
+        '''Adds the log file from the client device to the server.
+        
+        This is not an actual log generated in Python but rather 
+        is the log generated from the client.
+        '''
+        log_path: Path = Path(Vars.LOGS_PATH.value) / log_info["logFileName"]
+        log_path.touch()
+
+        with open(log_path, "w") as file:
+            file.write(log_info["body"])
     
-    def _execute(self, cmd: list[str]) -> None:
-        '''Runs a subprocess command for execution.
+    def _zip_execute(self, cmd: list[str]) -> None:
+        '''Runs a subprocess command for execution for ZIP files.
         
         This is blocking by default, run with threading if non-blocking is required.
         '''
@@ -136,12 +164,3 @@ class Process:
         '''Creates the given Path object with its parents.'''
         path.mkdir(parents=True)
         path.touch()
-    
-    @property
-    def flags(self) -> Flags:
-        '''The status flags on operations.
-        By default all flags are True, and under certain operations will they be False.
-
-        This is used for conditionals for the endpoints.
-        '''
-        return self.flags

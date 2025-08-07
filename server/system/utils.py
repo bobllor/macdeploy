@@ -14,7 +14,8 @@ def get_dir_list(path: Path, data: list[str] = None, *, replace_home: bool = Fal
             file: str = str(child)
 
             if replace_home:
-               file = file.replace(str(Vars._MAIN_PATH.value) + "/", "")
+                # removing the home path and the trailing slash
+                file = file.replace(str(Vars._MAIN_PATH.value) + "/", "")
 
             data.append(file)
         else:
@@ -52,3 +53,10 @@ def unlink_children(path: Path) -> None:
             file.rmdir()
         else:
             file.unlink()
+
+def get_file_content(path: Path) -> str:
+    '''Reads a file and sends back its content.'''
+    with open(path, "r") as file:
+        content: str = file.read().strip()
+
+    return content

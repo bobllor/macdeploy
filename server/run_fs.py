@@ -2,7 +2,7 @@ from flask import Flask, send_file, Response, request
 from system.process import Process
 from system.vars import Vars
 from pathlib import Path
-from system.types import Flags
+import system.types as types
 import system.utils as utils
 import threading
 
@@ -18,9 +18,11 @@ process: Process = Process(Path(Vars.PKG_PATH.value)) # FIXME: add the actual pk
 def home():
     return "Nothing to see here!"
 
-@app.route("/api/packages/zip", methods=["GET"])
+@app.route(f"/api/packages/{Vars.ZIP_FILE_NAME.value}", methods=["GET"])
 def get_client_files():
     '''Returns a ZIP file for the client to begin deployment.'''
+    zip_file_path: str = f"{Vars.ZIP_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
+
     # second check after init during runtime. 
     zip_path_obj: Path = Path(Vars.ZIP_PATH.value)
     pkg_path_obj: Path = Path(Vars.PKG_PATH.value)
@@ -41,7 +43,7 @@ def get_client_files():
     print(f"{cached_hash}, {server_hash}")
     # executes the zip file process, this handles if the file doesn't exist
     # and if the cached hash does not match the current server hash.
-    if cached_hash == "" or cached_hash != server_hash:
+    if cached_hash == "" or cached_hash != server_hash or not (zip_path_obj / Vars.ZIP_FILE_NAME.value).exists():
         new_hash: str = process.generate_hash(pkg_path_obj)
 
         with open(pkg_hash_path_obj, "w") as file:
@@ -51,9 +53,7 @@ def get_client_files():
 
             return "Creating new file", 200
 
-    zip_file_path: str = f"{Vars.ZIP_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
-    # send_file(zip_file_path)
-    return "wip", 200
+    return send_file(zip_file_path)
 
 @app.route("/api/fv", methods=["POST"])
 def add_filevault_key():
@@ -78,16 +78,20 @@ def add_filevault_key():
 @app.route("/api/log", methods=["POST"])
 def add_log():
     '''Adds the logs from the client device to the server.'''
-    content: dict[str, str] = request.get_json()
+    content: types.LogInfo = request.get_json()
 
     if not all([key in content for key in ["body", "logFileName"]]):
         return 'Missing exepected JSON values "body" or "logFileName"', 400
+    
+    logs_dir_path: Path = Path(Vars.LOGS_PATH.value)
+    if not logs_dir_path.exists():
+        logs_dir_path.mkdir()
 
     # NOTE: if the log file is large this could be an issue. maybe look into this in the future? 
-    log_body: str = content["body"]
-    file_name: str = content["logFileName"]
+    # for now it isn't an issue and probably will not be unless it scales to a large amount...
+    threading.Thread(target=process.add_log, args=(content,)).start()
 
-    return "wip", 200
+    return "Success", 200
 
 if __name__ == '__main__':
     host: str = "0.0.0.0"
