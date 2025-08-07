@@ -1,8 +1,8 @@
 from pathlib import Path
 from .vars import Vars
-from .types import Flags, LogInfo
-from .utils import get_dir_list, unlink_children
-import hashlib, zipfile, subprocess, threading, re
+from .types import LogInfo
+from .utils import unlink_children
+import hashlib, re
 
 class Process:
     '''Contains the functions for the server to process requests.
@@ -12,15 +12,9 @@ class Process:
         pkg_path: Path
             The Path location to the main packages folder. This is defined inside vars.py as PKG_PATH.
     '''
-    def __init__(self, pkg_path: Path):
-        self.server_files: list[str] = get_dir_list(pkg_path, replace_home=True)
-        self._zipping_lock: threading.Lock = threading.Lock()
-
-        self.flags: Flags = {
-            "zip_status": True
-        }
-
-        #print(self.server_files)
+    def __init__(self):
+        # no idea what to add here
+        pass
 
     def add_filevault(self, serial: str, key: str):
         '''Adds the laptop device and key to the server.
@@ -81,38 +75,7 @@ class Process:
         #print(data)
 
         return hashlib.md5("".join(data).encode()).hexdigest()
-    
-    def update_zip(self, zip_path: Path) -> None:
-        '''Updates a ZIP file with missing packages. This compares the current packages
-        inside the package directory and the packages in the ZIP file, and updates 
-        missing packages to the ZIP file.
-
-        If the ZIP file does not exist, then a new one will be created.
-        '''
-        if not zip_path.exists():
-            # files to zip: packages folder, go binary
-            files_to_zip: str = f"{Vars.PKG_PATH.value}"
-            zip_cmd: list[str] = f"zip -r {str(zip_path)} {files_to_zip}".split()
-
-            threading.Thread(target=self._zip_execute, args=(zip_cmd,)).start()
-
-            return
-        
-        zip_file: zipfile.ZipFile = zipfile.ZipFile(zip_path)
-        zip_pkg_files: set[str] = set()
-
-        for file in zip_file.filelist:
-            if not file.is_dir():
-                zip_pkg_files.add(file.filename.lower())
-        
-        missing_pkgs: list[str] = []
-        for file in self.server_files:
-            if not file.lower() in zip_pkg_files:
-                missing_pkgs.append(f"{Vars.PKG_PATH.value}/{file}")
-         
-        update_cmd: list[str] = f"zip -ru {str(zip_path)} {" ".join(missing_pkgs)}".split()
-        threading.Thread(target=self._zip_execute, args=(update_cmd,)).start()
-
+   
     def add_log(self, log_info: LogInfo) -> None:
         '''Adds the log file from the client device to the server.
         
@@ -124,29 +87,6 @@ class Process:
 
         with open(log_path, "w") as file:
             file.write(log_info["body"])
-    
-    def _zip_execute(self, cmd: list[str]) -> None:
-        '''Runs a subprocess command for execution for ZIP files.
-        
-        This is blocking by default, run with threading if non-blocking is required.
-        '''
-        self.flags["zip_status"] = False
-        locked_thread: bool = self._zipping_lock.acquire(blocking=False)
-
-        print(locked_thread)
-
-        if locked_thread:
-            try:
-                print(f"Running command {" ".join(cmd)}")
-                subprocess.run(cmd)
-                print("Command finished")
-            finally:    
-                self._zipping_lock.release()
-                self.flags["zip_status"] = True
-        else:
-            print("New execution attempt initiated, blocking")
-            return
-
 
     def _hash_recursion(self, path: Path, data: list[str]) -> None:
         '''Helper function for `self.generate_hash`, recursively iterates through a

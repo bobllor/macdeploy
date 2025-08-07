@@ -46,7 +46,7 @@ def test_zip():
 	
    zip_path_obj: Path = Path(zip_dir) / Vars.ZIP_FILE_NAME.value
    # needs to be relative for ziplist
-   cmd: list[str] = ["zip", "-r", f"{Vars.ZIP_PATH.value}-temp/{Vars.ZIP_FILE_NAME.value}", "./pkg-files-temp"]
+   cmd: list[str] = f"zip -r {Vars.ZIP_PATH.value}-temp/{Vars.ZIP_FILE_NAME.value} ./pkg-files-temp".split()
    if not zip_path_obj.exists():
       subprocess.run(cmd)
 

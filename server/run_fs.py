@@ -12,7 +12,7 @@ import threading
 # FIXME: change all print statements to logging
 
 app: Flask = Flask(__name__)
-process: Process = Process(Path(Vars.PKG_PATH.value)) # FIXME: add the actual pkg location later!
+process: Process = Process() # FIXME: add the actual pkg location later!
 
 @app.route("/")
 def home():
@@ -20,38 +20,18 @@ def home():
 
 @app.route(f"/api/packages/{Vars.ZIP_FILE_NAME.value}", methods=["GET"])
 def get_client_files():
-    '''Returns a ZIP file for the client to begin deployment.'''
+    '''Returns a ZIP file for the client to begin deployment.
+    
+    The API is strictly used for serving the file. A scheduler to zip the files
+    is required to ensure a zip file exists and is updated.
+    '''
     zip_file_path: str = f"{Vars.ZIP_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
 
     # second check after init during runtime. 
     zip_path_obj: Path = Path(Vars.ZIP_PATH.value)
     pkg_path_obj: Path = Path(Vars.PKG_PATH.value)
-    pkg_hash_path_obj: Path = Path(f"{Vars.SERVER_PATH.value}/{Vars.PKG_HASH_FILE.value}")
 
     utils.mk_paths([zip_path_obj, pkg_path_obj])
-    utils.mk_paths([pkg_hash_path_obj], mk_dir=False)
-
-    # TODO: test if you can still access a ZIP file while a new file is being added to the archive
-    can_get_zip: bool = process.flags["zip_status"]
-    if not can_get_zip:
-        return "ZIP file download has been halted temporarily", 400
-    
-    cached_hash: str = utils.get_file_content(pkg_hash_path_obj)
-    # will always be up-to-date.
-    server_hash: str = process.generate_hash(pkg_path_obj)
-
-    print(f"{cached_hash}, {server_hash}")
-    # executes the zip file process, this handles if the file doesn't exist
-    # and if the cached hash does not match the current server hash.
-    if cached_hash == "" or cached_hash != server_hash or not (zip_path_obj / Vars.ZIP_FILE_NAME.value).exists():
-        new_hash: str = process.generate_hash(pkg_path_obj)
-
-        with open(pkg_hash_path_obj, "w") as file:
-            file.write(new_hash)
-
-            process.update_zip(zip_path_obj / Vars.ZIP_FILE_NAME.value)
-
-            return "Creating new file", 200
 
     return send_file(zip_file_path)
 
@@ -68,6 +48,7 @@ def add_filevault_key():
     if not all([key in content for key in ["key", "serial"]]):
         return 'Missing expected JSON values "key" or "serial"', 400
 
+    # TODO: figure out how to log this in the same file without needing to make a new log.
     file_vault_key: str = content.get("key")
     serial_tag: str = content.get("serial")
 

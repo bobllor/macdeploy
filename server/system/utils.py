@@ -1,9 +1,5 @@
 from pathlib import Path
-from .types import FileTree
 from .vars import Vars
-from typing import Any
-from zipfile import ZipFile, ZipInfo
-import io
 
 def get_dir_list(path: Path, data: list[str] = None, *, replace_home: bool = False) -> list[str]:
     '''Get the contents of a given directory Path in the form of a list of strings.'''
@@ -53,10 +49,3 @@ def unlink_children(path: Path) -> None:
             file.rmdir()
         else:
             file.unlink()
-
-def get_file_content(path: Path) -> str:
-    '''Reads a file and sends back its content.'''
-    with open(path, "r") as file:
-        content: str = file.read().strip()
-
-    return content
