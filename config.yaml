@@ -15,5 +15,7 @@ packages:
 search_directories:
   - "/Applications" 
   - "/Library/Application Support" 
+admin_name: "tgsadmin"
+server_ip: "127.0.0.1"
 file_vault: true
 firewall: true

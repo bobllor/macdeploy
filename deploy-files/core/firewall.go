@@ -4,16 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"macos-deployment/deploy-files/logger"
-	"macos-deployment/deploy-files/utils"
+	"macos-deployment/deploy-files/scripts"
 	"os/exec"
 	"strings"
 )
 
 // EnableFireWall enables the firewall of the Mac.
 func EnableFireWall() {
-	scriptName := "enable_firewall.sh"
-	scriptPath := fmt.Sprintf("%s/%s/%s", utils.ProjectDir, utils.ScriptDir, scriptName)
-
 	firewallIsOn, err := firewallIsEnabled()
 	if err != nil {
 		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %s", err.Error()))
@@ -21,10 +18,10 @@ func EnableFireWall() {
 		return
 	}
 
-	logger.Log(fmt.Sprintf("Path: %s | Firewall status: %t", scriptPath, firewallIsOn), 7)
+	logger.Log(fmt.Sprintf("Firewall status: %t", firewallIsOn), 7)
 
 	if !firewallIsOn {
-		out, err := exec.Command("bash", scriptPath).CombinedOutput()
+		out, err := exec.Command("sudo", "bash", "-c", scripts.EnableFirewallScript).CombinedOutput()
 		if err != nil {
 			errMsg := fmt.Sprintf("Failed to enable Firewall | %s", string(out))
 			logger.Log(errMsg, 3)
@@ -51,5 +48,5 @@ func firewallIsEnabled() (bool, error) {
 
 	statusText := strings.ToLower(string(out))
 
-	return strings.Contains(statusText, "disabled"), nil
+	return strings.Contains(statusText, "enabled"), nil
 }

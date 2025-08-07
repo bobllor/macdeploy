@@ -80,7 +80,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 		return
 	}
 
-	scriptOut, scriptErr := exec.Command("bash", scripts.FindPackagesScript, utils.PKGPath).Output()
+	scriptOut, scriptErr := exec.Command("bash", "-c", scripts.FindPackagesScript, utils.PKGPath).Output()
 
 	debug := fmt.Sprintf("PKG folder: %s", utils.PKGPath)
 	logger.Log(debug, 7)
@@ -102,7 +102,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 }
 
 func startFileVault() {
-	core.EnableFileVault()
+	core.EnableFileVault(config.Admin_Name)
 }
 
 func startFirewall() {

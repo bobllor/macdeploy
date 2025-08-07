@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"macos-deployment/deploy-files/logger"
+	"macos-deployment/deploy-files/scripts"
 	"macos-deployment/deploy-files/utils"
 	"os"
 	"os/exec"
@@ -48,11 +49,10 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	var CreateUserScript string = fmt.Sprintf("%s/%s/%s", utils.ProjectDir, utils.ScriptDir, "create_user.sh")
-
 	// CreateUserScript takes 3 arguments.
-	_, err := exec.Command("sudo", "bash", CreateUserScript, userName, user.Password, admin).Output()
+	out, err := exec.Command("sudo", "bash", "-c", scripts.CreateUserScript, userName, user.Password, admin).CombinedOutput()
 	if err != nil {
+		fmt.Println(string(out))
 		errMsg := fmt.Sprintf("Failed to create user %s | Script exit status: %v", userName, err)
 		logger.Log(errMsg, 3)
 		return false

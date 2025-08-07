@@ -12,7 +12,7 @@ password=$1
 isAdmin=$2
 
 # used for the -addUser flag, this is the directory of the user.
-new_user_name=$(awk '{ print tolower($0) }' <<< $1)
+new_user_name=$(awk '{ print tolower($0) }' <<< $0)
 
 if [[ $isAdmin == "false" ]]; then
     sudo sysadminctl -addUser "$new_user_name" \

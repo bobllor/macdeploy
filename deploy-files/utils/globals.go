@@ -10,6 +10,6 @@ var Home string = os.Getenv("HOME")
 var ProjectDir string = Home + "/macos-deployment"
 
 var ScriptDir string = "scripts"
-var PKGPath string = Home + "pkg-files" // FIXME: for prod this is going to be "Home/pkg-files"
+var PKGPath string = Home + "/pkg-files" // FIXME: for prod this is going to be "Home/pkg-files"
 
 var SerialTag string
