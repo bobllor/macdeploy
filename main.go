@@ -12,8 +12,6 @@ import (
 	"strings"
 )
 
-// NOTE: when zipping the files for the HTTP server only include the .sh files in deploy-files
-
 var configPath string = "./config.yaml"
 var config utils.Config = yaml.ReadYAML(configPath)
 
@@ -22,7 +20,8 @@ var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the us
 
 func main() {
 	flag.Parse()
-	initLog()
+	utils.InitializeGlobals()
+	logger.NewLog(utils.Globals.SerialTag)
 
 	var accounts map[string]utils.User = config.Accounts
 	accountCreation(accounts)
@@ -53,18 +52,6 @@ func main() {
 	}
 }
 
-// initLog initializes the serial tag (if exists) and the logger
-func initLog() {
-	tag, tagErr := utils.GetSerialTag()
-	if tagErr != nil {
-		tag = "UNKNOWN"
-	}
-
-	utils.SerialTag = tag
-
-	logger.NewLog(utils.SerialTag)
-}
-
 func accountCreation(accounts map[string]utils.User) {
 	for key := range accounts {
 		currAccount := accounts[key]
@@ -80,9 +67,11 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 		return
 	}
 
-	scriptOut, scriptErr := exec.Command("bash", "-c", scripts.FindPackagesScript, utils.PKGPath).Output()
+	pkgPath := utils.Globals.PKGPath
 
-	debug := fmt.Sprintf("PKG folder: %s", utils.PKGPath)
+	scriptOut, scriptErr := exec.Command("bash", "-c", scripts.FindPackagesScript, pkgPath).Output()
+
+	debug := fmt.Sprintf("PKG folder: %s", pkgPath)
 	logger.Log(debug, 7)
 
 	if scriptErr != nil {

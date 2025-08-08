@@ -15,3 +15,10 @@ type User struct {
 	Password     string
 	Ignore_Admin bool
 }
+
+type Global struct {
+	Home        string
+	ProjectPath string
+	PKGPath     string
+	SerialTag   string
+}

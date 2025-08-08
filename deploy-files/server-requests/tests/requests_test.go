@@ -2,6 +2,7 @@ package requests
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"macos-deployment/deploy-files/utils"
@@ -32,22 +33,27 @@ func jsonPost(url string, jsonStr []byte) (*http.Response, error) {
 func TestConnection(t *testing.T) {
 	resp, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		t.Errorf("got %v", err)
 	}
 
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
+	if resp.StatusCode != 200 {
+		t.Errorf("got %d, expected %d", resp.StatusCode, 200)
 	}
-
-	println(string(body))
 }
 
 func TestFVPost(t *testing.T) {
 	apiUrl := url + "/api/fv"
-	var jsonStr = []byte(`{"key": "ABCD-EFG3-LFK5-LO69", "serial": "C02FKYSLOL"}`)
+	sampleData := map[string]string{
+		"key":    "CFDS-231S-456S-31LO",
+		"serial": "C02NONLULBI01",
+	}
+
+	jsonStr, err := json.Marshal(sampleData)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
 
 	resp, err := jsonPost(apiUrl, jsonStr)
 	if err != nil {
@@ -63,10 +69,25 @@ func TestFVPost(t *testing.T) {
 }
 
 func TestLogPost(t *testing.T) {
-	content, err := os.ReadFile(fmt.Sprintf("%s/%s", utils.MainDir, "08-07T23-15-49.UNKNOWN.log"))
+	utils.InitializeGlobals()
+	_, err := os.ReadFile(fmt.Sprintf("%s/%s", utils.Globals.ProjectPath, "README.md"))
 	if err != nil {
 		panic(err)
 	}
+}
 
-	fmt.Println(string(content))
+func TestJSON(t *testing.T) {
+	sampleData := map[string]string{
+		"test": "a sentence here",
+		"okay": "what tf is wrong wit u!!",
+	}
+
+	jsonBytes, err := json.Marshal(sampleData)
+	if err != nil {
+		panic(jsonBytes)
+	}
+
+	if string(jsonBytes) == "" {
+		t.Errorf("failed to parse to JSON, check sample data")
+	}
 }

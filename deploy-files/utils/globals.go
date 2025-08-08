@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -8,17 +9,32 @@ import (
 
 // all client-side files and directories will be placed in the home directory
 
-var Home string = os.Getenv("HOME")
-var ProjectDir string = Home + "/macos-deployment"
+var Globals = &Global{}
 
-var MainDir string
+// InitializeGlobals initializes the global variables for paths and device information.
+func InitializeGlobals() {
+	initPaths()
+	initSerialTag()
+}
 
-var ScriptDir string = "scripts"
-var PKGPath string = Home + "/pkg-files"
+func initPaths() {
+	Globals.Home = os.Getenv("HOME")
+	Globals.ProjectPath = getProjectPath()
 
-var SerialTag string
+	pkgFileName := "pkg-files"
+	Globals.PKGPath = fmt.Sprintf("%s/%s", Globals.Home, pkgFileName)
+}
 
-func init() {
+func initSerialTag() {
+	serialTag, err := GetSerialTag()
+	if err != nil {
+		serialTag = "UNKNOWN"
+	}
+
+	Globals.SerialTag = serialTag
+}
+
+func getProjectPath() string {
 	_, file, _, _ := runtime.Caller(0)
 
 	paths := strings.Split(file, "/")
@@ -34,5 +50,5 @@ func init() {
 
 	mainPath := strings.Join(paths[:mainDirIndex+1], "/")
 
-	MainDir = mainPath
+	return mainPath
 }

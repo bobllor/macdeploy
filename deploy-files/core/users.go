@@ -9,15 +9,16 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 // CreateAccount creates the user account on the device.
 // Returns true if the account is successfully made, else false.
 func CreateAccount(user utils.User, isAdmin bool) bool {
-	// userName will be used for both entries needed.
-	userName := user.User_Name
+	// username will be used for both entries needed.
+	username := user.User_Name
 
-	if userName == "" {
+	if username == "" {
 		reader := bufio.NewReader(os.Stdin)
 
 		fmt.Println("\nNaming format (case insensitive): FIRST LAST || FIRST.LAST || F LAST || F.LAST)")
@@ -36,12 +37,12 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 			return false
 		}
 
-		userName = utils.FormatName(input)
+		username = utils.FormatName(input)
 	} else {
-		userName = utils.FormatName(userName)
+		username = utils.FormatName(username)
 	}
 
-	initLog := fmt.Sprintf("Creating user %s", userName)
+	initLog := fmt.Sprintf("Creating user %s", username)
 	logger.Log(initLog, 6)
 
 	admin := "false"
@@ -49,17 +50,48 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 		admin = strconv.FormatBool(isAdmin)
 	}
 
+	userExists, err := checkForUser(username)
+	if err != nil {
+		// this is going to assume the user exists
+		errMsg := fmt.Sprintf("Failed to read user directory: %s", err.Error())
+		logger.Log(errMsg, 3)
+	} else if !userExists {
+		logger.Log(fmt.Sprintf("User %s already exists", username), 6)
+		return false
+	}
+
 	// CreateUserScript takes 3 arguments.
-	out, err := exec.Command("sudo", "bash", "-c", scripts.CreateUserScript, userName, user.Password, admin).CombinedOutput()
+	out, err := exec.Command("sudo", "bash", "-c", scripts.CreateUserScript, username, user.Password, admin).CombinedOutput()
 	if err != nil {
 		fmt.Println(string(out))
-		errMsg := fmt.Sprintf("Failed to create user %s | Script exit status: %v", userName, err)
+		errMsg := fmt.Sprintf("Failed to create user %s | Script exit status: %v", username, err)
 		logger.Log(errMsg, 3)
 		return false
 	}
 
-	createdLog := fmt.Sprintf("User %s created", userName)
+	createdLog := fmt.Sprintf("User %s created", username)
 	logger.Log(createdLog, 6)
 
 	return true
+}
+
+func checkForUser(username string) (bool, error) {
+	usersPath := "/Users"
+
+	dirs, err := os.ReadDir(usersPath)
+	if err != nil {
+		logger.Log(fmt.Sprintf("Error reading directory: %s", err.Error()), 3)
+		return false, err
+	}
+
+	for _, dir := range dirs {
+		dirName := strings.ToLower(dir.Name())
+		lowerUsername := strings.ToLower(username)
+
+		if strings.Contains(dirName, lowerUsername) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
