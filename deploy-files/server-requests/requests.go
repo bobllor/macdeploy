@@ -10,7 +10,7 @@ import (
 // POSTData sends a json POST request to the server.
 //
 // Errors must be handled.
-func POSTData(url string, mapData map[string]any) (string, error) {
+func POSTData[J LogInfo | FileVaultInfo](url string, mapData *J) (string, error) {
 	// wtf...
 	jsonStr, err := json.Marshal(mapData)
 	if err != nil {
@@ -37,6 +37,21 @@ func POSTData(url string, mapData map[string]any) (string, error) {
 	return string(body), nil
 }
 
+// VerifyConnection checks for basic connectivity to the host.
+//
+// A GET request is sent, if any issues occur an error will be returned.
+func VerifyConnection(url string) (bool, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return false, err
+	}
+
+	defer resp.Body.Close()
+
+	return resp.StatusCode == 200, nil
+}
+
+// newJSONRequest creates a new HTTP request object.
 func newJSONRequest(url string, jsonStr []byte) (*http.Request, error) {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
 	if err != nil {

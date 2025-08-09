@@ -16,6 +16,6 @@ search_directories:
   - "/Applications" 
   - "/Library/Application Support" 
 admin_name: "tgsadmin"
-server_ip: "127.0.0.1:5000"
+server_ip: "http://127.0.0.1:5000"
 file_vault: true
 firewall: true

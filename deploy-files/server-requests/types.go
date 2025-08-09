@@ -6,6 +6,6 @@ type FileVaultInfo struct {
 }
 
 type LogInfo struct {
-	LogFileName string
-	Body        string
+	LogFileName string `json:"logFileName"`
+	Body        string `json:"body"`
 }

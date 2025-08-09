@@ -15,7 +15,7 @@ func EnableFileVault(adminUser string) string {
 	out, _ := exec.Command("bash", "-c", cmd).Output()
 	fileVaultStatus := strings.TrimSpace(strings.ToLower(string(out)))
 
-	// either some failed happen or this is ran on a non-mac OS
+	// either some fail happened or this is ran on a non-mac OS
 	if fileVaultStatus == "" {
 		fileVaultStatus = "unknown"
 	}
@@ -29,7 +29,7 @@ func EnableFileVault(adminUser string) string {
 		out, err := exec.Command("sudo", "bash", "-c", scripts.EnableFileVaultScript, adminUser).CombinedOutput()
 
 		outText := string(out)
-		logMsg := fmt.Sprintf("Output: %s", outText)
+		logMsg := strings.TrimSpace(fmt.Sprintf("Output: %s", outText))
 		logger.Log(logMsg, 7)
 
 		if err != nil {
@@ -44,8 +44,6 @@ func EnableFileVault(adminUser string) string {
 		key := outArr[1]
 
 		logger.Log("FileVault enabled", 6)
-		keyMsg := fmt.Sprintf("Generated FileVault key %s", key)
-		logger.Log(keyMsg, 6)
 
 		return key
 	} else if fileVaultStatus == "true" {

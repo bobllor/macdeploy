@@ -50,12 +50,13 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	userExists, err := checkForUser(username)
+	userExists, err := userExists(username)
 	if err != nil {
 		// this is going to assume the user exists
 		errMsg := fmt.Sprintf("Failed to read user directory: %s", err.Error())
 		logger.Log(errMsg, 3)
-	} else if !userExists {
+	}
+	if userExists {
 		logger.Log(fmt.Sprintf("User %s already exists", username), 6)
 		return false
 	}
@@ -75,7 +76,7 @@ func CreateAccount(user utils.User, isAdmin bool) bool {
 	return true
 }
 
-func checkForUser(username string) (bool, error) {
+func userExists(username string) (bool, error) {
 	usersPath := "/Users"
 
 	dirs, err := os.ReadDir(usersPath)
@@ -83,6 +84,8 @@ func checkForUser(username string) (bool, error) {
 		logger.Log(fmt.Sprintf("Error reading directory: %s", err.Error()), 3)
 		return false, err
 	}
+
+	logger.Log(fmt.Sprintf("User directory content: %v", dirs), 7)
 
 	for _, dir := range dirs {
 		dirName := strings.ToLower(dir.Name())

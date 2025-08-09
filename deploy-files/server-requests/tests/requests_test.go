@@ -70,10 +70,28 @@ func TestFVPost(t *testing.T) {
 
 func TestLogPost(t *testing.T) {
 	utils.InitializeGlobals()
-	_, err := os.ReadFile(fmt.Sprintf("%s/%s", utils.Globals.ProjectPath, "README.md"))
+	content, err := os.ReadFile(fmt.Sprintf("%s/%s", utils.Globals.ProjectPath, "README.md"))
 	if err != nil {
 		panic(err)
 	}
+
+	sampleData := map[string]string{
+		"logFileName": "README.log",
+		"body":        string(content),
+	}
+	url := "http://127.0.0.1:5000/api/log"
+
+	jsonStr, err := json.Marshal(sampleData)
+	if err != nil {
+		t.Errorf("%v", err.Error())
+	}
+
+	resp, err := jsonPost(url, jsonStr)
+	if err != nil {
+		t.Errorf("%v", err.Error())
+	}
+
+	defer resp.Body.Close()
 }
 
 func TestJSON(t *testing.T) {
