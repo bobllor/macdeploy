@@ -1,7 +1,10 @@
 from pathlib import Path
+import subprocess, zipfile, sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from system.vars import Vars
 from system.utils import unlink_children, get_dir_list
-import subprocess, zipfile
 
 zip_dir: str = Vars.ZIP_PATH.value + "-temp"
 pkg_dir: str = Vars.PKG_PATH.value + "-temp"

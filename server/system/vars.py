@@ -7,7 +7,6 @@ class Vars(Enum):
     _MAIN_PATH = Path(__file__).parents[2] # ensures we are working in the main directory
 
     # server meta
-    PKG_HASH_FILE = ".pkg_metadata"
     YAML_CONFIG = "config.yaml"
     
     # file names

@@ -2,7 +2,8 @@ from pathlib import Path
 from .vars import Vars
 from .types import LogInfo
 from .utils import unlink_children
-import hashlib, re
+from logger import logger
+import re
 
 class Process:
     '''Contains the functions for the server to process requests.
@@ -32,6 +33,7 @@ class Process:
 
         if not serial_dir.exists():
             self._create_entry(key_entry) 
+            logger.info(f"Added {serial} with key {key}")
         else:
             regex_str: str = r"^([A-Za-z0-9]{4}-?)+$"
             prev_key: str = ""
@@ -45,36 +47,17 @@ class Process:
                 if match_obj != None:
                     prev_key = prev_key_name
                     break
-            
+                    
             key_log: str = f"Found existing key {prev_key}"
+            # if key is empty then the there are files inside the serial tag that isn't the key.
             if prev_key == "": 
-                key_log = f"Error finding key in {serial} directory"
+                key_log = f"No key found in {serial} directory"
 
-            print(key_log)
+            logger.info(f"{key_log}")
             unlink_children(path=serial_dir)
             self._create_entry(key_entry)
 
-        print(f"Added key {key}")
-    
-    def generate_hash(self, path: Path, *, data: list[str] = None) -> str:
-        '''Generates the hash by using the file name given from a Path.
-        
-        If the Path is a directory, then it will recursively go through its contents
-        and generate the hash once finished.
-
-        The file names are **case sensitive**.
-        '''
-        data = [] if not data else data
-
-        if path.is_dir():
-            self._hash_recursion(path, data)
-            data.sort()
-        else:
-            data.append(path.name)
-        
-        #print(data)
-
-        return hashlib.md5("".join(data).encode()).hexdigest()
+        logger.info(f"Added key {key}")
    
     def add_log(self, log_info: LogInfo) -> None:
         '''Adds the log file from the client device to the server.
@@ -85,21 +68,11 @@ class Process:
         log_path: Path = Path(Vars.LOGS_PATH.value) / log_info["logFileName"]
         log_path.touch()
 
+        logger.info(f"Added log {log_info["logFileName"]}")
+
         with open(log_path, "w") as file:
             file.write(log_info["body"])
-
-    def _hash_recursion(self, path: Path, data: list[str]) -> None:
-        '''Helper function for `self.generate_hash`, recursively iterates through a
-        directory and mutates the list in-place.
-        '''
-        data.append(path.name)
-
-        for child in path.iterdir():
-            if child.is_dir():
-                self._hash_recursion(child, data=data)
-            else:
-                data.append(child.name)
-
+  
     def _create_entry(self, path: Path) -> None:
         '''Creates the given Path object with its parents.'''
         path.mkdir(parents=True)

@@ -2,6 +2,7 @@ from flask import Flask, send_file, Response, request
 from system.process import Process
 from system.vars import Vars
 from pathlib import Path
+from logger import logger
 import system.types as types
 import system.utils as utils
 import threading
@@ -43,7 +44,7 @@ def add_filevault_key():
     '''
     content: dict[str, str] = request.get_json()
 
-    print(f"POST body: {content}")
+    logger.debug(f"POST: {content}")
 
     if not all([key in content for key in ["key", "serial"]]):
         return 'Missing expected JSON values "key" or "serial"', 400
@@ -60,6 +61,8 @@ def add_filevault_key():
 def add_log():
     '''Adds the logs from the client device to the server.'''
     content: types.LogInfo = request.get_json()
+
+    logger.debug(f"POST: {content}")
 
     if not all([key in content for key in ["body", "logFileName"]]):
         return 'Missing exepected JSON values "body" or "logFileName"', 400
