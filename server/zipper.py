@@ -5,9 +5,8 @@ from logger import logger
 import subprocess, zipfile, os
 
 def update_zip(zip_path: Path, pkg_path: Path) -> None:
-    '''Updates a ZIP file with missing packages. This compares the current packages
-    inside the package directory and the packages in the ZIP file, and updates 
-    missing packages to the ZIP file.
+    '''Creates or updates a ZIP file of a package directory 
+    using the `zip` command on Unix-like OSes.
 
     If the ZIP file does not exist, then a new one will be created.
 
@@ -22,13 +21,17 @@ def update_zip(zip_path: Path, pkg_path: Path) -> None:
     stripped_pkg_path: str = Vars.PKG_PATH.value.replace(str(pkg_path.parent), "")
     # slice the string to remove the leading slash
     files_to_zip: str = f"{stripped_pkg_path} {Vars.BINARY_NAME.value} {Vars.YAML_CONFIG.value}"[1:]
-    if not zip_path.exists():
-        # files to zip: packages folder, go binary, config.yaml
-        # the paths must be relative, absolute paths introduces issues with zipping.
-        zip_cmd: list[str] = f"zip -r {str(zip_path)} {files_to_zip}".split()
+    new_pkg_path: Path = Path(stripped_pkg_path)
 
-        execute(zip_cmd)
-        logger.info(f"ZIP file created in {Vars.ZIP_PATH.value}")
+    if not zip_path.exists():
+        zip_file: zipfile.ZipFile = zipfile.ZipFile(zip_path, "a")
+        
+        for path, _, file_list in new_pkg_path.walk():
+            for file in file_list:
+                path_of_pkg: Path = Path(f"{path}/{file}")
+
+                if path_of_pkg.exists():
+                    zip_file.write(path_of_pkg)
 
         return
     
@@ -48,46 +51,59 @@ def update_zip(zip_path: Path, pkg_path: Path) -> None:
     for file in server_files:
         if not file.lower() in zip_pkg_files:
             # removes the absolute path to make it relative.
-            file_path: str = f".{Vars.PKG_PATH.value.replace(str(Vars._MAIN_PATH.value), "")}"
+            file_path: str = f".{Vars.PKG_PATH.value.replace(str(Vars._MAIN_PATH.value), '')}"
             file_name: str = file.replace(Vars._PKG_DIR_NAME.value + "/", "")
         
             missing_pkgs.append(f"{file_path}/{file_name}")
 
     # missing_pkgs turned out to be useless. keeping it just for logging though.
+    # update any missing packages. this will be done subprocess because i am lazy.
     if len(missing_pkgs) > 0:
-        print(f"Missing packages in ZIP file: {missing_pkgs}") 
+        logger.info(f"Missing packages in ZIP file: {missing_pkgs}") 
 
         update_cmd: list[str] = f"zip -ru {str(zip_path)} {files_to_zip}".split()
         execute(update_cmd)
 
-        print(f"Updated ZIP file with files {missing_pkgs}")
-    else:
-        print("No updates needed for the ZIP file")
+        logger.info(f"Updated ZIP file with files {missing_pkgs}")
 
 def execute(cmd: list[str]) -> None:
     '''Runs a subprocess command for execution for ZIP files.
     
     This is blocking by default, run with threading if non-blocking is required.
     '''
-    print(f"Running command {" ".join(cmd)}")
-    output: subprocess.CompletedProcess = subprocess.run(cmd, capture_output=True)
+    logger.debug(f"Running command {' '.join(cmd)}")
+    try:
+        output: subprocess.CompletedProcess = subprocess.run(cmd, capture_output=True)
 
-    err: str = str(output.stderr)
+        stdout: str = output.stdout.decode().strip()
+        stderr: str = output.stderr.decode().strip()
 
-    print("Command finished")
+        if stdout != "":
+            logger.info(stdout)
+        if stderr != "":
+            logger.info(stderr)
+    except Exception as e:
+        logger.critical(e)
+        # probably not an issue since this is a separate script
+        exit()
 
-# NOTE: run this in some type of task scheduler, this is not called in the actual server code.
+# NOTE: run this in some type of task scheduler, this is not part of the actual server infrastructure.
 
 # ensures we are in the correct directory.
 main_path: Path = Vars._MAIN_PATH.value
 curr_path: str = os.getcwd()
 
-print(f"{__file__.split("/")[-1]} ran in {curr_path}")
+logger.debug(f"{__file__.split('/')[-1]} ran in {curr_path}")
 
 if curr_path != str(main_path):
     os.chdir(main_path)
-    print(f"Changed {__file__.split("/")[-1]} to path {str(main_path)}")
+    logger.debug(f"Changed {__file__.split('/')[-1]} to path {str(main_path)}")
+
 
 pkg_path: Path = Path(Vars.PKG_PATH.value)
 zip_path: Path = Path(Vars.ZIP_PATH.value) / Vars.ZIP_FILE_NAME.value
+
+if not zip_path.parent.exists():
+    zip_path.parent.mkdir()
+
 update_zip(zip_path, pkg_path)

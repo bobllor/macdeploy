@@ -17,3 +17,4 @@ __pycache__/
 *.log
 deploy-zip
 .pkg_metadata
+.venv

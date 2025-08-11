@@ -1,9 +1,10 @@
-from flask import Flask, send_file, Response, request
+from flask import Flask, send_file, request, jsonify
 from system.process import Process
 from system.vars import Vars
 from pathlib import Path
 from logger import logger
-import system.types as types
+from concurrent.futures import ThreadPoolExecutor, Future
+import system.system_types as types
 import system.utils as utils
 import threading
 
@@ -45,15 +46,19 @@ def add_filevault_key():
     logger.debug(f"POST: {content}")
 
     if not all([key in content for key in ["key", "serial"]]):
+        logger.warning(f"Invalid POST: {content}")
         return 'Missing expected JSON values "key" or "serial"', 400
 
     # TODO: figure out how to log this in the same file without needing to make a new log.
     file_vault_key: str = content.get("key")
     serial_tag: str = content.get("serial")
 
-    threading.Thread(target=process.add_filevault, args=(serial_tag, file_vault_key,)).start()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future: Future = executor.submit(process.add_filevault, serial_tag, file_vault_key)
 
-    return "Success", 200
+        data: str = future.result()
+
+    return jsonify({"status": "success", "content": data}), 200
 
 @app.route("/api/log", methods=["POST"])
 def add_log():
@@ -63,6 +68,7 @@ def add_log():
     logger.debug(f"POST: {content}")
 
     if not all([key in content for key in ["body", "logFileName"]]):
+        logger.warning(f"Invalid POST: {content}")
         return 'Missing exepected JSON values "body" or "logFileName"', 400
     
     logs_dir_path: Path = Path(Vars.LOGS_PATH.value)

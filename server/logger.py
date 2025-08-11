@@ -1,12 +1,12 @@
 from logging import Formatter, Logger, StreamHandler, FileHandler, setLoggerClass
 from logging import Handler
-from logging import DEBUG
+from logging import DEBUG, INFO
 from datetime import datetime
 from typing import TypedDict, Literal
 
 # this value will be the same as soon as the server is launched.
 # this keeps all logs in one day on the same day.
-DEFAULT_FILENAME: datetime = datetime.now().strftime("server-%Y-%m-%d.log")
+DEFAULT_FILENAME: datetime = datetime.now().strftime("logs/server-%Y-%m-%d.log")
 DEFAULT_DATEFMT: Literal["%Y-%m-%d %H:%M:%S"] = "%Y-%m-%d %H:%M:%S"
 
 class LogLevelOptions(TypedDict):
@@ -30,9 +30,9 @@ class Log(Logger):
                 The name of the logger. By default, it uses the __name__ variable, or
                 in other words __main__.
             
-            filename: str default `serverYYYY-MM-DD.log`
-                The log file name. By default it names the logs based on the current date,
-                for example: `server-2000-11-01.log`.
+            filename: str default `logs/serverYYYY-MM-DD.log`
+                The log file name. By default it names the logs based on the current date
+                and is stored in the logs folder, for example: `logs/server-2000-11-01.log`.
             
             levels: LogLevelOptions default `{}`
                 A dictionary that holds the logging levels of the logger, stream handler, and file handler.
@@ -63,4 +63,4 @@ class Log(Logger):
         self.setLevel(levels.get("log_level", DEBUG))
 
 setLoggerClass(Log)
-logger: Log = Log(__name__)
+logger: Log = Log(__name__, levels={"stream_level": INFO})

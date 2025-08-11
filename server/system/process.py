@@ -1,6 +1,6 @@
 from pathlib import Path
 from .vars import Vars
-from .types import LogInfo
+from .system_types import LogInfo
 from .utils import unlink_children
 from logger import logger
 import re
@@ -17,7 +17,7 @@ class Process:
         # no idea what to add here
         pass
 
-    def add_filevault(self, serial: str, key: str):
+    def add_filevault(self, serial: str, key: str) -> str:
         '''Adds the laptop device and key to the server.
 
         If there is an existing entry then the contents of the entry
@@ -58,6 +58,8 @@ class Process:
             self._create_entry(key_entry)
 
         logger.info(f"Added key {key}")
+
+        return key_log
    
     def add_log(self, log_info: LogInfo) -> None:
         '''Adds the log file from the client device to the server.
@@ -68,7 +70,7 @@ class Process:
         log_path: Path = Path(Vars.LOGS_PATH.value) / log_info["logFileName"]
         log_path.touch()
 
-        logger.info(f"Added log {log_info["logFileName"]}")
+        logger.info(f"Added log {log_info['logFileName']}")
 
         with open(log_path, "w") as file:
             file.write(log_info["body"])
