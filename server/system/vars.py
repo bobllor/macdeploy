@@ -5,12 +5,11 @@ from enum import Enum
 class Vars(Enum):
     HOME = os.environ["HOME"]
     _MAIN_PATH = Path(__file__).parents[2] # ensures we are working in the main directory
-
-    # server meta
-    YAML_CONFIG = "config.yaml"
     
     # file names
     ZIP_FILE_NAME = "deploy.zip"
+    BINARY_NAME = "deploy"
+    YAML_CONFIG = "config.yaml"
 
     # directory names
     _FILEVAULT_DIR_NAME = "filevault-keys"

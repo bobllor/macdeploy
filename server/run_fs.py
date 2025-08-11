@@ -10,8 +10,6 @@ import threading
 # NOTE: after some testing around, i find the best choice is just to work with relative paths.
 # too many scenarios can break apart the absolute i built! noted!
 
-# FIXME: change all print statements to logging
-
 app: Flask = Flask(__name__)
 process: Process = Process() # FIXME: add the actual pkg location later!
 
