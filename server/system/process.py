@@ -31,6 +31,8 @@ class Process:
         serial_dir: Path = Path(f"{Vars.FILEVAULT_PATH.value}/{serial}")
         key_entry: Path = serial_dir / key
 
+        key_log = f"No key found in {serial} directory"
+
         if not serial_dir.exists():
             self._create_entry(key_entry) 
             logger.info(f"Added {serial} with key {key}")
@@ -48,10 +50,9 @@ class Process:
                     prev_key = prev_key_name
                     break
                     
-            key_log: str = f"Found existing key {prev_key}"
             # if key is empty then the there are files inside the serial tag that isn't the key.
-            if prev_key == "": 
-                key_log = f"No key found in {serial} directory"
+            if prev_key != "": 
+               key_log = f"Found existing key {prev_key}"
 
             logger.info(f"{key_log}")
             unlink_children(path=serial_dir)
