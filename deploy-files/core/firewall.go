@@ -29,7 +29,7 @@ func EnableFireWall() {
 			return
 		}
 
-		logger.Log("Firewall successfully enabled", 6)
+		logger.Log("Firewall enabled", 6)
 	} else {
 		logger.Log("Firewall is already enabled", 6)
 	}

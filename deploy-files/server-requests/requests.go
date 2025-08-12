@@ -10,31 +10,34 @@ import (
 // POSTData sends a json POST request to the server.
 //
 // Errors must be handled.
-func POSTData[J LogInfo | FileVaultInfo](url string, mapData *J) (string, error) {
+func POSTData[J LogInfo | FileVaultInfo](url string, mapData *J) (ResponseData, error) {
 	// wtf...
 	jsonStr, err := json.Marshal(mapData)
 	if err != nil {
-		return "", err
+		return ResponseData{}, err
 	}
 
 	req, err := newJSONRequest(url, jsonStr)
 	if err != nil {
-		return "", err
+		return ResponseData{}, err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return ResponseData{}, err
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return ResponseData{}, err
 	}
 
-	return string(body), nil
+	var jsonResponse ResponseData
+	json.Unmarshal(body, &jsonResponse)
+
+	return jsonResponse, nil
 }
 
 // VerifyConnection checks for basic connectivity to the host.

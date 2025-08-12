@@ -9,3 +9,8 @@ type LogInfo struct {
 	LogFileName string `json:"logFileName"`
 	Body        string `json:"body"`
 }
+
+type ResponseData struct {
+	Status  string
+	Content string
+}

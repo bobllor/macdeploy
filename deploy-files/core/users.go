@@ -6,6 +6,7 @@ import (
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/deploy-files/scripts"
 	"macos-deployment/deploy-files/utils"
+	"macos-deployment/deploy-files/yaml"
 	"os"
 	"os/exec"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 
 // CreateAccount creates the user account on the device.
 // Returns true if the account is successfully made, else false.
-func CreateAccount(user utils.User, isAdmin bool) bool {
+func CreateAccount(user yaml.User, isAdmin bool) bool {
 	// username will be used for both entries needed.
 	username := user.User_Name
 

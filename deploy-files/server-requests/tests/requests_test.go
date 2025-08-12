@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	requests "macos-deployment/deploy-files/server-requests"
 	"macos-deployment/deploy-files/utils"
 	"net/http"
 	"os"
 	"testing"
 )
 
-var url string = "http://127.0.0.1:5000"
+var url string = "http://192.168.1.154:5000"
 
 func jsonPost(url string, jsonStr []byte) (*http.Response, error) {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -25,15 +26,13 @@ func jsonPost(url string, jsonStr []byte) (*http.Response, error) {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
-
 	return resp, nil
 }
 
 func TestConnection(t *testing.T) {
 	resp, err := http.Get(url)
 	if err != nil {
-		t.Errorf("got %v", err)
+		panic(err)
 	}
 
 	defer resp.Body.Close()
@@ -60,19 +59,28 @@ func TestFVPost(t *testing.T) {
 		panic(err)
 	}
 
+	defer resp.Body.Close()
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(string(body))
+	var jsonResponse requests.ResponseData
+	err = json.Unmarshal(body, &jsonResponse)
+	if err != nil {
+		t.Errorf("Failed to parse JSON %s", err.Error())
+	}
+
+	fmt.Println(jsonResponse.Content)
+	fmt.Println(jsonResponse.Status)
 }
 
 func TestLogPost(t *testing.T) {
 	utils.InitializeGlobals()
 	content, err := os.ReadFile(fmt.Sprintf("%s/%s", utils.Globals.ProjectPath, "README.md"))
 	if err != nil {
-		panic(err)
+		t.Errorf("unable to read file %s", err.Error())
 	}
 
 	sampleData := map[string]string{

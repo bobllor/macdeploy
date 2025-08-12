@@ -1,8 +1,24 @@
 #!/bin/bash
 
-# argument is required due to this being embedded.
-user=$0
+# script used to enable filevault.
+#
+# only run this script via the go program. do not run this normally.
+# args:
+#   - $0: the username of the admin account.
+#   - $1: the password of the admin account.
 
-# the output is captured by the exec call and will have parsing logic in that aspect.
-# the grep is necessary to only output out the final key
-sudo fdesetup enable -user $user -verbose 2>&1 /dev/tty | grep -vi fdesetup
+user=$0
+pw=$1
+
+plistVal="
+<plist>
+    <dict>
+        <key>Username</key>
+        <string>$user</string>
+        <key>Password</key>
+        <string>$pw</string>
+    </dict>
+</plist>
+"
+
+sudo fdesetup enable -inputplist <<< $plistVal

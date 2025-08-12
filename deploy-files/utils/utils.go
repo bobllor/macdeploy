@@ -85,3 +85,9 @@ func GetSerialTag() (string, error) {
 
 	return serialTag, nil
 }
+
+// RemoveFile removes a given file.
+// If it is a directory, it will recursively remove the files.
+func RemoveFile(filePath string) {
+
+}

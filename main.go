@@ -15,7 +15,7 @@ import (
 )
 
 var configPath string = "./config.yaml"
-var config utils.Config = yaml.ReadYAML(configPath)
+var config yaml.Config = yaml.ReadYAML(configPath)
 
 var installTeamViewer = flag.Bool("t", false, "Installs TeamViewer on the device.")
 var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the user.")
@@ -28,7 +28,7 @@ func main() {
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
 
-	var accounts map[string]utils.User = config.Accounts
+	var accounts map[string]yaml.User = config.Accounts
 	accountCreation(accounts)
 
 	var searchDirFilesArr []map[string]bool
@@ -80,7 +80,8 @@ func sendPOST() {
 	logUrl := config.Server_Ip + "/api/log"
 	fvUrl := config.Server_Ip + "/api/fv"
 
-	logFilePath := fmt.Sprintf("%s/%s", utils.Globals.ProjectPath, logger.LogFile)
+	// relative path, since it will be in whatever directory the deploy binary is ran in
+	logFilePath := fmt.Sprintf("./%s", logger.LogFile)
 	logBytes, err := os.ReadFile(logFilePath)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Error reading log file: %s | path: %s | file name: %s",
@@ -91,16 +92,16 @@ func sendPOST() {
 	fvJsonData.SerialTag = utils.Globals.SerialTag
 
 	if fvJsonData.Key != "" && fvJsonData.SerialTag != "UNKNOWN" {
-		out, err := requests.POSTData(fvUrl, fvJsonData)
+		res, err := requests.POSTData(fvUrl, fvJsonData)
 		if err != nil {
 			logger.Log(fmt.Sprintf("Error sending FileVault to server: %s | Manual interaction needed", err.Error()), 3)
 		}
 		logger.Log("Sending FileVault key to server", 6)
 
-		// indicates that the server found an existing entry for the serial tag.
-		// this writes it to the log here so it stays in the log upon sending to the server.
-		if out != "success" {
+		if res.Status != "success" {
 			return
+		} else {
+			logger.Log(res.Content, 4)
 		}
 	}
 
@@ -118,7 +119,7 @@ func sendPOST() {
 	}
 }
 
-func accountCreation(accounts map[string]utils.User) {
+func accountCreation(accounts map[string]yaml.User) {
 	for key := range accounts {
 		currAccount := accounts[key]
 
@@ -163,7 +164,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 }
 
 func startFileVault() {
-	fvKey := core.EnableFileVault(config.Admin_Name)
+	fvKey := core.EnableFileVault(config.Admin.User_Name, config.Admin.Password)
 	if fvKey != "" {
 		fvJsonData.Key = fvKey
 		keyMsg := fmt.Sprintf("Generated FileVault key %s", fvKey)

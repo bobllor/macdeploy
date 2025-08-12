@@ -1,10 +1,10 @@
 accounts:
   help:
-    user_name: "Help.Account"
-    password: "@ssistMe"
+    user_name: "USERNAME"
+    password: "PASSWORD"
     ignore_admin: true
   client:
-    password: "Password1"
+    password: "PASSWORD"
 packages:
   teamviewer:
     - "TeamViewer"
@@ -15,7 +15,9 @@ packages:
 search_directories:
   - "/Applications" 
   - "/Library/Application Support" 
-admin_name: "tgsadmin"
+admin:
+  user_name: "USERNAME"
+  password: "PASSWORD"
 server_ip: "http://127.0.0.1:5000"
 file_vault: true
 firewall: true
