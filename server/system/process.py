@@ -31,7 +31,7 @@ class Process:
         serial_dir: Path = Path(f"{Vars.FILEVAULT_PATH.value}/{serial}")
         key_entry: Path = serial_dir / key
 
-        key_log = f"No key found in {serial} directory"
+        key_log = f"No key entries found for device {serial}"
 
         if not serial_dir.exists():
             self._create_entry(key_entry) 

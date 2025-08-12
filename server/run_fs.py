@@ -45,13 +45,13 @@ def add_filevault_key():
 
     logger.debug(f"POST: {content}")
 
-    if not all([key in content for key in ["key", "serial"]]):
+    if not all([key in content for key in ["key", "serialTag"]]):
         logger.warning(f"Invalid POST: {content}")
         return 'Missing expected JSON values "key" or "serial"', 400
 
     # TODO: figure out how to log this in the same file without needing to make a new log.
     file_vault_key: str = content.get("key")
-    serial_tag: str = content.get("serial")
+    serial_tag: str = content.get("serialTag")
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         future: Future = executor.submit(process.add_filevault, serial_tag, file_vault_key)
