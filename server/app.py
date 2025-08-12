@@ -8,11 +8,8 @@ import system.system_types as types
 import system.utils as utils
 import threading
 
-# NOTE: after some testing around, i find the best choice is just to work with relative paths.
-# too many scenarios can break apart the absolute i built! noted!
-
 app: Flask = Flask(__name__)
-process: Process = Process() # FIXME: add the actual pkg location later!
+process: Process = Process()
 
 @app.route("/")
 def home():
@@ -32,6 +29,11 @@ def get_client_files():
     pkg_path_obj: Path = Path(Vars.PKG_PATH.value)
 
     utils.mk_paths([zip_path_obj, pkg_path_obj])
+
+    if not zip_path_obj.exists():
+        logger.critical("Unable to find ZIP file %s", zip_file_path)
+
+        return "No ZIP file found", 400
 
     return send_file(zip_file_path)
 
@@ -69,7 +71,7 @@ def add_log():
 
     if not all([key in content for key in ["body", "logFileName"]]):
         logger.warning(f"Invalid POST: {content}")
-        return 'Missing exepected JSON values "body" or "logFileName"', 400
+        return jsonify({"status": "error", "content": 'Missing exepected JSON values "body" or "logFileName"'}), 400
     
     logs_dir_path: Path = Path(Vars.LOGS_PATH.value)
     if not logs_dir_path.exists():
@@ -79,8 +81,8 @@ def add_log():
     # for now it isn't an issue and probably will not be unless it scales to a large amount...
     threading.Thread(target=process.add_log, args=(content,)).start()
 
-    return "Success", 200
+    return jsonify({"status": "success", "content": "Added logs to the server"}), 200
 
 if __name__ == '__main__':
     host: str = "0.0.0.0"
-    app.run(host=host, debug=True)
+    app.run(host=host)
