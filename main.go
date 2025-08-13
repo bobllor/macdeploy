@@ -15,7 +15,7 @@ import (
 )
 
 var configPath string = "./config.yaml"
-var config yaml.Config = yaml.ReadYAML(configPath)
+var config *yaml.Config = yaml.ReadYAML(configPath)
 
 var installTeamViewer = flag.Bool("t", false, "Installs TeamViewer on the device.")
 var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the user.")
@@ -59,9 +59,11 @@ func main() {
 	status, err := requests.VerifyConnection(config.Server_Ip)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Unable to connect to server: %s", err.Error()), 3)
+		logger.Log("Unable to send FileVault key to the server", 4)
 		return
 	}
 
+	// honestly this check is probably not needed.
 	if status {
 		sendPOST(fvJsonData, logJsonMap)
 	}
