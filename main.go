@@ -25,7 +25,7 @@ func main() {
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
 
-	var accounts map[string]yaml.User = config.Accounts
+	var accounts *map[string]yaml.User = &config.Accounts
 	accountCreation(accounts)
 
 	var logJsonMap = &requests.LogInfo{}
@@ -127,13 +127,13 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 // accountCreation starts the account making process.
 //
 // It takes a map of the User struct from the YAML file.
-func accountCreation(accounts map[string]yaml.User) {
-	if len(accounts) < 1 {
+func accountCreation(accounts *map[string]yaml.User) {
+	if len(*accounts) < 1 {
 		logger.Log("No account information given in YAML file", 4)
 	}
 
-	for key := range accounts {
-		currAccount := accounts[key]
+	for key := range *accounts {
+		currAccount := (*accounts)[key]
 
 		core.CreateAccount(currAccount, *adminStatus)
 	}

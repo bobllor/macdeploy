@@ -1,6 +1,6 @@
 accounts:
   help:
-    user_name: "USERNAME"
+    user_name: "TEST.USERNAME"
     password: "PASSWORD"
     ignore_admin: true
   client:

@@ -13,7 +13,7 @@ import (
 //
 // If there is an issue with reading the YAML configuration then this will exit the script.
 func ReadYAML(configPath string) *Config {
-	var yamlConfig *Config
+	yamlConfig := &Config{}
 
 	content, err := os.ReadFile(configPath)
 	if err != nil {
@@ -40,18 +40,16 @@ func ReadYAML(configPath string) *Config {
 //
 // The only required value is the Admin.
 func validateYAML(yamlConfig *Config) error {
-	adminData := yamlConfig.Admin
-
 	newError := func(msg string) error {
 		return errors.New(msg)
 	}
 
-	if adminData.User_Name == "" {
+	if yamlConfig.Admin.User_Name == "" {
 		err := newError("missing admin username or it cannot be empty")
 		return err
 	}
 
-	if adminData.Password == "" {
+	if yamlConfig.Admin.Password == "" {
 		err := newError("missing admin password or it cannot be empty")
 		return err
 	}
