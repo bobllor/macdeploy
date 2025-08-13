@@ -6,4 +6,6 @@ ARG PORT=5000
 
 WORKDIR /macos-deployment
 
-EXPOSE 5000
+EXPOSE ${PORT}
+
+CMD ["python3", "server/app.py"]
