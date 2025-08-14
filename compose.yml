@@ -1,0 +1,10 @@
+services:
+  fs-server:
+    image: file-server:1.0
+    ports:
+      - "5000:5000"
+    volumes:
+      - type: bind
+        source: ./
+        target: /macos-deployment
+    env_file: "fs-server.env"
