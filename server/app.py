@@ -85,4 +85,4 @@ def add_log():
 
 if __name__ == '__main__':
     host: str = "0.0.0.0"
-    app.run(host=host)
+    app.run(host=host, debug=True)
