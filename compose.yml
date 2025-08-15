@@ -1,5 +1,6 @@
 services:
   fs-server:
+    container_name: python-fs
     image: file-server:1.1
     ports:
       - "5000:5000"
@@ -7,3 +8,5 @@ services:
       - type: bind
         source: ./
         target: /macos-deployment
+    tty: true
+    stdin_open: true

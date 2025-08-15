@@ -99,7 +99,6 @@ if curr_path != str(main_path):
     os.chdir(main_path)
     logger.debug(f"Changed {__file__.split('/')[-1]} to path {str(main_path)}")
 
-
 pkg_path: Path = Path(Vars.PKG_PATH.value)
 zip_path: Path = Path(Vars.ZIP_PATH.value) / Vars.ZIP_FILE_NAME.value
 

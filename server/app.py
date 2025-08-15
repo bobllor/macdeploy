@@ -35,6 +35,8 @@ def get_client_files():
 
         return "No ZIP file found", 400
 
+    logger.info("ZIP file accessed")
+
     return send_file(zip_file_path)
 
 @app.route("/api/fv", methods=["POST"])
