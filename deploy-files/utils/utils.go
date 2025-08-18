@@ -36,7 +36,7 @@ func GetFileMap(dirPath string) (map[string]bool, error) {
 // FormatName formats a name string as First.Last or F.Last.
 //
 // This function expects the string to consist of only two names, and does not
-// handle any suffxies, bad characters, or special characters outside of "." and " ".
+// handle any suffixes, bad characters, or special characters outside of "." and " ".
 func FormatName(name string) string {
 	//caser := cases.Title(language.AmericanEnglish)
 	//newStr := caser.String(str)
@@ -84,4 +84,10 @@ func GetSerialTag() (string, error) {
 	serialTag := serialTagArr[len(serialTagArr)-2]
 
 	return serialTag, nil
+}
+
+// RemoveFile removes a given file.
+// If it is a directory, it will recursively remove the files.
+func RemoveFile(filePath string) {
+
 }

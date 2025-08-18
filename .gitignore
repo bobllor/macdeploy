@@ -11,3 +11,5 @@ filevault-keys
 logs
 old-files
 pkg-files
+*.zip
+*.bin

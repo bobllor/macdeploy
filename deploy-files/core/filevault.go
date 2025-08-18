@@ -2,20 +2,20 @@ package core
 
 import (
 	"fmt"
-	"macos-deployment/deploy_files/logger"
-	"macos-deployment/deploy_files/utils"
+	"macos-deployment/deploy-files/logger"
+	"macos-deployment/deploy-files/scripts"
 	"os/exec"
 	"strings"
 )
 
 // EnableFileVault enables FileVault and returns the key generated from the command.
 // If it fails then an empty string is returned.
-func EnableFileVault() string {
+func EnableFileVault(adminUser string, adminPassword string) string {
 	cmd := "fdesetup isactive"
-	out, _ := exec.Command("bash", "-c", cmd).Output()
+	out, _ := exec.Command("sudo", "bash", "-c", cmd).Output()
 	fileVaultStatus := strings.TrimSpace(strings.ToLower(string(out)))
 
-	// either some failed happen or this is ran on a non-mac OS
+	// either some fail happened or this is ran on a non-mac OS
 	if fileVaultStatus == "" {
 		fileVaultStatus = "unknown"
 	}
@@ -24,15 +24,13 @@ func EnableFileVault() string {
 	logger.Log(fileVaultMsg, 6)
 
 	if fileVaultStatus == "false" {
-		scriptName := "enable_filevault.sh"
-
 		logger.Log("Enabling FileVault", 6)
 
-		scriptPath := fmt.Sprintf("%s/%s/%s", utils.Home, "macos-deployment/deploy_files", scriptName)
-		out, err := exec.Command("bash", scriptPath).CombinedOutput()
+		out, err := exec.Command("sudo", "bash", "-c", scripts.EnableFileVaultScript,
+			adminUser, adminPassword).CombinedOutput()
 
 		outText := string(out)
-		logMsg := fmt.Sprintf("Path: %s, Output: %s", scriptPath, outText)
+		logMsg := strings.TrimSpace(fmt.Sprintf("Output: %s", outText))
 		logger.Log(logMsg, 7)
 
 		if err != nil {
@@ -47,8 +45,6 @@ func EnableFileVault() string {
 		key := outArr[1]
 
 		logger.Log("FileVault enabled", 6)
-		keyMsg := fmt.Sprintf("Generated FileVault key %s", key)
-		logger.Log(keyMsg, 6)
 
 		return key
 	} else if fileVaultStatus == "true" {

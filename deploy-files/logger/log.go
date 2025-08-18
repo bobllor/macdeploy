@@ -8,6 +8,7 @@ import (
 )
 
 var LogFile string
+var LogFilePath string
 
 var WarningLevels map[int]string = map[int]string{
 	0: "EMERGENCY",
@@ -24,6 +25,7 @@ func NewLog(serialTag string) {
 	date := time.Now().Format("01-02T15-04-05")
 
 	LogFile = fmt.Sprintf("%s.%s.log", date, serialTag)
+	LogFilePath = fmt.Sprintf("/tmp/%s", LogFile)
 }
 
 // Log creates and writes to the log file.
@@ -38,7 +40,7 @@ func NewLog(serialTag string) {
 //   - 6: INFO
 //   - 7: DEBUG
 func Log(msg string, level int) {
-	file, err := os.OpenFile(LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0744)
+	file, err := os.OpenFile(LogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0744)
 	if err != nil {
 		panic(err)
 	}

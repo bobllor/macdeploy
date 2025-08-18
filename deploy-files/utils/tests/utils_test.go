@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"macos-deployment/deploy-files/utils"
 	"net/http"
 	"strings"
 	"testing"
@@ -29,10 +30,10 @@ func TestName(t *testing.T) {
 	var successes []string
 
 	for _, name := range names {
-		if !ValidateName(name) {
+		if !utils.ValidateName(name) {
 			fails = append(fails, name)
 		} else {
-			successes = append(successes, FormatName(name))
+			successes = append(successes, utils.FormatName(name))
 		}
 	}
 

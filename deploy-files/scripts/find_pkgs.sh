@@ -4,6 +4,6 @@
 # args:
 #   - 
 
-src_dir=$1
+src_dir=$0
 
 find $src_dir -type f -name "*.pkg"
