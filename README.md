@@ -11,23 +11,22 @@ It is built with Go, Python, and Bash, supported by Docker.
 ## Prerequisites
 
 The server must be **ran on a macOS or Linux** operating system.
+Windows is not supported.
 
-Below are the required software and tools needed on the server in order to start the deployment process.
+Below are the required languages and tools needed on the server in order to start the deployment process.
 
-Software:
-- `Python`
+Required languages:
 - `Go`
-- `Docker`
-- `git`
 
 <br/>
 
 Tools:
-- zip
-- unzip
-- curl
-
-macOS includes these tools with the OS, but some Linux distros will require installation in order to use them.
+- `zip`
+- `unzip`
+- `curl`
+- `docker compose`
+- `docker`
+- `git`
 
 ## Installation
 
@@ -42,9 +41,14 @@ macOS includes these tools with the OS, but some Linux distros will require inst
     ```shell
     bash scripts/docker_build.sh; \
     bash scripts/go_build.sh; \
-    bash scripts/create_zip.sh;
+    bash scripts/create_zip.sh
     ```
 
-4. Start the containers using `docker compose up`.
+4. Create the containers using `docker compose create`.
+
+5. Run the containers using `docker compose start`.
 
 # Usage
+
+The server is expected to be ran inside a ***private network***, and should not be exposed publically to the Internet.
+
