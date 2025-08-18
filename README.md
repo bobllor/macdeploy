@@ -1,58 +1,51 @@
-# About
+# About macDes
 
-This is the TGS Hardware's macOS deployment guide.
+***macDES*** is a **mac**OS **De**ployment **S**erver built to automate user creation, package installs, and administrative actions for macOS devices.
 
-For more detailed information on how to use, configure, and manage the deployment files visit the TEKsystems Quick Survival Guide or KBXXX on ServiceNow.
-<br />
-This README contains short run downs of the server, and below you can find the section to get the process started.
+It functions as a mini-MDM and is used for people who do not have access to any MDM software.
 
-Features:
-- Automatic SSH key generation and authorization to the server.
-- Automatic installation of the required software.
-- Automatic user creation.
-- Automatic enabling of FileVault and FireWall.
-- Generates the key of the FileVault and stores it in the server.
-- Generates logs and stores it in the server.
+It is built with Go, Python, and Bash, supported by Docker.
 
-**IMPORTANT**: Although a majority of the manual interaction with the macOS deployment has been eliminated, there are still some manual interactions required. These can be found at:
-1. Copying of the SSH key to the server (2 inputs).
-2. The first root access requirement (1 input).
-3. User creation (1 input).
-4. FileVault activation (2 inputs).
+# Getting Started
 
-# Quick Start
+## Prerequisites
 
-## Before you Read
+The server must be **ran on a macOS or Linux** operating system.
 
-There is a QR code that runs the commands for you when scanned. The below is the way to do it manually.
+Below are the required software and tools needed on the server in order to start the deployment process.
 
-## Initial Setup
+Software:
+- `Python`
+- `Go`
+- `Docker`
+- `git`
 
-Before we start, the deployment script is required on the device. Run the following one liner in terminal:
+<br/>
 
-```shell
-ssh-keygen -f ~/.ssh/id_rsa -q -N "" -C "$(date +"%Y-%m-%dT%T:%M%S)"; ssh-copy-id donotmigrate@10.142.46.165; scp -rq donotmigrate@10.142.46.165://Users/donotmigrate/mac-deployment/client-files ~
-```
+Tools:
+- zip
+- unzip
+- curl
 
-This command does two things:
-1. It generates the SSH key and copies it to the server to prevent multiple password inputs later in the script.
-2. It installs the required files from the server onto the client device.
+macOS includes these tools with the OS, but some Linux distros will require installation in order to use them.
 
-You can chain the start up script afterward the last command if needed.
+## Installation
 
-## Run the Script
+1. Clone the repository:
+    ```shell
+    git clone https://github.com/TGSDepot/macos-deployment.git
+    ```
 
-The script contains **two types of flags** that can be used with the script:
-- `T`: TeamViewer flag, used to install TeamViewer.
-- `A`: Admin flag, used to make the user admin.
-<br />
-By default:
-- All users are created as standard accounts.
-- TeamViewer is not installed.
+2. Change the current directory into the newly added repository.
+    ```shell
+    cd macos-deployment
+    ```
 
-The commands to run the script for each use case:
+3. Run the following commands with the scripts to initialize the files:
+    ```shell
+    bash scripts/docker_build.sh; \
+    bash scripts/go_build.sh;
+    bash scripts/create_zip.sh; \
+    ```
 
-Standard: `bash deploy.sh -T`
-Admin: `bash deploy.sh -T -A` or `bash deploy.sh -TA`
-No TeamViewer: `bash deploy.sh`
-No TeamViewer and Admin: `bash deploy.sh -A`
+# Usage
