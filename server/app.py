@@ -4,12 +4,20 @@ from system.vars import Vars
 from pathlib import Path
 from logger import logger
 from concurrent.futures import ThreadPoolExecutor, Future
+from system.zipper import Zip
 import system.system_types as types
 import system.utils as utils
 import threading
+import secrets
 
 app: Flask = Flask(__name__)
 process: Process = Process()
+
+TOKEN_BITS: int = 32
+secret_token: str = secrets.token_hex(TOKEN_BITS)
+
+token_file_path: str = f"{Vars.SERVER_PATH.value}/.token"
+utils.write_to_file(token_file_path, secret_token)
 
 @app.route("/")
 def home():
@@ -84,6 +92,33 @@ def add_log():
     threading.Thread(target=process.add_log, args=(content,)).start()
 
     return jsonify({"status": "success", "content": "Added logs to the server"}), 200
+
+@app.route("/api/zip/update", methods=["GET"])
+def update_zip():
+    '''Updates the ZIP file. A token is used to authenticate the request, and 
+    the stored token will be regenerated.
+
+    This endpoint should only be accessed be some type of scheduler.
+    '''
+    h_token: str = request.headers.get("x-zip-token")
+    secret_token: str = utils.read_from(token_file_path)
+
+    if h_token != secret_token:
+        logger.info("Unauthorized access: %s", h_token)
+        return jsonify({"status": "error", "content": "Unauthorized access"}), 401
+
+    zip_path: Path = Path(Vars.ZIP_PATH.value) / Vars.ZIP_FILE_NAME.value
+    pkg_path: Path = Path(Vars.PKG_PATH.value)
+
+    zipper: Zip = Zip(zip_path)
+    zipper.start_zip(pkg_path)
+
+    logger.info("ZIP updated access, token: %s", h_token)
+
+    secret_token = secrets.token_hex(TOKEN_BITS)
+    utils.write_to_file(token_file_path, secret_token)
+
+    return jsonify({"status": "success", "content": "Successfully updated ZIP files"}), 200
 
 if __name__ == '__main__':
     host: str = "0.0.0.0"

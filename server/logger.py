@@ -3,10 +3,11 @@ from logging import Handler
 from logging import DEBUG, INFO
 from datetime import datetime
 from typing import TypedDict, Literal
+from system.vars import Vars
 
 # this value will be the same as soon as the server is launched.
 # this keeps all logs in one day on the same day.
-DEFAULT_FILENAME: datetime = datetime.now().strftime("logs/server-%Y-%m-%d.log")
+DEFAULT_FILENAME: datetime = datetime.now().strftime(f"{Vars.SERVER_LOG_PATH.value}/server-%Y-%m-%d.log")
 DEFAULT_DATEFMT: Literal["%Y-%m-%d %H:%M:%S"] = "%Y-%m-%d %H:%M:%S"
 
 class LogLevelOptions(TypedDict):

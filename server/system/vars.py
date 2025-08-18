@@ -17,6 +17,7 @@ class Vars(Enum):
     _SERVER_DIR_NAME = "server"
     _LOGS_DIR_NAME = "logs"
     _ZIP_DIR_NAME = "deploy-zip"
+    _SERVER_LOG_NAME = "server-logs"
 
     # default directory paths
     FILEVAULT_PATH = f"{_MAIN_PATH}/{_FILEVAULT_DIR_NAME}"
@@ -24,3 +25,4 @@ class Vars(Enum):
     SERVER_PATH = f"{_MAIN_PATH}/{_SERVER_DIR_NAME}"
     ZIP_PATH = f"{_MAIN_PATH}/{_ZIP_DIR_NAME}"
     LOGS_PATH = f"{_MAIN_PATH}/{_LOGS_DIR_NAME}"
+    SERVER_LOG_PATH = f"{LOGS_PATH}/{_SERVER_LOG_NAME}"

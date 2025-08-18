@@ -1,9 +1,18 @@
 services:
   fs-server:
     container_name: python-fs
-    image: file-server:1.1
+    image: deploy:fsserver
     ports:
       - "5000:5000"
+    volumes:
+      - type: bind
+        source: ./
+        target: /macos-deployment
+    tty: true
+    stdin_open: true
+  cron-service:
+    container_name: cron-job
+    image: deploy:cronner
     volumes:
       - type: bind
         source: ./

@@ -50,3 +50,14 @@ def unlink_children(path: Path) -> None:
             file.rmdir()
         else:
             file.unlink()
+
+def write_to_file(file_path: Path | str, content: str) -> None:
+    '''Writes to a file from a given path.'''
+    with open(file_path, "w") as file:
+        file.write(content)
+    
+def read_from(file_path: Path | str) -> str:
+    with open(file_path, "r") as file:
+        content: str = file.read()
+
+    return content

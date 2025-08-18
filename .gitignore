@@ -18,3 +18,4 @@ __pycache__/
 deploy-zip
 .pkg_metadata
 .venv
+.token
