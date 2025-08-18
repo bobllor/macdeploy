@@ -11,7 +11,6 @@ import (
 //
 // Errors must be handled.
 func POSTData[J LogInfo | FileVaultInfo](url string, mapData *J) (ResponseData, error) {
-	// wtf...
 	jsonStr, err := json.Marshal(mapData)
 	if err != nil {
 		return ResponseData{}, err

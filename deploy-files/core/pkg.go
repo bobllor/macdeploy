@@ -56,6 +56,8 @@ func MakePKG(packages map[string][]string, installTeamViewer bool) map[string][]
 		newPackagesMap[pkgLowered] = pkgArr
 	}
 
+	logger.Log(fmt.Sprintf("Packages: %v", newPackagesMap), 7)
+
 	return newPackagesMap
 }
 
@@ -85,7 +87,7 @@ func InstallPKG(pkg string, foundPKGs []string) {
 
 // IsInstalled searches for a given package in a search path from a given array of paths.
 // Ensure all keys in searchPaths are lowercase, which can be done by using the function GetFileMap.
-func IsInstalled(pkgNames []string, searchPaths []map[string]bool) bool {
+func IsInstalled(pkgNames []string, searchPaths *[]map[string]bool) bool {
 	// this is on a mac, there are two folders that will be checked:
 	// 	1. /Applications/ (general applications)
 	//  2. /Library/Application\ Support/ (service files)
@@ -93,11 +95,11 @@ func IsInstalled(pkgNames []string, searchPaths []map[string]bool) bool {
 	for _, pkg := range pkgNames {
 		// unfortunately double loop is required here due to the array condition.
 		// on the bright side it does exit out early if it finds a match.
-		for _, pathMap := range searchPaths {
+
+		for _, pathMap := range *searchPaths {
 			pkgLowered := strings.ToLower(pkg)
 
 			if _, found := pathMap[pkgLowered]; found {
-				// FIXME: add logging
 				logger.Log(fmt.Sprintf("Found existing installation for package %s", pkg), 6)
 				return true
 			}

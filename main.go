@@ -25,6 +25,8 @@ func main() {
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
 
+	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
+
 	var accounts *map[string]yaml.User = &config.Accounts
 	accountCreation(accounts)
 
@@ -85,12 +87,10 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 	logUrl := config.Server_Ip + "/api/log"
 	fvUrl := config.Server_Ip + "/api/fv"
 
-	// relative path, since it will be in whatever directory the deploy binary is ran in
-	logFilePath := fmt.Sprintf("./%s", logger.LogFile)
-	logBytes, err := os.ReadFile(logFilePath)
+	logBytes, err := os.ReadFile(logger.LogFilePath)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Error reading log file: %s | path: %s | file name: %s",
-			err.Error(), logFilePath, logger.LogFile), 3)
+			err.Error(), logger.LogFilePath, logger.LogFile), 3)
 		return
 	}
 
@@ -173,7 +173,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	}
 
 	for pkge, pkgeArr := range packagesMap {
-		isInstalled := core.IsInstalled(pkgeArr, searchDirFilesArr)
+		isInstalled := core.IsInstalled(pkgeArr, &searchDirFilesArr)
 		if !isInstalled {
 			core.InstallPKG(pkge, foundPKGs)
 		}
