@@ -19,3 +19,5 @@ deploy-zip
 .pkg_metadata
 .venv
 .token
+*.zip
+*.bin
