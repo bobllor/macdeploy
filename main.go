@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-var configPath string = "./config.yaml"
+var configPath string = "./config.yml"
 var config *yaml.Config = yaml.ReadYAML(configPath)
 
 var installTeamViewer = flag.Bool("t", false, "Installs TeamViewer on the device.")
