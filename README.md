@@ -13,25 +13,31 @@ It is built with Go, Python, and Bash, supported by Docker.
 The server must be **ran on a macOS or Linux** operating system.
 Windows is not supported.
 
-Below are the tools and software required on the server in order to start the deployment process.
-
-Required languages:
+Below are the tools and software required on the server in before beginning the deployment process.
 - `Go`
-
-<br/>
-
-Tools:
 - `docker`
 - `docker compose`
 - `git`
+- `zip`
+- `unzip`
 
-`zip`, `unzip`, and `curl` are also used but are installed by default on macOS devices.
-Others are handled by the Docker container.
+`zip`, `unzip`, and `curl` are required on the clients,
+however macOS devices have these installed by default.
 
 ## Action Runner
 
 There is an included action runner Docker container for the server, called `gopipe`.
-However this requires a user setup, as it uses a second action runners on a physical macOS device.
+However this requires your own configuration to use. 
+Since this is also on a private network, a spare macOS is required in order to utilize a second action runner.
+
+By default the action runner build is not included with 
+`docker_build.sh`, but to include it add the flag `--action`. 
+
+If you do not have a `.github/workflows` directory 
+or an `actions.yml` located in the repository, 
+then this will fail to run.
+
+Otherwise, manual `go run build` and `git pull` are required if updates are made to the repository.
 
 ## Installation
 
@@ -55,5 +61,10 @@ However this requires a user setup, as it uses a second action runners on a phys
 
 # Usage
 
-The server is expected to be ran inside a ***private network***, and should not be exposed publically to the Internet.
+The server is expected to be ran on a ***private network*** 
+and <u>*should not be exposed to the Internet*</u>.
+
+## Clients
+
+The client devices must be on the same LAN, VLAN, subnet, etc... as the server. In other words, on the same network.
 
