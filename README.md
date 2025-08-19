@@ -13,7 +13,7 @@ It is built with Go, Python, and Bash, supported by Docker.
 The server must be **ran on a macOS or Linux** operating system.
 Windows is not supported.
 
-Below are the required languages and tools needed on the server in order to start the deployment process.
+Below are the tools and software required on the server in order to start the deployment process.
 
 Required languages:
 - `Go`
@@ -21,12 +21,17 @@ Required languages:
 <br/>
 
 Tools:
-- `zip`
-- `unzip`
-- `curl`
-- `docker compose`
 - `docker`
+- `docker compose`
 - `git`
+
+`zip`, `unzip`, and `curl` are also used but are installed by default on macOS devices.
+Others are handled by the Docker container.
+
+## Action Runner
+
+There is an included action runner Docker container for the server, called `gopipe`.
+However this requires a user setup, as it uses a second action runners on a physical macOS device.
 
 ## Installation
 
