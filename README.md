@@ -1,16 +1,15 @@
-# About macDES
+# About
 
-***macDES*** is a **mac**OS **De**ployment File **S**erver built to automate user creation, package installs, and administrative actions for macOS devices.
+The macOS Deployment File Server is built to deploy macOS devices automatically without the use of MDM software.
+It automates user creation, admin tools, and package installations.
 
-It functions as a mini-MDM and is used for people who do not have access to any MDM software.
-
-It is built with Go, Python, and Bash, supported by Docker.
+It is built and powered by Go, Python, Bash, and Docker.
 
 ***Security warning***: This server was built with the intention to be running on a *secure, private network*.
 Although it has HTTPS encryption with a self-signed cert, it is a basic implementation and there are no
 other additional security measures in place.
 
-The **configuration YAML file is included in the ZIP file** and placed on the client device during deployment.
+The **YAML configuration file is included in the ZIP file** and placed on the client device during deployment.
 By default this is removed after the script.
 This contains sensitive information, ensure its removal after the script or if it fails.
 
@@ -36,11 +35,11 @@ Below are the tools and software required on the server in before beginning the 
 The log file is created in the temporary folder `/tmp` by default. 
 The log name follows the format: `%m-%dT-%H-%M-%S.<SERIAL>.log`.
 
-## Configuration YAML
+## YAML Configuration File
 
 It is important to configure the YAML configuration file prior to starting the deployment process.
 
-There is a sample configuration file with all the available options for the deployment, and also below.
+There is a sample configuration file with all options in the repository and also below.
 
 ```yaml
 accounts:
@@ -67,11 +66,11 @@ file_vault: false
 firewall: false
 ```
 
-There is only ***two required options in this configuration YAML***:
+There are ***two required options in the YAML configuration file***:
 1. `admin`: The credentials to the main/first account of the macOS.
 2. `server_ip`: The domain/IP that the server is hosted on. 
 
-The otehr options are not required, and if these have no options then the default value will be used in its place. 
+The other options are not required, the default value will be used in its place if it is missing. 
 
 Some of the script functionality *will be skipped* if no value is given.
 - For example, if no `packages` are given, then there will not be an attempt to install any packages.
@@ -105,9 +104,13 @@ bash scripts/create_zip.sh
 The macOS devices must be connected to the same network as the server.
 The server must also be reachable, for example via `ping`.
 
+The `curl` command uses the `--insecure` option to bypass the verify check (also similar with the Go code).
+Although this is not recommended, it is used in this case due to the nature of macOS deployment, in other words
+the devices that accesses the file server are fully wiped prior to deployment.
+
 Run the command below, replacing `<YOUR_DOMAIN>` with your domain (by default the server's private IP).
 ```shell
-curl https://<YOUR_IP_HERE>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
+curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
 unzip deploy.zip && \
 ./deploy.bin
 ```
@@ -123,6 +126,13 @@ curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip
 3. Run `./deploy.bin` to start the deployment process.
 
 **NOTE**: It is not possible to fully automate macOS deployments due to Apple's policies.
+Some processes will still require manual interactions.
+
+### Flags
+
+`deploy.bin` has two flags, `-a` and `-t`.
+- `-a`: Gives admin to the user if they do not have a `ignore_admin: true` option in the YAML.
+- `-t`: Ignores TeamViewer installation even if it exists.
 
 ## Action Runner
 
@@ -131,10 +141,8 @@ It is safe to skip this section, it is for users who are looking to integrate a 
 
 There is an included action runner Docker container for the server, called `gopipe`.
 However this requires two self-hosted runner to use. 
-Since this is intended for a private netowrk, a spare macOS is required in order to utilize a second action runner.
+Since this is intended for a private network, a spare macOS is required in order to utilize a second action runner.
 
 By default the action runner build is not built with `docker_build.sh`, but can be enabled by including the flag argument `--action`. 
 There will be additional checks for `.github/workflows` or `actions.yml` in the repository 
 if the flag is given.
-
-WIPanual interactions are required at different stages.
