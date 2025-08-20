@@ -22,8 +22,7 @@ func CreateAccount(user yaml.User, isAdmin bool) bool {
 	if username == "" {
 		reader := bufio.NewReader(os.Stdin)
 
-		fmt.Println("\nNaming format (case insensitive): FIRST LAST || FIRST.LAST || F LAST || F.LAST)")
-		fmt.Println("Hit enter if you want to skip the user's entry.")
+		fmt.Println("\nHit enter if you want to skip the user creation.")
 		fmt.Print("Enter the client's name: ")
 
 		input, _ := reader.ReadString('\n')
@@ -31,19 +30,18 @@ func CreateAccount(user yaml.User, isAdmin bool) bool {
 		fmt.Println("") // for formatting purposes.
 
 		input = input[:len(input)-1]
-		validName := utils.ValidateName(input)
 
-		if input == "" || !validName {
+		if input == "" {
 			logger.Log("User creation skipped", 6)
 			return false
 		}
 
-		username = utils.FormatName(input)
-	} else {
-		username = utils.FormatName(username)
+		username = input
 	}
 
-	initLog := fmt.Sprintf("Creating user %s", username)
+	fullName := utils.FormatFullName(username)
+
+	initLog := fmt.Sprintf("Creating user %s | Home Directory Name %s", username, fullName)
 	logger.Log(initLog, 6)
 
 	admin := "false"
@@ -63,7 +61,8 @@ func CreateAccount(user yaml.User, isAdmin bool) bool {
 	}
 
 	// CreateUserScript takes 3 arguments.
-	out, err := exec.Command("sudo", "bash", "-c", scripts.CreateUserScript, username, user.Password, admin).CombinedOutput()
+	out, err := exec.Command("sudo", "bash", "-c",
+		scripts.CreateUserScript, username, fullName, user.Password, admin).CombinedOutput()
 	if err != nil {
 		fmt.Println(string(out))
 		errMsg := fmt.Sprintf("Failed to create user %s | Script exit status: %v", username, err)

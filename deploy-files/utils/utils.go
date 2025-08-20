@@ -2,12 +2,10 @@ package utils
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"unicode"
 )
 
 // GetPathMap searches the contents of a directory and returns a map of the files.
@@ -33,41 +31,50 @@ func GetFileMap(dirPath string) (map[string]bool, error) {
 	return pathContent, nil
 }
 
-// FormatName formats a name string as First.Last or F.Last.
+// FormatFullName returns a formatted name: lowercase and replacement of spaces with periods.
+// It will remove all invalid characters.
 //
-// This function expects the string to consist of only two names, and does not
-// handle any suffixes, bad characters, or special characters outside of "." and " ".
-func FormatName(name string) string {
-	//caser := cases.Title(language.AmericanEnglish)
-	//newStr := caser.String(str)
-	newStr := strings.Trim(name, " ")
-	strBytes := []byte(newStr)
+// This follows the same rule of macOS' naming convention.
+func FormatFullName(value string) string {
+	newName := strings.ToLower(value)
+	newName = strings.TrimSpace(newName)
 
-	replaceMap := map[string]bool{".": true, " ": true}
-
-	var delimiterIndex int = 0
-
-	for i := 1; i < len(strBytes); i++ {
-		if _, found := replaceMap[string(name[i])]; found {
-			// update the next value from the replaceMap characters
-			if delimiterIndex == 0 {
-				delimiterIndex = i
-			}
-
-			strBytes[i+1] = byte(unicode.ToUpper(rune(name[i+1])))
-		}
+	var newNameBytes []rune
+	invalidCharacters := map[string]struct{}{
+		"/":  {},
+		";":  {},
+		",":  {},
+		"\\": {},
+		"=":  {},
+		"%":  {},
+		"\n": {},
 	}
 
-	strBytes[0] = byte(unicode.ToUpper(rune(name[0])))
+	spaceFound := true
 
-	newStr = string(strBytes)
-	strArr := strings.Split(newStr, string(name[delimiterIndex]))
-	nameArrLen := len(strArr)
+	for _, strBytes := range newName {
+		char := string(strBytes)
 
-	firstName := strArr[0]
-	lastName := strArr[nameArrLen-1]
+		if _, ok := invalidCharacters[char]; ok {
+			continue
+		}
 
-	return fmt.Sprintf("%s.%s", firstName, lastName)
+		// multiple spaces, keep the first occurrence and skip the rest
+		// boundary check is not needed because newName is already trimmed
+		if char == " " {
+			if !spaceFound {
+				spaceFound = true
+			} else {
+				continue
+			}
+		} else if spaceFound {
+			spaceFound = false
+		}
+
+		newNameBytes = append(newNameBytes, strBytes)
+	}
+
+	return strings.ReplaceAll(string(newNameBytes), " ", ".")
 }
 
 // GetSerialTag retrieves the serial tag for the device.
