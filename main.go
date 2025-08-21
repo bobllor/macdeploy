@@ -26,6 +26,10 @@ func main() {
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
 
 	// removing packages from the given packages to install
+	if len(*flagValues.ExcludePackages) > 0 {
+		logger.Log(fmt.Sprintf("Excluded packages: %v", *flagValues.ExcludePackages), 7)
+	}
+
 	for _, excludedPkg := range *flagValues.ExcludePackages {
 		_, ok := config.Packages[excludedPkg]
 		if ok {
