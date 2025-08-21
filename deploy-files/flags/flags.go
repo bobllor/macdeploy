@@ -13,10 +13,10 @@ type FlagValues struct {
 type excludeValue []string
 
 var excludePackages excludeValue
-var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the user.")
+var adminStatus = flag.Bool("a", false, "Gives Admin privileges to the user.")
 
 func GetFlags() *FlagValues {
-	flag.Var(&excludePackages, "exclude", "Exclude a package")
+	flag.Var(&excludePackages, "exclude", "Exclude a package from installing.")
 	flag.Parse()
 
 	flags := FlagValues{
@@ -27,11 +27,11 @@ func GetFlags() *FlagValues {
 	return &flags
 }
 
-func (arrFlag *excludeValue) String() string {
-	return fmt.Sprintf("%v", *arrFlag)
+func (a *excludeValue) String() string {
+	return fmt.Sprintf("%v", *a)
 }
 
-func (arrFlag *excludeValue) Set(value string) error {
-	*arrFlag = append(*arrFlag, value)
+func (a *excludeValue) Set(value string) error {
+	*a = append(*a, value)
 	return nil
 }
