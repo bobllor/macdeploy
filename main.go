@@ -25,17 +25,34 @@ func main() {
 
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
 
-	// removing packages from the given packages to install
 	if len(*flagValues.ExcludePackages) > 0 {
 		logger.Log(fmt.Sprintf("Excluded packages: %v", *flagValues.ExcludePackages), 7)
 	}
+	if len(*flagValues.IncludePackages) > 0 {
+		logger.Log(fmt.Sprintf("Included packages: %v", *flagValues.IncludePackages), 7)
+	}
 
+	// removing packages from the given packages to install
 	for _, excludedPkg := range *flagValues.ExcludePackages {
 		_, ok := config.Packages[excludedPkg]
 		if ok {
 			logger.Log(fmt.Sprintf("Excluding package: %s", excludedPkg), 6)
 			delete(config.Packages, excludedPkg)
 		}
+	}
+
+	// including packages to install, must exist in the search directory
+	for _, includedPkg := range *flagValues.IncludePackages {
+		argArr := strings.Split(includedPkg, "/")
+
+		mainPkg := argArr[0]
+		pkgInstallNameArr := make([]string, 0)
+
+		if len(argArr) > 1 {
+			pkgInstallNameArr = argArr[1:]
+		}
+
+		config.Packages[mainPkg] = pkgInstallNameArr
 	}
 
 	var accounts *map[string]yaml.User = &config.Accounts

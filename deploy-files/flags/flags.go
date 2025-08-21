@@ -7,31 +7,35 @@ import (
 
 type FlagValues struct {
 	AdminStatus     bool
-	ExcludePackages *excludeValue
+	ExcludePackages *arrayValue
+	IncludePackages *arrayValue
 }
 
-type excludeValue []string
+type arrayValue []string
 
-var excludePackages excludeValue
+var excludePackages arrayValue
+var includePackages arrayValue
 var adminStatus = flag.Bool("a", false, "Gives Admin privileges to the user.")
 
 func GetFlags() *FlagValues {
 	flag.Var(&excludePackages, "exclude", "Exclude a package from installing.")
+	flag.Var(&includePackages, "include", "Include a package to install.")
 	flag.Parse()
 
 	flags := FlagValues{
 		AdminStatus:     *adminStatus,
 		ExcludePackages: &excludePackages,
+		IncludePackages: &includePackages,
 	}
 
 	return &flags
 }
 
-func (a *excludeValue) String() string {
+func (a *arrayValue) String() string {
 	return fmt.Sprintf("%v", *a)
 }
 
-func (a *excludeValue) Set(value string) error {
+func (a *arrayValue) Set(value string) error {
 	*a = append(*a, value)
 	return nil
 }
