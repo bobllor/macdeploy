@@ -75,8 +75,6 @@ The other options are not required, the default value will be used in its place 
 Some of the script functionality *will be skipped* if no value is given.
 - For example, if no `packages` are given, then there will not be an attempt to install any packages.
 
-The deployment will proceed as normal for most functions even on success or failure.
-
 ## Installation
 
 1. Clone the repository:
@@ -108,7 +106,8 @@ The `curl` command uses the `--insecure` option to bypass the verify check (also
 Although this is not recommended, it is used in this case due to the nature of macOS deployment, in other words
 the devices that accesses the file server are fully wiped prior to deployment.
 
-Run the command below, replacing `<YOUR_DOMAIN>` with your domain (by default the server's private IP).
+The command below is an example one liner. It installs all packages and creates a standard user. 
+Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP).
 ```shell
 curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
 unzip deploy.zip && \
@@ -125,18 +124,37 @@ curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip
 
 3. Run `./deploy.bin` to start the deployment process.
 
+`deploy.bin` has three flags and can be used based on the requirements of the device.
+
 **NOTE**: It is not possible to fully automate macOS deployments due to Apple's policies.
 Some processes will still require manual interactions.
 
 ## Deploy Flags
 
-`deploy.bin` has two flags:
-- `-a`: Gives admin to the user if they do not have a `ignore_admin: true` option in the YAML.
-- `--exclude <file>`: Excludes a given file. This can be called as many times to exclude 
-any amount of files. **It is case sensitive** and <u>must match</u> the exact spelling defined in 
-the `packages` YAML configuration file.
+- `-a`: Gives admin to the user.
+- `--exclude <file>`: Excludes a given file. **It is case sensitive** and <u>must match</u> the exact spelling 
+defined in the `packages` section of the YAML configuration file.
+- `--include <file/installed_name_file_1>`: Includes a given file to install. This can be called as many times 
+to include a file in the package installation process. **It is case sensitive** and <u>must match</u> the exact spelling of the
+`<file>.pkg` file in the directory. 
+The delimiter `/` seperates installed package names, e.g. `"<file>\Microsoft Word"` matches `Microsoft Word.app`. 
 
-For example, to give the user admin and exclude the `Chrome.pkg` package: `./deploy.bin -a --exclude Chrome`.
+`--exclude <file>` is used to *prevent a package from being downloaded*. This is used to prevent certain packages defined
+in the YAML config file from installed on a device.
+
+`--include <file>` is used to *download a package found in the package folder*, but *not in the YAML config*. This is
+intended to be used to separate the packages defined in the YAML config as default applications to install on all devices, and
+allow certain devices to have different installations.
+- The delimiter `/` indicates that string past the first one (which is the `*.pkg` name) are values that the
+`<file>.app` contains. It is used to indicate whether or not the package is installed.
+- If the delimiter is omitted, then the deployment will attempt to install every run without checking.
+
+the server config file before each client, depending on their software requirements.
+
+### Examples
+
+User admin and exclude `Chrome.pkg`: `./deploy.bin -a --exclude Chrome`.
+Include `zoomInstaller.pkg` and check if it is installed: `./deploy.bin -a --include "zoomInstaller/zoom.us"`.
 
 ## Action Runner
 
