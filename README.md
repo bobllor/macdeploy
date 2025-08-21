@@ -20,7 +20,7 @@ This contains sensitive information, ensure its removal after the script or if i
 The server must **run on a macOS or Linux** operating system.
 Windows is not supported.
 
-Below are the tools and software required on the server in before beginning the deployment process.
+Below are the tools and software required on the server before starting the deployment process.
 - `Go`
 - `docker`
 - `docker compose`
@@ -75,7 +75,7 @@ The other options are not required, the default value will be used in its place 
 Some of the script functionality *will be skipped* if no value is given.
 - For example, if no `packages` are given, then there will not be an attempt to install any packages.
 
-The deployment will proceed as normal for most functions even on success or fail.
+The deployment will proceed as normal for most functions even on success or failure.
 
 ## Installation
 
@@ -128,11 +128,15 @@ curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip
 **NOTE**: It is not possible to fully automate macOS deployments due to Apple's policies.
 Some processes will still require manual interactions.
 
-### Flags
+## Deploy Flags
 
-`deploy.bin` has two flags, `-a` and `-t`.
+`deploy.bin` has two flags:
 - `-a`: Gives admin to the user if they do not have a `ignore_admin: true` option in the YAML.
-- `-t`: Ignores TeamViewer installation even if it exists.
+- `--exclude <file>`: Excludes a given file. This can be called as many times to exclude 
+any amount of files. **It is case sensitive** and <u>must match</u> the exact spelling defined in 
+the `packages` YAML configuration file.
+
+For example, to give the user admin and exclude the `Chrome.pkg` package: `./deploy.bin -a --exclude Chrome`.
 
 ## Action Runner
 
