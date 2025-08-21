@@ -38,21 +38,12 @@ func InstallRosetta() error {
 // MakePKG creates a map with keys being the exact pkg file name and values being an array of strings
 // used to find if a pkg is installed in a given searchDirectory.
 // This is used to install the packages by accessing the pkg in their directory.
-// The keys in the map are all lowercase.
-//
-// If installTeamViewer is True then TeamViewer is added into the map as a key if it exists.
-// By default TeamViewer is not installed.
-func MakePKG(packages map[string][]string, installTeamViewer bool) map[string][]string {
+// The keys in map get lowercased.
+func MakePKG(packages map[string][]string) map[string][]string {
 	newPackagesMap := make(map[string][]string)
 
 	for pkg, pkgArr := range packages {
 		pkgLowered := strings.ToLower(pkg)
-		if !installTeamViewer && strings.Contains(pkgLowered, "teamviewer") {
-			logger.Log("Removing TeamViewer from installation package", 6)
-			logger.Log(fmt.Sprintf("TeamViewer flag: %v", installTeamViewer), 7)
-			continue
-		}
-
 		newPackagesMap[pkgLowered] = pkgArr
 	}
 
@@ -65,6 +56,8 @@ func MakePKG(packages map[string][]string, installTeamViewer bool) map[string][]
 //
 // foundPKGs is an array of strings that consist of all packages found in the packages directory.
 func InstallPKG(pkg string, foundPKGs []string) {
+	pkg = strings.ToLower(pkg)
+
 	for _, file := range foundPKGs {
 		fileLowered := strings.ToLower(file)
 

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"macos-deployment/deploy-files/core"
+	"macos-deployment/deploy-files/flags"
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/deploy-files/scripts"
 	requests "macos-deployment/deploy-files/server-requests"
@@ -17,15 +17,22 @@ import (
 var configPath string = "./config.yaml"
 var config *yaml.Config = yaml.ReadYAML(configPath)
 
-var installTeamViewer = flag.Bool("t", false, "Installs TeamViewer on the device.")
-var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the user.")
+var flagValues *flags.FlagValues = flags.GetFlags()
 
 func main() {
-	flag.Parse()
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
 
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
+
+	// removing packages from the given packages to install
+	for _, excludedPkg := range *flagValues.ExcludePackages {
+		_, ok := config.Packages[excludedPkg]
+		if ok {
+			logger.Log(fmt.Sprintf("Excluding package: %s", excludedPkg), 6)
+			delete(config.Packages, excludedPkg)
+		}
+	}
 
 	var accounts *map[string]yaml.User = &config.Accounts
 	accountCreation(accounts)
@@ -46,7 +53,7 @@ func main() {
 	}
 
 	if len(searchDirFilesArr) > 0 {
-		packagesMap := core.MakePKG(config.Packages, *installTeamViewer)
+		packagesMap := core.MakePKG(config.Packages)
 		pkgInstallation(packagesMap, searchDirFilesArr)
 	}
 
@@ -135,7 +142,7 @@ func accountCreation(accounts *map[string]yaml.User) {
 	for key := range *accounts {
 		currAccount := (*accounts)[key]
 
-		core.CreateAccount(currAccount, *adminStatus)
+		core.CreateAccount(currAccount, flagValues.AdminStatus)
 	}
 }
 
