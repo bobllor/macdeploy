@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Accesses the endpoint that triggers the ZIP update API.
+# This should only be used by the container.
 
 # probably not needed but ill just keep it here just in case.
 cd /macos-deployment/server
