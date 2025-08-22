@@ -131,7 +131,7 @@ This can be omitted to always attempt an installation.
 
 ## Installation
 
-1. Clone the repository: `git clone https://github.com/TGSDepot/macos-deployment.git`
+1. Clone the repository: `git clone REPLACE_ME_HERE`
 
 2. Change the current directory into the newly added repository: `cd macos-deployment`.
 
