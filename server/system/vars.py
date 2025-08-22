@@ -9,7 +9,6 @@ class Vars(Enum):
     # file names
     ZIP_FILE_NAME = "deploy.zip"
     BINARY_NAME = "deploy"
-    YAML_CONFIG = "config.yaml"
 
     # directory names
     _FILEVAULT_DIR_NAME = "filevault-keys"

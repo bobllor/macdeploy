@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/flags"
@@ -14,16 +15,17 @@ import (
 	"strings"
 )
 
-var configPath string = "./config.yaml"
-var config *yaml.Config = yaml.ReadYAML(configPath)
+//go:embed config.yml
+var yamlBytes []byte
+var config *yaml.Config = yaml.ReadYAML(yamlBytes)
 
 func main() {
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
 
-	var flagValues *flags.FlagValues = flags.GetFlags()
-
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
+
+	var flagValues *flags.FlagValues = flags.GetFlags()
 
 	// mutates the config packages
 	core.RemovePKG(config.Packages, *flagValues.ExcludePackages)

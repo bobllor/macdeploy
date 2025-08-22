@@ -16,6 +16,5 @@ fi
 
 zip_name="deploy.zip"
 go_bin="deploy.bin"
-config="config.yaml"
 
-zip -ru "$deploy_dir"/"$zip_name" $pkg_dir $go_bin $config
+zip -ru "$deploy_dir"/"$zip_name" $pkg_dir $go_bin

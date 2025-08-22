@@ -46,7 +46,7 @@ class Zip:
         '''
         stripped_pkg_path: str = Vars.PKG_PATH.value.replace(str(pkg_path.parent), "")
         # slice the string to remove the leading slash
-        files_to_zip: str = f"{stripped_pkg_path} {Vars.BINARY_NAME.value} {Vars.YAML_CONFIG.value}"[1:]
+        files_to_zip: str = f"{stripped_pkg_path} {Vars.BINARY_NAME.value}"[1:]
         new_pkg_path: Path = Path(stripped_pkg_path)
 
         if not self.zip_path.exists():
