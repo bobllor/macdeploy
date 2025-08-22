@@ -17,11 +17,12 @@ import (
 
 //go:embed config.yml
 var yamlBytes []byte
-var config *yaml.Config = yaml.ReadYAML(yamlBytes)
+var config *yaml.Config
 
 func main() {
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
+	config = yaml.ReadYAML(yamlBytes)
 
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
 

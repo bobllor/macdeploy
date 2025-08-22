@@ -1,21 +1,21 @@
 accounts:
   help:
-    user_name: "TEST.USERNAME"
-    password: "PASSWORD"
+    user_name: TEST.USERNAME
+    password: PASSWORD
     ignore_admin: true
   client:
-    password: "PASSWORD"
+    password: PASSWORD
 packages:
   teamviewer:
-    - "TeamViewer"
+    - TeamViewer
   office_2016:
-    - "Microsoft Word"
+    - Microsoft Word
 search_directories:
-  - "/Applications" 
-  - "/Library/Application Support" 
+  - /Applications 
+  - /Library/Application Support 
 admin:
-  user_name: "USERNAME"
-  password: "PASSWORD"
-server_ip: "https://127.0.0.1:5000"
+  user_name: USERNAME
+  password: PASSWORD
+server_ip: https://127.0.0.1:5000
 file_vault: true
 firewall: true
