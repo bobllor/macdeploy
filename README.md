@@ -83,15 +83,16 @@ Some of the script functionality *will be skipped* if no value is given.
   - `password` (REQUIRED): The password of the admin account.
 
 `packages`: Section of package file names being installed from the `pkg-files` directory.
-  - `package_name`: The package file, *it is case sensitive and must have the same name*. Do not include
-  the extension `.pkg`.
+  - `package_name`: The package file, *it is case sensitive and must have the same name* as
+  the `.pkg` files in the package directory. Do not include the extension `.pkg`.
     - `installed_file_name`: The application or directory of the package files after installation, *it is
-    case sensitive and must have the same name*. Do not include the extension `.app` if applicable. Can be
-    omitted but must pass an empty value `-` or `- ""`.
+    case sensitive and must have the same name* as the files as they are in the directories. 
+    Do not include the extension `.app` if applicable. Can be omitted but must pass an 
+    empty value `-` or `- ""`.
 
 `search_directories`: Section of an array of paths that are used for `installed_file_name` to search.
 
-`server_host` (REQUIRED): The FQDN of the server, this is required for communications and must be in HTTPS. 
+`server_host` (REQUIRED): The URL of the server, this is required for communications and must be in HTTPS. 
 By default it is the private IP of the server. 
 
 `file_vault`: Boolean used to enable or disable FileVault activation in the deployment.
@@ -115,6 +116,9 @@ bash scripts/create_zip.sh
 
 5. Run the containers using `docker compose start`.
 
+`go_build.sh` has a flag `--action`, which will create the action runner container. It is recommended
+to not use this unless an action runner is needed.
+
 # Usage
 
 ## macOS Deployment
@@ -122,9 +126,9 @@ bash scripts/create_zip.sh
 The macOS devices must be connected to the same network as the server.
 The server must also be reachable, for example via `ping`.
 
-The `curl` command uses the `--insecure` option to bypass the verify check (also similar with the Go code).
-Although this is not recommended, it is used in this case due to the nature of macOS deployment, in other words
-the devices that accesses the file server are fully wiped prior to deployment.
+The `curl` command uses the `--insecure` option to bypass the verify check (used in the Go code too).
+Although this is not recommended, it is used in this case due to the nature of macOS deployment, 
+in other words the devices that accesses the file server are fully wiped prior to deployment.
 
 The command below is an example one liner. It installs all packages and creates a standard user. 
 Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP).
@@ -186,4 +190,4 @@ implement it.
 ## Logging
 
 The log file is created in the temporary folder `/tmp` by default. 
-The log name follows the format: `%m-%dT-%H-%M-%S.<SERIAL>.log`.
+The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
