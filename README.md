@@ -2,16 +2,10 @@
 
 The macOS Deployment File Server is built to deploy macOS devices automatically without the use of MDM software.
 It automates user creation, admin tools, and package installations.
-
-It is built and powered by Go, Python, Bash, and Docker.
+It is built and powered by *Go, Python, Bash, and Docker*.
 
 ***Security warning***: This server was built with the intention to be running on a *secure, private network*.
-Although it has HTTPS encryption with a self-signed cert, it is a basic implementation and there are no
-other additional security measures in place.
-
-The **YAML configuration file is included in the ZIP file** and placed on the client device during deployment.
-By default this is removed after the script.
-This contains sensitive information, ensure its removal after the script or if it fails.
+It uses HTTPS to encrypt data with a self-signed cert. There is no additional security implemented.
 
 # Getting Started
 
@@ -28,16 +22,17 @@ Below are the tools and software required on the server before starting the depl
 - `zip`
 - `unzip`
 
-`zip`, `unzip`, and `curl` are required on the clients, however macOS devices have these installed by default.
-
-## Logging
-
-The log file is created in the temporary folder `/tmp` by default. 
-The log name follows the format: `%m-%dT-%H-%M-%S.<SERIAL>.log`.
+`zip`, `unzip`, and `curl` are required on the clients.
+macOS devices have these installed by default.
 
 ## YAML Configuration File
 
-It is important to configure the YAML configuration file prior to starting the deployment process.
+The YAML configuration file is used for **default options** of the final binary build. The deployment
+on the client's device is based around the configuration.
+
+The ***YAML should be configured prior to building the binary*** or *before the deployment process begins*.
+It is <u>embed into the binary</u>, and any changes will require an update to the binary 
+via `bash scripts/go_build.sh`.
 
 There is a sample configuration file with all options in the repository and also below.
 
@@ -58,33 +53,89 @@ packages:
     - "pkg_one_folder_name_two"
   pkg_two_name:
     - "pkg_two_folder_name_one"
+  pkg_three_name:
+    -
 search_directories:
   - "/search_dir_one" 
   - "/search_dir_two" 
 server_ip: "http://127.0.0.1:5000" # REQUIRED
-file_vault: false
 firewall: false
 ```
 
-There are ***two required options in the YAML configuration file***:
-1. `admin`: The credentials to the main/first account of the macOS.
-2. `server_ip`: The domain/IP that the server is hosted on. 
-
-The other options are not required, the default value will be used in its place if it is missing. 
-
 Some of the script functionality *will be skipped* if no value is given.
-- For example, if no `packages` are given, then there will not be an attempt to install any packages.
+- For example, if no `packages` are given, then no attempts are made to install any packages.
+
+### YAML Configuration Reference
+
+`server_ip` is a ***required*** field. This represents the server's domain, and how the communication
+occurs with the client.
+- HTTPS should be used here if the server container is used, *by default it generates a self-signed cert*.
+
+`firewall` is an optional boolean field. If `true`, then Firewall will be enabled on the device.
+
+#### Accounts
+
+The *Accounts* section represents the accounts to be made on the device.
+
+It consists of two levels:
+1. **Account Names**: This is used to group up the third level, naming each key is preference 
+but each name **must be unique**.
+2. **Account Info**: Consists of three keys: `user_name` (string), `password` (string), and 
+`ignore_admin` (bool).
+
+The **account info** allows the script to create the user into the system. 
+
+The only **required** option is `password` key. 
+
+If the `user_name` field is omitted, the script will *prompt for an input* to create the user.
+- To ensure macOS standards, the naming should consist of alphanumeric characters, periods, spaces, and
+dashes.
+
+The `ignore_admin` field **does not create the user as admin**. It should be used if the `-a`
+flag for admin is used. This will prevent all `false` value users from gaining admin rights.
+
+#### Admin
+
+The ***Admin*** section is *required*, this is the user info of the main admin account of the macOS device,
+i.e. the very first user made for the device.
+
+Its keys are the same as the *account info* section in the *Accounts* section, but `ignore_admin` is not
+used here.
+
+`user_name` and `password` are both required. This is used to *enable FileVault* on the device.
+
+#### Packages
+
+The *Packages* section is the packages to be installed on the device. This installs on ***all devices by
+default*** *unless* one of the packages defined is excluded by `--exclude <file>`.
+
+It consists of two levels:
+1. **Package Name**: The matching package name of the `*.pkg` file located in the `pkg-files` directory.
+It is *case insensitive*, but must match the name. **Do not include** `.pkg` with the name.
+2. **Installed Name**: An array of strings that is the installed file name of the package. 
+This is used together with the *Search Directores* section, used to check if a file is already installed. 
+It is ***case sensitive***, *do not include extensions* with the value.
+
+**Installed Name** if it is *unable to find the name* or *an empty string is given*, then it will assume
+the package has not been installed and attempt to install it.
+- This can be omitted and assigned an empty string to always attempt an installation.
+
+#### Search Directories
+
+The *Search Directories* section are an array of strings that represents the path of directories to search
+for the **Installed Name** strings of the *Packages* section.
+
+If found, then the installation attempt of the package will be skipped. 
+
+This can be omitted to always attempt an installation.
 
 ## Installation
 
-1. Clone the repository:
-```shell
-git clone https://github.com/TGSDepot/macos-deployment.git
-```
+1. Clone the repository: `git clone https://github.com/TGSDepot/macos-deployment.git`
 
 2. Change the current directory into the newly added repository: `cd macos-deployment`.
 
-3. Run the following commands with the scripts to initialize the files:
+3. Run the following commands with the scripts to initialize the files and container:
 ```shell
 bash scripts/docker_build.sh; \
 bash scripts/go_build.sh; \
@@ -131,30 +182,21 @@ Some processes will still require manual interactions.
 
 ## Deploy Flags
 
-- `-a`: Gives admin to the user.
-- `--exclude <file>`: Excludes a given file. **It is case sensitive** and <u>must match</u> the exact spelling 
-defined in the `packages` section of the YAML configuration file.
-- `--include <file/installed_name_file_1>`: Includes a given file to install. This can be called as many times 
-to include a file in the package installation process. **It is case sensitive** and <u>must match</u> the exact spelling of the
-`<file>.pkg` file in the directory. 
-The delimiter `/` seperates installed package names, e.g. `"<file>\Microsoft Word"` matches `Microsoft Word.app`. 
+| Flag | Usage | Example |
+| ---- | ---- | ---- |
+| `-a` | Gives admin to the user. | `./deploy.bin -a` |
+| `--exclude <file>` | Excludes a package from installation. | `./deploy.bin --exclude "Chrome"` |
+| `--include <file/installed_file_1>` | Include a package to install. | `./deploy.bin --include "zoomUSInstaller/zoom.us"` |
 
-`--exclude <file>` is used to *prevent a package from being downloaded*. This is used to prevent certain packages defined
-in the YAML config file from installed on a device.
+`--exclude <file>` is used to prevent packages defined in the YAML config file from 
+being installed on a device.
 
-`--include <file>` is used to *download a package found in the package folder*, but *not in the YAML config*. This is
-intended to be used to separate the packages defined in the YAML config as default applications to install on all devices, and
-allow certain devices to have different installations.
+`--include <file>` is used to *download a package found in the package folder*, but *not in the YAML config*. 
+This is intended to be used to separate the packages defined in the YAML config as 
+default applications to install on all devices, and allow certain devices to have different installations.
 - The delimiter `/` indicates that string past the first one (which is the `*.pkg` name) are values that the
 `<file>.app` contains. It is used to indicate whether or not the package is installed.
 - If the delimiter is omitted, then the deployment will attempt to install every run without checking.
-
-the server config file before each client, depending on their software requirements.
-
-### Examples
-
-User admin and exclude `Chrome.pkg`: `./deploy.bin -a --exclude Chrome`.
-Include `zoomInstaller.pkg` and check if it is installed: `./deploy.bin -a --include "zoomInstaller/zoom.us"`.
 
 ## Action Runner
 
@@ -168,3 +210,8 @@ Since this is intended for a private network, a spare macOS is required in order
 By default the action runner build is not built with `docker_build.sh`, but can be enabled by including the flag argument `--action`. 
 There will be additional checks for `.github/workflows` or `actions.yml` in the repository 
 if the flag is given.
+
+## Logging
+
+The log file is created in the temporary folder `/tmp` by default. 
+The log name follows the format: `%m-%dT-%H-%M-%S.<SERIAL>.log`.
