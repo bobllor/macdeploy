@@ -19,5 +19,7 @@ deploy-zip
 .pkg_metadata
 .venv
 .token
+config.yml
+config.yaml
 *.zip
 *.bin

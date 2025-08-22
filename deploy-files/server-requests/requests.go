@@ -2,6 +2,7 @@ package requests
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -21,7 +22,13 @@ func POSTData[J LogInfo | FileVaultInfo](url string, mapData *J) (ResponseData, 
 		return ResponseData{}, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	// needed for the private server, due to client wipes false cannot be done
+	tls := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tls}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -43,7 +50,12 @@ func POSTData[J LogInfo | FileVaultInfo](url string, mapData *J) (ResponseData, 
 //
 // A GET request is sent, if any issues occur an error will be returned.
 func VerifyConnection(url string) (bool, error) {
-	resp, err := http.Get(url)
+	tls := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tls}
+
+	resp, err := client.Get(url)
 	if err != nil {
 		return false, err
 	}

@@ -10,14 +10,12 @@ packages:
     - "TeamViewer"
   office_2016:
     - "Microsoft Word"
-  AbsoluteFullAgent:
-    - "Absolute"
 search_directories:
   - "/Applications" 
   - "/Library/Application Support" 
 admin:
   user_name: "USERNAME"
   password: "PASSWORD"
-server_ip: "http://127.0.0.1:5000"
+server_ip: "https://127.0.0.1:5000"
 file_vault: true
 firewall: true
