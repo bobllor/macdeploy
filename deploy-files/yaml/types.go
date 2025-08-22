@@ -2,10 +2,10 @@ package yaml
 
 type Config struct {
 	Accounts           map[string]User
-	Packages           map[string][]string
+	Packages           PackageData
 	Search_Directories []string
 	Admin              User
-	Server_Ip          string
+	Server_Host        string
 	File_Vault         bool
 	Firewall           bool
 }
@@ -15,3 +15,6 @@ type User struct {
 	Password     string
 	Ignore_Admin bool
 }
+
+// Represents the configuration option of map key:value Package_Name:[]Installed_Package_File_Name.
+type PackageData map[string][]string

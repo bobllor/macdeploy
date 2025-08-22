@@ -22,7 +22,7 @@ var WarningLevels map[int]string = map[int]string{
 }
 
 func NewLog(serialTag string) {
-	date := time.Now().Format("01-02T15-04-05")
+	date := time.Now().Format("2006-01-02T15-04-05")
 
 	LogFile = fmt.Sprintf("%s.%s.log", date, serialTag)
 	LogFilePath = fmt.Sprintf("/tmp/%s", LogFile)

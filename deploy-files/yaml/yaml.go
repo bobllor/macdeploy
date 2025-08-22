@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"macos-deployment/deploy-files/logger"
-	"os"
 
 	"github.com/goccy/go-yaml"
 )
@@ -12,16 +11,10 @@ import (
 // ReadYAML reads the YAML configuration file and returns a struct of the file.
 //
 // If there is an issue with reading the YAML configuration then this will exit the script.
-func ReadYAML(configPath string) *Config {
+func ReadYAML(data []byte) *Config {
 	yamlConfig := &Config{}
 
-	content, err := os.ReadFile(configPath)
-	if err != nil {
-		logger.Log(fmt.Sprintf("Error reading YAML config: %s", err.Error()), 2)
-		panic(err)
-	}
-
-	err = yaml.Unmarshal(content, yamlConfig)
+	err := yaml.Unmarshal(data, yamlConfig)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Error parsing YAML config: %s", err.Error()), 2)
 		panic(err)

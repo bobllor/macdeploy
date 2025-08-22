@@ -1,9 +1,10 @@
 package main
 
 import (
-	"flag"
+	_ "embed"
 	"fmt"
 	"macos-deployment/deploy-files/core"
+	"macos-deployment/deploy-files/flags"
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/deploy-files/scripts"
 	requests "macos-deployment/deploy-files/server-requests"
@@ -14,21 +15,24 @@ import (
 	"strings"
 )
 
-var configPath string = "./config.yml"
-var config *yaml.Config = yaml.ReadYAML(configPath)
-
-var installTeamViewer = flag.Bool("t", false, "Installs TeamViewer on the device.")
-var adminStatus = flag.Bool("a", false, "Used to give Admin privileges to the user.")
+//go:embed config.yml
+var yamlBytes []byte
+var config *yaml.Config = yaml.ReadYAML(yamlBytes)
 
 func main() {
-	flag.Parse()
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
 
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
 
+	var flagValues *flags.FlagValues = flags.GetFlags()
+
+	// mutates the config packages
+	core.RemovePKG(config.Packages, *flagValues.ExcludePackages)
+	core.AddPKG(config.Packages, *flagValues.IncludePackages)
+
 	var accounts *map[string]yaml.User = &config.Accounts
-	accountCreation(accounts)
+	accountCreation(accounts, flagValues.AdminStatus)
 
 	var logJsonMap = &requests.LogInfo{}
 	var fvJsonData = &requests.FileVaultInfo{}
@@ -46,8 +50,7 @@ func main() {
 	}
 
 	if len(searchDirFilesArr) > 0 {
-		packagesMap := core.MakePKG(config.Packages, *installTeamViewer)
-		pkgInstallation(packagesMap, searchDirFilesArr)
+		pkgInstallation(config.Packages, searchDirFilesArr)
 	}
 
 	if config.File_Vault {
@@ -58,7 +61,7 @@ func main() {
 		startFirewall()
 	}
 
-	status, err := requests.VerifyConnection(config.Server_Ip)
+	status, err := requests.VerifyConnection(config.Server_Host)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Unable to connect to server: %s", err.Error()), 3)
 		logger.Log("Unable to send FileVault key to the server", 4)
@@ -84,8 +87,8 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 		return
 	}
 
-	logUrl := config.Server_Ip + "/api/log"
-	fvUrl := config.Server_Ip + "/api/fv"
+	logUrl := config.Server_Host + "/api/log"
+	fvUrl := config.Server_Host + "/api/fv"
 
 	logBytes, err := os.ReadFile(logger.LogFilePath)
 	if err != nil {
@@ -127,7 +130,7 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 // accountCreation starts the account making process.
 //
 // It takes a map of the User struct from the YAML file.
-func accountCreation(accounts *map[string]yaml.User) {
+func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 	if len(*accounts) < 1 {
 		logger.Log("No account information given in YAML file", 4)
 	}
@@ -135,7 +138,7 @@ func accountCreation(accounts *map[string]yaml.User) {
 	for key := range *accounts {
 		currAccount := (*accounts)[key]
 
-		core.CreateAccount(currAccount, *adminStatus)
+		core.CreateAccount(currAccount, adminStatus)
 	}
 }
 
@@ -175,7 +178,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	for pkge, pkgeArr := range packagesMap {
 		isInstalled := core.IsInstalled(pkgeArr, &searchDirFilesArr)
 		if !isInstalled {
-			core.InstallPKG(pkge, foundPKGs)
+			core.InstallPKG(pkge, &foundPKGs)
 		}
 	}
 }

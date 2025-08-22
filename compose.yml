@@ -10,6 +10,7 @@ services:
         target: /macos-deployment
     tty: true
     stdin_open: true
+    restart: unless-stopped
   cron-service:
     container_name: cron-job
     image: deploy:cronner
@@ -19,3 +20,4 @@ services:
         target: /macos-deployment
     tty: true
     stdin_open: true
+    restart: unless-stopped

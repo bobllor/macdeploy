@@ -3,51 +3,18 @@ package utils
 import (
 	"fmt"
 	"macos-deployment/deploy-files/utils"
-	"net/http"
-	"strings"
 	"testing"
 )
 
-func TestRequest(t *testing.T) {
-	var url string = "https://www.google.com"
-	res, err := http.Get(url)
-	if err != nil {
-		t.Errorf("Got error %e", err)
-	}
-
-	println(res.StatusCode)
-}
-
 func TestName(t *testing.T) {
-	names := []string{
-		"john doe", "Will Smith",
-		"lebron.james", "Steven.Curry",
-		"j doe", "W Smith",
-		"l.james", "S.Curry",
+	namesList := []string{
+		"John Doe", "John  Smith", "Jacob  B  Doe\n  ",
+		"  Jessica \n\nThompson    lol", "someothernamehereOkay",
 	}
 
-	var fails []string
-	var successes []string
-
-	for _, name := range names {
-		if !utils.ValidateName(name) {
-			fails = append(fails, name)
-		} else {
-			successes = append(successes, utils.FormatName(name))
-		}
+	for _, name := range namesList {
+		fmt.Println(utils.FormatFullName(name))
 	}
-
-	stringNames := strings.Join(names, ", ")
-
-	fmt.Printf("Names: %s\n", stringNames)
-
-	if len(fails) > 0 {
-		failedNames := strings.Join(fails, ", ")
-		t.Errorf("Failed names: %s\n", failedNames)
-	}
-
-	formattedNames := strings.Join(successes, ", ")
-	fmt.Printf("Formatted names: %s\n", formattedNames)
 }
 
 /*
