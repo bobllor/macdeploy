@@ -32,7 +32,7 @@ on the client's device is based around the configuration.
 
 The ***YAML should be configured prior to building the binary*** or *before the deployment process begins*.
 It is <u>embed into the binary</u>, and any changes will require an update to the binary 
-via `bash scripts/go_build.sh`.
+via `bash scripts/go_build.sh` and `bash scripts/create_zip.sh`.
 
 There is a sample configuration file with all options in the repository and also below.
 
@@ -116,7 +116,7 @@ It is *case insensitive*, but must match the name. **Do not include** `.pkg` wit
 This is used together with the *Search Directores* section, used to check if a file is already installed. 
 It is ***case sensitive***, *do not include extensions* with the value.
 
-**Installed Name** if it is *unable to find the name* or *an empty string is given*, then it will assume
+If **Installed Name** is *unable to find the name* or *an empty string is given*, then it will assume
 the package has not been installed and attempt to install it.
 - This can be omitted and assigned an empty string to always attempt an installation.
 
@@ -204,12 +204,11 @@ This is an optional feature and is not required to be used.
 It is safe to skip this section, it is for users who are looking to integrate a CI/CD pipeline.
 
 There is an included action runner Docker container for the server, called `gopipe`.
-However this requires two self-hosted runner to use. 
-Since this is intended for a private network, a spare macOS is required in order to utilize a second action runner.
+This requires two action runners, one for the container and one one a spare macOS (or another work around).
 
-By default the action runner build is not built with `docker_build.sh`, but can be enabled by including the flag argument `--action`. 
-There will be additional checks for `.github/workflows` or `actions.yml` in the repository 
-if the flag is given.
+By default the action runner build is not built with `docker_build.sh`, and is enabled by including
+the flag argument `--action`. 
+Additional checks for `.github/workflows` or the `*.yml` in the repository if the flag is used.
 
 ## Logging
 
