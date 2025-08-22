@@ -53,9 +53,7 @@ func main() {
 		pkgInstallation(config.Packages, searchDirFilesArr)
 	}
 
-	if config.File_Vault {
-		startFileVault(fvJsonData)
-	}
+	startFileVault(fvJsonData)
 
 	if config.Firewall {
 		startFirewall()
@@ -178,7 +176,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	for pkge, pkgeArr := range packagesMap {
 		isInstalled := core.IsInstalled(pkgeArr, &searchDirFilesArr)
 		if !isInstalled {
-			core.InstallPKG(pkge, foundPKGs)
+			core.InstallPKG(pkge, &foundPKGs)
 		}
 	}
 }

@@ -19,10 +19,15 @@ func CreateAccount(user yaml.User, isAdmin bool) bool {
 	// username will be used for both entries needed.
 	username := user.User_Name
 
+	if user.Password == "" {
+		logger.Log("Cannot have an empty password for the user.", 3)
+		return false
+	}
+
 	if username == "" {
 		reader := bufio.NewReader(os.Stdin)
 
-		fmt.Println("\nHit enter if you want to skip the user creation.")
+		fmt.Println("\nHit enter to skip the user creation.")
 		fmt.Print("Enter the client's name: ")
 
 		input, _ := reader.ReadString('\n')

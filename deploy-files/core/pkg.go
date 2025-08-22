@@ -56,10 +56,10 @@ func AddPKG(packages map[string][]string, addedPackages []string) {
 // InstallPKG runs a Bash script with arguments to install the given packages.
 //
 // foundPKGs is an array of strings that consist of all packages found in the packages directory.
-func InstallPKG(pkg string, foundPKGs []string) {
+func InstallPKG(pkg string, foundPKGs *[]string) {
 	pkg = strings.ToLower(pkg)
 
-	for _, file := range foundPKGs {
+	for _, file := range *foundPKGs {
 		fileLowered := strings.ToLower(file)
 
 		if strings.Contains(fileLowered, pkg) {
@@ -74,22 +74,25 @@ func InstallPKG(pkg string, foundPKGs []string) {
 
 			logger.Log(fmt.Sprintf("[DEBUG] Package: %s | Package Path: %s | Command: %s", pkg, file, cmd), 7)
 			logger.Log(fmt.Sprintf("Successfully installed %s.pkg", pkg), 6)
-			break
+
+			return
 		}
 	}
+
+	logger.Log(fmt.Sprintf("Unable to install package %s.pkg", pkg), 4)
 }
 
 // IsInstalled searches for a given package in a search path from a given array of paths.
 // Ensure all keys in searchPaths are lowercase, which can be done by using the function GetFileMap.
 func IsInstalled(pkgNames []string, searchPaths *[]map[string]bool) bool {
-	// this is on a mac, there are two folders that will be checked:
-	// 	1. /Applications/ (general applications)
-	//  2. /Library/Application\ Support/ (service files)
-	// however if in any event these changes, you can configure it in config.yaml
 	for _, pkg := range pkgNames {
+		// if no installed names are given, then install regardless.
+		if pkg == "" {
+			return false
+		}
+
 		// unfortunately double loop is required here due to the array condition.
 		// on the bright side it does exit out early if it finds a match.
-
 		for _, pathMap := range *searchPaths {
 			pkgLowered := strings.ToLower(pkg)
 
