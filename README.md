@@ -1,11 +1,26 @@
-# About
+# <p align="center">MacDeploy</p>
 
-The macOS Deployment File Server is built to deploy macOS devices automatically without the use of MDM software.
-It automates user creation, admin tools, and package installations.
-It is built and powered by *Go, Python, Bash, and Docker*.
+*MacDeploy* is an automated deployment, file server used to deploy MacBook devices without the use of
+an MDM. The deployment process is powered by *Go and Bash*, automating user creation, package installation,
+Firewall & FileVault activation, FileVault key management, and logging. Communications between client
+and server is powered by *Python and Bash* with Flask and Gunicorn occur over HTTPS. 
+It all wraps with *Docker* containerizing the deployment. 
 
 ***Security warning***: This server was built with the intention to be running on a *secure, private network*.
 It uses HTTPS to encrypt data with a self-signed cert. There is no additional security implemented.
+
+# Table of Contents
+
+- [Getting Started](#getting-started)
+  - [Server Prerequisites](#server-prerequisites)
+  - [YAML Configuration File](#yaml-configuration-file)
+    - [YAML Reference](#yaml-reference)
+  - [Installation](#installation)
+- [Usage](#usage)
+  - [Deployment](#deployment) 
+  - [Deploy Flags](#deploy-flags)
+  - [Action Runner](#action-runner)
+  - [Logging](#logging)
 
 # Getting Started
 
@@ -27,18 +42,8 @@ macOS devices have these installed by default.
 
 ## YAML Configuration File
 
-The YAML configuration file is used for **default options** of the final binary build. The deployment
-on the client's device is based around the configuration.
-
-The ***YAML should be configured prior to building the binary*** or *before the deployment process begins*.
-It is <u>embed into the binary</u>, and any changes will require an update to the binary 
-via `bash scripts/go_build.sh` and `bash scripts/create_zip.sh`.
-
-There is a sample configuration file with all options in the repository and also below.
-
-***All YAML files are expected to end in `.yml`***.
-
 ```yaml
+# sample config
 accounts:
   account_one:
     user_name: "EXAMPLE.NAME"
@@ -60,10 +65,21 @@ packages:
 search_directories:
   - "/search_dir_one" 
   - "/search_dir_two" 
-server_host: "http://127.0.0.1:5000" # REQUIRED
+server_host: "https://127.0.0.1:5000" # REQUIRED
 file_vault: false
 firewall: false
 ```
+
+The YAML configuration file is used for **default options** of the final binary build. The deployment
+on the client's device is based around the configuration.
+
+The ***YAML should be configured prior to building the binary*** or *before the deployment process begins*.
+It is <u>embed into the binary</u>, and any changes will require an update to the binary 
+via `bash scripts/go_build.sh` and `bash scripts/create_zip.sh`.
+
+A sample config can be found in the repository or by looking at the top of this section.
+
+***All YAML files are expected to end in `.yml`***.
 
 Some of the script functionality *will be skipped* if no value is given.
 - For example, if no `packages` are given, then no attempts are made to install any packages.
@@ -121,7 +137,7 @@ to not use this unless an action runner is needed.
 
 # Usage
 
-## macOS Deployment
+## Deployment
 
 The macOS devices must be connected to the same network as the server.
 The server must also be reachable, for example via `ping`.
