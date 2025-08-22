@@ -61,7 +61,7 @@ func main() {
 		startFirewall()
 	}
 
-	status, err := requests.VerifyConnection(config.Server_Ip)
+	status, err := requests.VerifyConnection(config.Server_Host)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Unable to connect to server: %s", err.Error()), 3)
 		logger.Log("Unable to send FileVault key to the server", 4)
@@ -87,8 +87,8 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 		return
 	}
 
-	logUrl := config.Server_Ip + "/api/log"
-	fvUrl := config.Server_Ip + "/api/fv"
+	logUrl := config.Server_Host + "/api/log"
+	fvUrl := config.Server_Host + "/api/fv"
 
 	logBytes, err := os.ReadFile(logger.LogFilePath)
 	if err != nil {

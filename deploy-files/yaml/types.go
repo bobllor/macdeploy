@@ -5,7 +5,7 @@ type Config struct {
 	Packages           PackageData
 	Search_Directories []string
 	Admin              User
-	Server_Ip          string
+	Server_Host        string
 	File_Vault         bool
 	Firewall           bool
 }
