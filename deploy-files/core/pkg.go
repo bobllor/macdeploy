@@ -35,21 +35,22 @@ func InstallRosetta() error {
 	return nil
 }
 
-// MakePKG creates a map with keys being the exact pkg file name and values being an array of strings
-// used to find if a pkg is installed in a given searchDirectory.
-// This is used to install the packages by accessing the pkg in their directory.
-// The keys in map get lowercased.
-func MakePKG(packages map[string][]string) map[string][]string {
-	newPackagesMap := make(map[string][]string)
+// AddPKG adds new packages to an existing map.
+func AddPKG(packages map[string][]string, addedPackages []string) {
+	for _, includedPkg := range addedPackages {
+		argArr := strings.Split(includedPkg, "/")
 
-	for pkg, pkgArr := range packages {
-		pkgLowered := strings.ToLower(pkg)
-		newPackagesMap[pkgLowered] = pkgArr
+		mainPkg := argArr[0]
+		pkgInstallNameArr := make([]string, 0)
+
+		if len(argArr) > 1 {
+			pkgInstallNameArr = argArr[1:]
+		}
+
+		packages[mainPkg] = pkgInstallNameArr
 	}
 
-	logger.Log(fmt.Sprintf("Packages: %v", newPackagesMap), 7)
-
-	return newPackagesMap
+	logger.Log(fmt.Sprintf("Packages: %v", packages), 7)
 }
 
 // InstallPKG runs a Bash script with arguments to install the given packages.
@@ -100,4 +101,15 @@ func IsInstalled(pkgNames []string, searchPaths *[]map[string]bool) bool {
 	}
 
 	return false
+}
+
+// RemovePKG removes packages from a map by iterating over a list of packages to remove.
+func RemovePKG(pkgMap map[string][]string, packagesToRemove []string) {
+	for _, excludedPkg := range packagesToRemove {
+		_, ok := pkgMap[excludedPkg]
+		if ok {
+			logger.Log(fmt.Sprintf("Excluding package: %s", excludedPkg), 6)
+			delete(pkgMap, excludedPkg)
+		}
+	}
 }

@@ -3,6 +3,7 @@ package flags
 import (
 	"flag"
 	"fmt"
+	"macos-deployment/deploy-files/logger"
 )
 
 type FlagValues struct {
@@ -26,6 +27,13 @@ func GetFlags() *FlagValues {
 		AdminStatus:     *adminStatus,
 		ExcludePackages: &excludePackages,
 		IncludePackages: &includePackages,
+	}
+
+	if len(*flags.ExcludePackages) > 0 {
+		logger.Log(fmt.Sprintf("Excluded packages: %v", *flags.ExcludePackages), 7)
+	}
+	if len(*flags.IncludePackages) > 0 {
+		logger.Log(fmt.Sprintf("Included packages: %v", *flags.IncludePackages), 7)
 	}
 
 	return &flags

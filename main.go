@@ -17,46 +17,20 @@ import (
 var configPath string = "./config.yaml"
 var config *yaml.Config = yaml.ReadYAML(configPath)
 
-var flagValues *flags.FlagValues = flags.GetFlags()
-
 func main() {
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
 
+	var flagValues *flags.FlagValues = flags.GetFlags()
+
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
 
-	if len(*flagValues.ExcludePackages) > 0 {
-		logger.Log(fmt.Sprintf("Excluded packages: %v", *flagValues.ExcludePackages), 7)
-	}
-	if len(*flagValues.IncludePackages) > 0 {
-		logger.Log(fmt.Sprintf("Included packages: %v", *flagValues.IncludePackages), 7)
-	}
-
-	// removing packages from the given packages to install
-	for _, excludedPkg := range *flagValues.ExcludePackages {
-		_, ok := config.Packages[excludedPkg]
-		if ok {
-			logger.Log(fmt.Sprintf("Excluding package: %s", excludedPkg), 6)
-			delete(config.Packages, excludedPkg)
-		}
-	}
-
-	// including packages to install, must exist in the search directory
-	for _, includedPkg := range *flagValues.IncludePackages {
-		argArr := strings.Split(includedPkg, "/")
-
-		mainPkg := argArr[0]
-		pkgInstallNameArr := make([]string, 0)
-
-		if len(argArr) > 1 {
-			pkgInstallNameArr = argArr[1:]
-		}
-
-		config.Packages[mainPkg] = pkgInstallNameArr
-	}
+	// mutates the config packages
+	core.RemovePKG(config.Packages, *flagValues.ExcludePackages)
+	core.AddPKG(config.Packages, *flagValues.IncludePackages)
 
 	var accounts *map[string]yaml.User = &config.Accounts
-	accountCreation(accounts)
+	accountCreation(accounts, flagValues.AdminStatus)
 
 	var logJsonMap = &requests.LogInfo{}
 	var fvJsonData = &requests.FileVaultInfo{}
@@ -74,8 +48,7 @@ func main() {
 	}
 
 	if len(searchDirFilesArr) > 0 {
-		packagesMap := core.MakePKG(config.Packages)
-		pkgInstallation(packagesMap, searchDirFilesArr)
+		pkgInstallation(config.Packages, searchDirFilesArr)
 	}
 
 	if config.File_Vault {
@@ -155,7 +128,7 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 // accountCreation starts the account making process.
 //
 // It takes a map of the User struct from the YAML file.
-func accountCreation(accounts *map[string]yaml.User) {
+func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 	if len(*accounts) < 1 {
 		logger.Log("No account information given in YAML file", 4)
 	}
@@ -163,7 +136,7 @@ func accountCreation(accounts *map[string]yaml.User) {
 	for key := range *accounts {
 		currAccount := (*accounts)[key]
 
-		core.CreateAccount(currAccount, flagValues.AdminStatus)
+		core.CreateAccount(currAccount, adminStatus)
 	}
 }
 
