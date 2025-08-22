@@ -73,6 +73,14 @@ func main() {
 	if status {
 		sendPOST(fvJsonData, logJsonMap)
 	}
+
+	filesToRemove := map[string]struct{}{
+		utils.Globals.PKGDirName:  {},
+		utils.Globals.BinaryName:  {},
+		utils.Globals.ZIPFileName: {},
+	}
+
+	utils.RemoveFiles(filesToRemove)
 }
 
 // sendPOST sends the FileVault key and log files to the server. This is the final
