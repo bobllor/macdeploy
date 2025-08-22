@@ -6,6 +6,7 @@ type Config struct {
 	Search_Directories []string
 	Admin              User
 	Server_Ip          string
+	File_Vault         bool
 	Firewall           bool
 }
 

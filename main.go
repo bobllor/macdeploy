@@ -53,7 +53,9 @@ func main() {
 		pkgInstallation(config.Packages, searchDirFilesArr)
 	}
 
-	startFileVault(fvJsonData)
+	if config.File_Vault {
+		startFileVault(fvJsonData)
+	}
 
 	if config.Firewall {
 		startFirewall()
