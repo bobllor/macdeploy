@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	embedhandler "macos-deployment/config"
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/flags"
 	"macos-deployment/deploy-files/logger"
@@ -15,14 +16,12 @@ import (
 	"strings"
 )
 
-//go:embed config.yml
-var yamlBytes []byte
 var config *yaml.Config
 
 func main() {
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
-	config = yaml.ReadYAML(yamlBytes)
+	config = yaml.ReadYAML(embedhandler.YAMLBytes)
 
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
 
@@ -66,10 +65,10 @@ func main() {
 	if err != nil {
 		logger.Log(fmt.Sprintf("Unable to connect to server: %s", err.Error()), 3)
 		logger.Log("Unable to send FileVault key to the server", 4)
+
+		// used to prevent a cleanup even on fail, allows reruns on the binary
 		return
 	}
-
-	// honestly this check is probably not needed.
 	if status {
 		sendPOST(fvJsonData, logJsonMap)
 	}
@@ -80,7 +79,9 @@ func main() {
 		utils.Globals.ZIPFileName: {},
 	}
 
-	utils.RemoveFiles(filesToRemove)
+	if config.Always_Cleanup {
+		utils.RemoveFiles(filesToRemove)
+	}
 }
 
 // sendPOST sends the FileVault key and log files to the server. This is the final

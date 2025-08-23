@@ -8,6 +8,7 @@ type Config struct {
 	Server_Host        string
 	File_Vault         bool
 	Firewall           bool
+	Always_Cleanup     bool
 }
 
 type User struct {

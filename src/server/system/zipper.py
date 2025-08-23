@@ -19,7 +19,7 @@ class Zip:
                 The directory that contains the packages to install.
         '''
         # ensures we are in the correct directory.
-        main_path: Path = Vars._MAIN_PATH.value
+        main_path: Path = Vars.ZIP_PATH.value
         curr_path: str = os.getcwd()
 
         logger.debug(f"{__file__.split('/')[-1]} ran in {curr_path}")
@@ -44,20 +44,21 @@ class Zip:
             pkg_path: Path
                 The directory that contains the packages to install.
         '''
-        stripped_pkg_path: str = Vars.PKG_PATH.value.replace(str(pkg_path.parent), "")
-        # slice the string to remove the leading slash
-        files_to_zip: str = f"{stripped_pkg_path} {Vars.BINARY_NAME.value}"[1:]
-        new_pkg_path: Path = Path(stripped_pkg_path)
+        # ignores the leading slash
+        files_to_zip: str = f"{pkg_path.name} {Vars.BINARY_NAME.value}"
 
         if not self.zip_path.exists():
             zip_file_obj: zipfile.ZipFile = zipfile.ZipFile(self.zip_path, "a")
             
-            for path, _, file_list in new_pkg_path.walk():
+            for path, _, file_list in pkg_path.walk():
                 for file in file_list:
-                    path_of_pkg: Path = Path(f"{path}/{file}")
+                    path_of_pkg: Path = Path(f"{path.name}/{file}")
 
                     if path_of_pkg.exists():
                         zip_file_obj.write(path_of_pkg)
+                    
+            zip_file_obj.write(Vars.BINARY_NAME.value)
+            zip_file_obj.close()
 
             return
         

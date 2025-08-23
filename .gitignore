@@ -5,6 +5,10 @@
 .Trashes
 .fseventsd
 .git
+
+dist
+prod
+
 disney
 filevault-keys
 logs

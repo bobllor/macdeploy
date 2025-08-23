@@ -1,7 +1,8 @@
 package sandbox
 
 import (
-	"macos-deployment/deploy-files/utils"
+	"fmt"
+	"os"
 	"testing"
 )
 
@@ -11,6 +12,9 @@ func TestMain(t *testing.T) {
 		"removeme2.py":  {},
 		"somedir":       {},
 	}
+	fmt.Println(testFileMap)
 
-	utils.RemoveFiles(testFileMap)
+	fmt.Println(os.Getwd())
+
+	//utils.RemoveFiles(testFileMap)
 }

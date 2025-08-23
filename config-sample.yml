@@ -19,3 +19,4 @@ admin:
 server_ip: https://127.0.0.1:5000
 file_vault: true
 firewall: true
+always_cleanup: true
