@@ -1,29 +1,29 @@
-.
-..
+# mac stuff (i use a mac as the server)
 .DS_Store
 .Spotlight-V100
 .Trashes
 .fseventsd
+# i am not sure why mac includes this.
+.
+..
+
+# directories
 .git
-
+.venv
 dist
-prod
-
-disney
-filevault-keys
 logs
-old-files
 pkg-files
+filevault-keys
+
+# python stuff
 __pycache__/
 .pytest_cache
+
+# files
 *.exe
 *.pyc
 *.log
-deploy-zip
-.pkg_metadata
-.venv
-.token
-config.yml
-config.yaml
 *.zip
 *.bin
+.token
+config.yml
