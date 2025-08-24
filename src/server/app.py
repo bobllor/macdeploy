@@ -77,8 +77,6 @@ def add_log():
     '''Adds the logs from the client device to the server.'''
     content: types.LogInfo = request.get_json()
 
-    logger.debug(f"POST: {content}")
-
     if not all([key in content for key in ["body", "logFileName"]]):
         logger.warning(f"Invalid POST: {content}")
         return jsonify({"status": "error", "content": 'Missing exepected JSON values "body" or "logFileName"'}), 400

@@ -27,3 +27,4 @@ __pycache__/
 *.bin
 .token
 config.yml
+config.yaml

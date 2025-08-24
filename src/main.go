@@ -27,6 +27,15 @@ func main() {
 
 	var flagValues *flags.FlagValues = flags.GetFlags()
 
+	// starts a sudo session, used to automate sudo commands.
+	// will also be used in other functions in case a timeout occurs.
+	initSudoCmd := fmt.Sprintf("sudo -S echo <<< '%s'", config.Admin.Password)
+	err := exec.Command("bash", "-c", initSudoCmd).Run()
+	if err != nil {
+		// not a major issue, just requires manual interaction instead.
+		logger.Log(fmt.Sprintf("Error with sudo: %v | maybe wrong password?", err), 4)
+	}
+
 	// mutates the config packages
 	core.RemovePKG(config.Packages, *flagValues.ExcludePackages)
 	core.AddPKG(config.Packages, *flagValues.IncludePackages)
@@ -53,7 +62,7 @@ func main() {
 		pkgInstallation(config.Packages, searchDirFilesArr)
 	}
 
-	if config.File_Vault {
+	if config.FileVault {
 		startFileVault(fvJsonData)
 	}
 
@@ -203,6 +212,7 @@ func startFileVault(jsonData *requests.FileVaultInfo) {
 		keyMsg := fmt.Sprintf("Generated FileVault key %s", fvKey)
 		logger.Log(keyMsg, 6)
 	} else {
+		logger.Log("Unexpected error during FileVault process", 3)
 		jsonData.Key = ""
 	}
 }
