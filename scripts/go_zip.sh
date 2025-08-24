@@ -9,9 +9,24 @@ if [[ ! -d "$dist_dir" ]]; then
     mkdir $dist_dir
 fi
 
-binary_name="deploy.bin"
+config_name="config.yml"
+# used for the destination copy, handles .yaml and .yml
+dest_config=$config_name
 
-cp config.yml ./src/config 
+if [[ ! -e "$config_name" ]]; then
+    alt_config_name="config.yaml"
+
+    if [[ ! -e "$alt_config_name" ]]; then
+        echo "cannot find YAML config file"
+        exit 1
+    fi
+
+    config_name=$alt_config_name
+fi
+
+cp $config_name ./src/config/$dest_config
+
+binary_name="deploy.bin"
 env GOOS=darwin GOARCH=arm64 go build -C ./src -o "../dist/$binary_name"
 
 pkg_name="pkg-files"
