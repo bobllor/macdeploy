@@ -17,6 +17,6 @@ admin:
   user_name: USERNAME
   password: PASSWORD
 server_ip: https://127.0.0.1:5000
-file_vault: true
+filevault: true
 firewall: true
 always_cleanup: true
