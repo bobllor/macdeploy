@@ -168,11 +168,11 @@ curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip
 unzip deploy.zip
 ```
 
+</br>
+
 1. Access the ZIP file endpoint to obtain the deployment zip file. Replace the `<YOUR_DOMAIN>`
-with your domain (by default the server's private IP). 
-```shell
-curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip
-```
+with your domain (by default the server's private IP): 
+`curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip`
 
 2. Unzip the contents of the ZIP file to the home directory of the client: `unzip deploy.zip`.
 
