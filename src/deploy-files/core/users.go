@@ -76,7 +76,7 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 	}
 
 	// turns out i forgot secure token access... that was rough to find out in prod
-	secureTokenCmd := fmt.Sprintf("sudo fdesetup -secureTokenOn %s -password %s -adminUser %s -adminPassword %s",
+	secureTokenCmd := fmt.Sprintf("sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
 		username, user.Password, adminInfo.User_Name, adminInfo.Password)
 	out, err = exec.Command("bash", "-c", secureTokenCmd).Output()
 	if err != nil {
