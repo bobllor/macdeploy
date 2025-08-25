@@ -18,6 +18,6 @@ def test_zip_update():
     zip_obj: ZipFile = ZipFile(zip_path)
 
     zip_created: bool = zip_path.exists() and len(zip_obj.filelist) > 0
-    zip_path.unlink()
+    #zip_path.unlink()
 
     assert zip_created

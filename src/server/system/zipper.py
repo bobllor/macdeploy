@@ -3,7 +3,7 @@ from pathlib import Path
 from .utils import get_dir_list
 from logger import logger
 from typing import TypedDict
-import subprocess, zipfile, os
+import subprocess, zipfile, os, pdb
 
 class PathArgs(TypedDict):
     dist_dir: str
@@ -63,7 +63,7 @@ class Zip:
 
         try:
             if not self.zip_path.exists():
-                zip_status: str = self._create_zip(pkg_path)
+                zip_status: str = self._create_zip(Path(self.dist_path))
             else:
                 zip_status: str = self._update_zip(pkg_path)
         except Exception as e:
@@ -77,22 +77,27 @@ class Zip:
 
         return True, zip_status
 
-    def _create_zip(self, pkg_path: Path) -> str:
+    def _create_zip(self, dist_path: Path) -> str:
         '''Creates the ZIP file of a package directory.'''
         zip_file_obj: zipfile.ZipFile = zipfile.ZipFile(self.zip_path, "a")
         logger.warning("ZIP file does not exist")
-        
-        for path, _, file_list in pkg_path.walk():
-            # adds the pkg_path value to nested directories to keep structure
-            parent: str = path.name if pkg_path.name == path.name else f"{pkg_path.name}/{path.name}"
 
+        pdb.set_trace() 
+        for path, _, file_list in dist_path.walk():
             for file in file_list:
-                path_of_pkg: Path = Path(f"{parent}/{file}")
+                if file.split(".")[-1].lower() == "zip":
+                    break
+
+                # adds the pkg_path value to nested directories to keep structure
+                # root level vs nested dictionary, needs slice 1: to skip the leading slash
+                file_name: str = f"{str(path)}/{file}".replace(self.dist_path, "")[1:]
+
+                path_of_pkg: Path = Path(file_name)
 
                 if path_of_pkg.exists():
                     zip_file_obj.write(path_of_pkg)
                 
-        zip_file_obj.write(self.binary_file)
+        #zip_file_obj.write(self.binary_file)
         zip_file_obj.close()
 
         logger.info("Created ZIP file in %s", self.dist_path)
@@ -131,6 +136,7 @@ class Zip:
             
                 missing_pkgs.append(file_name)
 
+
         # missing_pkgs turned out to be useless. keeping it just for logging though.
         # update any missing packages. this will be done subprocess because i am lazy.
         if len(missing_pkgs) > 0:
@@ -138,7 +144,7 @@ class Zip:
 
             # relative path is needed to skip the full path creation
             # of the zip command while maintaining its folder structure.
-            files_to_zip: str = f"{pkg_path.name} {self.binary_file}"
+            files_to_zip: str = "\"" + '" "'.join(self._get_dist_files(Path(self.dist_path))) + "\""
 
             update_cmd: list[str] = f"zip -ru {str(self.zip_path)} {files_to_zip}".split()
             self._execute(update_cmd)
@@ -146,6 +152,21 @@ class Zip:
             logger.info(f"Updated ZIP file with files {missing_pkgs}")
 
         return "Updated ZIP file"
+    
+    def _get_dist_files(self, dist_path: Path) -> list[str]:
+        '''Retrieves all files in dist folder excluding the ZIP file.
+        Directories are not recursed.
+        '''
+        files: list[str] = []
+
+        # since we are in the dist folder, only need the names
+        for item in dist_path.iterdir():
+            file: str = item.name
+
+            if item.suffix != ".zip":
+                files.append(file)
+
+        return files
 
     def _execute(self, cmd: list[str]) -> None:
         '''Runs a subprocess command for execution for ZIP files.
