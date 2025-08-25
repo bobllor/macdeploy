@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	embedhandler "macos-deployment/config"
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/flags"
 	"macos-deployment/deploy-files/logger"
@@ -15,18 +16,25 @@ import (
 	"strings"
 )
 
-//go:embed config.yml
-var yamlBytes []byte
 var config *yaml.Config
 
 func main() {
 	utils.InitializeGlobals()
 	logger.NewLog(utils.Globals.SerialTag)
-	config = yaml.ReadYAML(yamlBytes)
+	config = yaml.ReadYAML(embedhandler.YAMLBytes)
 
 	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
 
 	var flagValues *flags.FlagValues = flags.GetFlags()
+
+	// starts a sudo session, used to automate sudo commands.
+	// will also be used in other functions in case a timeout occurs.
+	initSudoCmd := fmt.Sprintf("sudo -S echo <<< '%s'", config.Admin.Password)
+	err := exec.Command("bash", "-c", initSudoCmd).Run()
+	if err != nil {
+		// not a major issue, just requires manual interaction instead.
+		logger.Log(fmt.Sprintf("Error with sudo: %v | maybe wrong password?", err), 4)
+	}
 
 	// mutates the config packages
 	core.RemovePKG(config.Packages, *flagValues.ExcludePackages)
@@ -54,7 +62,7 @@ func main() {
 		pkgInstallation(config.Packages, searchDirFilesArr)
 	}
 
-	if config.File_Vault {
+	if config.FileVault {
 		startFileVault(fvJsonData)
 	}
 
@@ -66,12 +74,22 @@ func main() {
 	if err != nil {
 		logger.Log(fmt.Sprintf("Unable to connect to server: %s", err.Error()), 3)
 		logger.Log("Unable to send FileVault key to the server", 4)
+
+		// used to prevent a cleanup even on fail, allows reruns on the binary
 		return
 	}
-
-	// honestly this check is probably not needed.
 	if status {
 		sendPOST(fvJsonData, logJsonMap)
+	}
+
+	filesToRemove := map[string]struct{}{
+		utils.Globals.PKGDirName:  {},
+		utils.Globals.BinaryName:  {},
+		utils.Globals.ZIPFileName: {},
+	}
+
+	if config.Always_Cleanup {
+		utils.RemoveFiles(filesToRemove)
 	}
 }
 
@@ -194,6 +212,7 @@ func startFileVault(jsonData *requests.FileVaultInfo) {
 		keyMsg := fmt.Sprintf("Generated FileVault key %s", fvKey)
 		logger.Log(keyMsg, 6)
 	} else {
+		logger.Log("Unexpected error during FileVault process", 3)
 		jsonData.Key = ""
 	}
 }

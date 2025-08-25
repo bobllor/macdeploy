@@ -40,7 +40,7 @@ func NewLog(serialTag string) {
 //   - 6: INFO
 //   - 7: DEBUG
 func Log(msg string, level int) {
-	file, err := os.OpenFile(LogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0744)
+	file, err := os.OpenFile(LogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		panic(err)
 	}

@@ -78,6 +78,11 @@ func CreateAccount(user yaml.User, isAdmin bool) bool {
 	createdLog := fmt.Sprintf("User %s created", username)
 	logger.Log(createdLog, 6)
 
+	err = moveScriptToDesktop("ChangePassword.command", username)
+	if err != nil {
+		logger.Log(fmt.Sprintf("Unexpected error moving password script: %v", err), 4)
+	}
+
 	return true
 }
 
@@ -102,4 +107,22 @@ func userExists(username string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// moveScriptToDesktop moves a script name to the user's desktop.
+func moveScriptToDesktop(fileName string, user string) error {
+	_, err := os.Stat(fileName)
+	if err != nil {
+		return err
+	}
+
+	moveCmd := fmt.Sprintf("sudo mv %s /Users/%s/desktop", fileName, user)
+	err = exec.Command("bash", "-c", moveCmd).Run()
+	if err != nil {
+		return err
+	}
+
+	logger.Log(fmt.Sprintf("Moved %s to %s", fileName, user), 6)
+
+	return nil
 }

@@ -6,8 +6,9 @@ type Config struct {
 	Search_Directories []string
 	Admin              User
 	Server_Host        string
-	File_Vault         bool
+	FileVault          bool
 	Firewall           bool
+	Always_Cleanup     bool
 }
 
 type User struct {

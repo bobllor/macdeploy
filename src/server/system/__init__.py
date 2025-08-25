@@ -13,4 +13,4 @@ for ele in dir_list:
     path: Path = Path(ele)
 
     if not path.exists():
-        path.mkdir()
+        path.mkdir(parents=True)

@@ -27,7 +27,7 @@ EXPOSE ${PORT}
 
 CMD /bin/bash -c "gunicorn --workers=6 \ 
 --bind=0.0.0.0:5000 --keyfile $HOME/ca/key.pem \
---certfile $HOME/ca/cert.pem server.app:app"
+--certfile $HOME/ca/cert.pem src.server.app:app"
 
 ##############################################################################
 FROM golang:1.25.0-bookworm AS gopipe

@@ -12,7 +12,7 @@ def get_dir_list(path: Path, data: list[str] = None, *, replace_home: bool = Fal
 
             if replace_home:
                 # removing the home path and the trailing slash
-                file = file.replace(str(Vars._MAIN_PATH.value) + "/", "")
+                file = file.replace(str(Vars.ROOT_PATH.value) + "/", "")
 
             data.append(file)
         else:
@@ -34,6 +34,23 @@ def mk_paths(paths: list[Path], *, mk_dir: bool = True):
                 path.touch()
             else:
                 path.mkdir(parents=True)
+
+def generate_response(status: str = "success", **kwargs) -> dict[str, str]:
+    '''Generates a dictionary for a response.
+    
+    Parameters
+    ----------
+        status: str, default *"success"*
+            The status of the response. By default it is "success".
+    '''
+    response: dict[str, str] = {
+        "status": status
+    }
+
+    for key, value in kwargs.items():
+        response[key] = value
+
+    return response
 
 def unlink_children(path: Path) -> None:
     '''Removes all children from a given Path.

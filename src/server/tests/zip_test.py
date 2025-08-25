@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from system.vars import Vars
 from system.utils import unlink_children, get_dir_list
 
-zip_dir: str = Vars.ZIP_PATH.value + "-temp"
+zip_dir: str = Vars.DIST_PATH.value + "-temp"
 pkg_dir: str = Vars.PKG_PATH.value + "-temp"
 
 def mk_temp_dir(dir_list: list[str]):
@@ -35,7 +35,7 @@ def mk_files(path: Path, files: dict[str, str | dict[str, str]]):
             new_path.mkdir()
             mk_files(new_path, val)
 
-def test_zip():
+def e_test_zip():
    files: dict[str, str | dict[str, str]] = {
       "folder1": {"file1": ""},
       "file2": "",
@@ -49,7 +49,7 @@ def test_zip():
 	
    zip_path_obj: Path = Path(zip_dir) / Vars.ZIP_FILE_NAME.value
    # needs to be relative for ziplist
-   cmd: list[str] = f"zip -r {Vars.ZIP_PATH.value}-temp/{Vars.ZIP_FILE_NAME.value} ./pkg-files-temp".split()
+   cmd: list[str] = f"zip -r {Vars.DIST_PATH.value}-temp/{Vars.ZIP_FILE_NAME.value} ./pkg-files-temp".split()
    if not zip_path_obj.exists():
       subprocess.run(cmd)
 

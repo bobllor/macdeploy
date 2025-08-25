@@ -30,10 +30,10 @@ def get_client_files():
     The API is strictly used for serving the file. A scheduler to zip the files
     is required to ensure a zip file exists and is updated.
     '''
-    zip_file_path: str = f"{Vars.ZIP_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
+    zip_file_path: str = f"{Vars.DIST_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
 
     # second check after init during runtime. 
-    zip_path_obj: Path = Path(Vars.ZIP_PATH.value)
+    zip_path_obj: Path = Path(Vars.DIST_PATH.value)
     pkg_path_obj: Path = Path(Vars.PKG_PATH.value)
 
     utils.mk_paths([zip_path_obj, pkg_path_obj])
@@ -70,14 +70,12 @@ def add_filevault_key():
 
         data: str = future.result()
 
-    return jsonify({"status": "success", "content": data}), 200
+    return jsonify(utils.generate_response(content=data)), 200
 
 @app.route("/api/log", methods=["POST"])
 def add_log():
     '''Adds the logs from the client device to the server.'''
     content: types.LogInfo = request.get_json()
-
-    logger.debug(f"POST: {content}")
 
     if not all([key in content for key in ["body", "logFileName"]]):
         logger.warning(f"Invalid POST: {content}")
@@ -105,21 +103,24 @@ def update_zip():
 
     if h_token != secret_token:
         logger.info("Unauthorized access: %s", h_token)
-        return jsonify({"status": "error", "content": "Unauthorized access"}), 401
+        return jsonify(utils.generate_response(status="error", content="Unauthorized access")), 401
 
-    zip_path: Path = Path(Vars.ZIP_PATH.value) / Vars.ZIP_FILE_NAME.value
+    zip_path: Path = Path(Vars.DIST_PATH.value) / Vars.ZIP_FILE_NAME.value
     pkg_path: Path = Path(Vars.PKG_PATH.value)
 
     zipper: Zip = Zip(zip_path)
-    zipper.start_zip(pkg_path)
+    zip_status, zip_msg = zipper.start_zip(pkg_path)
+
+    if not zip_status:
+        return jsonify(utils.generate_response("error", content=zip_msg)), 500
 
     logger.info("ZIP updated access, token: %s", h_token)
 
     secret_token = secrets.token_hex(TOKEN_BITS)
     utils.write_to_file(token_file_path, secret_token)
 
-    return jsonify({"status": "success", "content": "Successfully updated ZIP files"}), 200
+    return jsonify(utils.generate_response("success" if zip_status else "error", content=zip_msg)), 200
 
 if __name__ == '__main__':
     host: str = "0.0.0.0"
-    app.run(host=host, debug=True)
+    app.run(host=host)

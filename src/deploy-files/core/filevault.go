@@ -11,8 +11,10 @@ import (
 // EnableFileVault enables FileVault and returns the key generated from the command.
 // If it fails then an empty string is returned.
 func EnableFileVault(adminUser string, adminPassword string) string {
-	cmd := "fdesetup isactive"
-	out, _ := exec.Command("sudo", "bash", "-c", cmd).Output()
+	cmd := fmt.Sprintf("sudo -S fdesetup isactive <<< '%s'", adminPassword)
+	// turns out if isactive == false the exit status is 1. ignoring the error here!
+	out, _ := exec.Command("bash", "-c", cmd).Output()
+
 	fileVaultStatus := strings.TrimSpace(strings.ToLower(string(out)))
 
 	// either some fail happened or this is ran on a non-mac OS

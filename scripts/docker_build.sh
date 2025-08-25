@@ -15,11 +15,13 @@ while (( $# > 0 )); do
             shift
             if [[ ! -e "./.github/workflows" ]]; then
                 echo "no .github/workflows directory found"
+                exit 1
             elif [[ -z $(find ./.github/workflows/ -name "*.yml") ]]; then
                 echo "no actions YAML found" 
-            else
-                args+=($go_target)
+                exit 1
             fi
+
+            args+=($go_target)
             ;;
         * )
             echo "invalid option"
