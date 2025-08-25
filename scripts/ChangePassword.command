@@ -3,15 +3,15 @@
 clear
 set -e
 
-temp_file_name="passcheck.txt"
-temp_file="/tmp/$temp_file_name"
+pass_status_name="passcheck.txt"
+pass_status_file="/tmp/$pass_status_name"
 
 # used to check for errors during passwd command.
 # this is a hacky but the exit status of passwd is always 0
 error_file="/tmp/passerr.txt"
 
-if [[ ! -e $temp_file ]]; then
-	echo "false" > $temp_file
+if [[ ! -e $pass_status_file ]]; then
+	echo "false" > $pass_status_file
 fi
 
 # ensures removal of file so it doesn't error out on success
@@ -19,7 +19,7 @@ if [[ -e $error_file ]]; then
 	rm $error_file
 fi
 
-has_completed_passwd=$(cat $temp_file)
+has_completed_passwd=$(cat $pass_status_file)
 
 if [[ $has_completed_passwd == "false" ]]; then
 	echo "It is recommended to change your password on the device."
@@ -35,10 +35,10 @@ if [[ $has_completed_passwd == "false" ]]; then
 		exit 1
 	fi
 	
-	echo "true" > $temp_file
+	echo "true" > $pass_status_file
 fi
 
-echo -e "Updating keychain for your account, please enter your old password and your new password\n"
+echo -e "Updating keychain for your account, please enter your old password (used to login) and your new password.\n"
 security set-keychain-password
 
 echo -e "\nSuccessfully updated password"
@@ -46,8 +46,8 @@ echo -e "\nSuccessfully updated password"
 set +e
 
 # debatable whether to keep this or not.
-rm ~/Desktop/ChangePassword.command
+rm -f ~/Desktop/ChangePassword.command
 
 # remove if successful, just in case this needs to be ran again.
-rm $temp_file
+rm $pass_status_file
 rm $error_file
