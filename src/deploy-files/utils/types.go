@@ -6,7 +6,7 @@ type Global struct {
 	PKGPath       string
 	SerialTag     string
 	PKGDirName    string
-	BinaryName    string
+	ARMBinaryName string
 	ZIPFileName   string
 	AMDBinaryName string
 }

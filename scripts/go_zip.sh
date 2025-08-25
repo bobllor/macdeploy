@@ -26,7 +26,7 @@ fi
 
 cp $config_name ./src/config/$dest_config
 
-binary_name="deploy.bin"
+binary_name="deploy-arm64.bin"
 env GOOS=darwin GOARCH=arm64 go build -C ./src -o "../dist/$binary_name"
 
 # need another binary for intel based macs

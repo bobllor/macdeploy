@@ -84,7 +84,7 @@ func main() {
 
 	filesToRemove := map[string]struct{}{
 		utils.Globals.PKGDirName:    {},
-		utils.Globals.BinaryName:    {},
+		utils.Globals.ARMBinaryName: {},
 		utils.Globals.ZIPFileName:   {},
 		utils.Globals.AMDBinaryName: {},
 	}
