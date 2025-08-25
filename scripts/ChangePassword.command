@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Password change for macOS script authored by Tri Nguyen.
-
 clear
 set -e
 
