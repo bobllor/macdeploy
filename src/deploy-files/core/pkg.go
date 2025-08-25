@@ -5,15 +5,21 @@ import (
 	"fmt"
 	"macos-deployment/deploy-files/logger"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
 // InstallRosetta installs the Rosetta software required for installing packages.
-// If Rosetta is already installed, then this will be skipped.
+// If Rosetta is already installed or the CPU is non-arm64, then this will be skipped.
 //
 // Package installations require Rosetta, this is required to be called.
 // If the installation of Rosetta fails then an error will be returned.
 func InstallRosetta() error {
+	if runtime.GOARCH == "amd64" {
+		logger.Log(fmt.Sprintf("Skipping Rosetta, device: %s", runtime.GOARCH), 6)
+		return nil
+	}
+
 	cmd := "pkgutil --pkgs | grep -i rosetta"
 
 	// if rosetta is not installed the exec fails, so errors MUST be ignored.
