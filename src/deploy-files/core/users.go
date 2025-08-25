@@ -78,13 +78,13 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 	// turns out i forgot secure token access... that was rough to find out in prod
 	secureTokenCmd := fmt.Sprintf("sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
 		username, user.Password, adminInfo.User_Name, adminInfo.Password)
-	out, err = exec.Command("bash", "-c", secureTokenCmd).Output()
+	_, err = exec.Command("bash", "-c", secureTokenCmd).Output()
 	if err != nil {
 		logger.Log(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err), 3)
 		return false
 	}
 
-	logger.Log(fmt.Sprintf("Secure token added for %s: %s", username, string(out)), 6)
+	logger.Log(fmt.Sprintf("Secure token added for %s", username), 6)
 
 	createdLog := fmt.Sprintf("User %s created", username)
 	logger.Log(createdLog, 6)
