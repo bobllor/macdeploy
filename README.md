@@ -15,12 +15,15 @@ It uses HTTPS to encrypt data with a self-signed cert. There is no additional se
   - [Server Prerequisites](#server-prerequisites)
   - [YAML Configuration File](#yaml-configuration-file)
     - [YAML Reference](#yaml-reference)
-  - [Installation](#installation)
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deploy Flags](#deploy-flags)
-  - [Action Runner](#action-runner)
   - [Logging](#logging)
+  - [Action Runner](#action-runner)
+- [Issues](#issues)
+  - [Password Change](#password-change)
+  - [Security](#security)
+  - [curl](#curl)
 
 # Getting Started
 
@@ -66,39 +69,38 @@ search_directories:
   - "/search_dir_one" 
   - "/search_dir_two" 
 server_host: "https://127.0.0.1:5000" # REQUIRED
-file_vault: false
+filevault: false
 firewall: false
+always_cleanup: false
 ```
 
-The YAML configuration file is used for **default options** of the final binary build. The deployment
-on the client's device is based around the configuration.
+The YAML configuration file is used for **default options** of the final binary build. The binary uses
+the configuration to setup the deployment process for the clients.
 
 The ***YAML should be configured prior to building the binary*** or *before the deployment process begins*.
-It is <u>embed into the binary</u>, and any changes will require an update to the binary 
+It is <u>embed into the binary</u>, and *any changes will require an update to the binary* 
 via `bash scripts/go_build.sh` and `bash scripts/create_zip.sh`.
 
 A sample config can be found in the repository or by looking at the top of this section.
-
-***All YAML files are expected to end in `.yml`***.
 
 Some of the script functionality *will be skipped* if no value is given.
 - For example, if no `packages` are given, then no attempts are made to install any packages.
 
 ### YAML Reference
 
-`accounts`: Section of user data that creates the user.
-- `account_name`: Name of a user group, can be named anything but *must be unique*.
+`accounts`: Creates the default users on the client device.
+- `account_name`: Groups info for a user, it can be named anything but *must be unique*.
     - `user_name`: The username of the user, this value *must be unique*. If omitted, the binary
     will prompt for an input to create the user.
     - `password` (REQUIRED): The password of the user used to login. Required if a user is being made.
     - `ignore_admin`: Ignores creating the user as admin if the `-a` flag is used. This is only used for
     default accounts in the YAML config.
 
-`admin` (REQUIRED): Section of user data that represents the main admin/first account of the device.
+`admin` (REQUIRED): The user info for the main admin/first account of the device. Used for automation.
   - `user_name` (REQUIRED): The username of the admin account.
   - `password` (REQUIRED): The password of the admin account.
 
-`packages`: Section of package file names being installed from the `pkg-files` directory.
+`packages`: Package file names that are being installed from the `pkg-files` directory on the client device.
   - `package_name`: The package file, *it is case sensitive and must have the same name* as
   the `.pkg` files in the package directory. Do not include the extension `.pkg`.
     - `installed_file_name`: The application or directory of the package files after installation, *it is
@@ -106,33 +108,40 @@ Some of the script functionality *will be skipped* if no value is given.
     Do not include the extension `.app` if applicable. Can be omitted but must pass an 
     empty value `-` or `- ""`.
 
-`search_directories`: Section of an array of paths that are used for `installed_file_name` to search.
+`search_directories`: Array of paths that are used for `installed_file_name` to search for applications.
 
 `server_host` (REQUIRED): The URL of the server, this is required for communications and must be in HTTPS. 
-By default it is the private IP of the server. 
+By default it is the private IP of the server on port 5000. 
 
 `file_vault`: Boolean used to enable or disable FileVault activation in the deployment.
 
 `firewall`: Boolean used to enable or disable Firewall activation in the deployment.
 
-## Installation
+`always_cleanup`: Boolean used to enable/disable the file removal process on the client device. If the server is not reachable, then
+the cleanup function will not run regardless of value.
+
+## Deployment Initializiation
+
+One liner version:
+```shell
+git clone REPLACE_ME_HERE && \
+cd macos-deployment && \
+bash scripts/docker_build.sh && bash scripts/go_zip.sh && \
+docker compose create && docker compose start
+```
 
 1. Clone the repository: `git clone REPLACE_ME_HERE`
 
-2. Change the current directory into the newly added repository: `cd macos-deployment`.
+2. Change the current directory into the repository: `cd macos-deployment`.
 
 3. Run the following commands with the scripts to initialize the files and container:
-```shell
-bash scripts/docker_build.sh; \
-bash scripts/go_build.sh; \
-bash scripts/create_zip.sh
-```
+`bash scripts/docker_build.sh && bash scripts/go_zip.sh`.
 
 4. Create the containers using `docker compose create`.
 
 5. Run the containers using `docker compose start`.
 
-`go_build.sh` has a flag `--action`, which will create the action runner container. It is recommended
+`docker_build.sh` has a flag `--action`, which will create the action runner container. It is recommended
 to not use this unless an action runner is needed.
 
 # Usage
@@ -142,9 +151,9 @@ to not use this unless an action runner is needed.
 The macOS devices must be connected to the same network as the server.
 The server must also be reachable, for example via `ping`.
 
-The `curl` command uses the `--insecure` option to bypass the verify check (used in the Go code too).
-Although this is not recommended, it is used in this case due to the nature of macOS deployment, 
-in other words the devices that accesses the file server are fully wiped prior to deployment.
+You must have a **YAML configuration file** set up prior to deploying, otherwise there will be issues running.
+- Run `bash scripts/go_zip.sh` after configuring to setup the ZIP file for deployment.
+
 
 The command below is an example one liner. It installs all packages and creates a standard user. 
 Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP).
@@ -152,6 +161,11 @@ Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP).
 curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
 unzip deploy.zip && \
 ./deploy.bin
+```
+To only unzip the ZIP file and use `deploy.bin` with flags:
+```shell
+curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
+unzip deploy.zip
 ```
 
 1. Access the ZIP file endpoint to obtain the deployment zip file. Replace the `<YOUR_DOMAIN>`
@@ -187,6 +201,16 @@ to install on all devices.
 These files usually end with the `.app` extension.
 - If the delimiter is omitted, then the deployment will attempt to install without checking for previous
 installs.
+- Functions similarily to packages defined in the YAML configuration.
+
+## Logging
+
+The log file is created in the temporary folder `/tmp` by default on the client. 
+The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
+- The permissions are 0600 by default, but can be removed safely, assuming you are able to get the logs on the server.
+
+Logs from the client and server goes to the `logs` folder in the repository. The server logs are located in the subdirectory
+`server-logs`.
 
 ## Action Runner
 
@@ -200,10 +224,34 @@ By default the action runner build is not built with `docker_build.sh`, and is e
 the flag argument `--action`. 
 Additional checks for `.github/workflows` or the `*.yml` in the repository if the flag is used.
 
-*NOTE*: This is not a great implementation of a CI/CD pipeline as I am using this to learn how to
-implement it.
+# Issues
 
-## Logging
+## Password Change
 
-The log file is created in the temporary folder `/tmp` by default. 
-The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
+By default, there is no password change on login similar to that in JAMF or Windows. This is a concern since
+the end user will have a default password and is very likely not changing it upon logging into their device.
+
+Due to this, there is a script in the `scripts` directory named `ChangePassword.command` that prompts for a password change I created.
+
+This script is added to the user's desktop during user creation of the deployment process. This can be ran by double clicking, which
+prompts the end user to input their old password, and a new password.
+- This is prompted twice: changing their login and updating their keychain.
+
+Temporary text files are created in `/tmp/` that is used to support the script: `passerr.txt` and `passcheck.txt`.
+These files are used as flags for the script, and if there is some issue where the script needs to be reran fresh then these
+two files can be deleted to essentially "reset" the script.
+- *However*, if the user successfully changed their password then they will need to change to a new password. There is no work
+around to this issue (at least what I can think of).
+
+## Security
+
+The deployment process is expected to be ran ***on a private network***, and therefore its security is at a level where it protects
+the bare minimum- encrypted communications and some basic token authentication.
+
+**Do not run this** publicly, which will cause the endpoints to be accessible to everyone.
+
+## curl
+
+The `curl` command uses the `--insecure` option to bypass the verify check (used in the Go code too).
+Although this is not recommended, it is used in this case due to the nature of device deployment- 
+or in other words the devices are fully wiped prior to deployment.
