@@ -18,7 +18,7 @@ It uses HTTPS to encrypt data with a self-signed cert. There is no additional se
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deploy Flags](#deploy-flags)
-  - [Distributable](#distributable-directory)
+  - [Distributable Directory](#distributable-directory)
   - [Logging](#logging)
   - [Action Runner](#action-runner)
 - [Issues](#issues)
@@ -215,12 +215,11 @@ installs.
 ## Distributable Directory
 
 The `dist` directory holds all files that are expected to be downloaded over to the client device.
-This includes the **packages** directory, `pkg-files`.
+This includes the **packages** directory, `pkg-files`, *ZIP file*, and binaries.
 
-The *ZIP file* and binaries are placed in this location as well.
-
-All files that does not end in `.zip` will be compressed into a ZIP file, where the distribution can occur.
-Any packages that need to be installed on a device is placed in the `pkg-files` located in the directory.
+All files that does not end in `.zip` will be compressed into a ZIP file.
+Keep all packages (`.pkg`) placed in the `pkg-files` located in the directory. If one doesn't exist,
+`go_zip.sh` creates one on use and during runtime.
 
 ## Logging
 
