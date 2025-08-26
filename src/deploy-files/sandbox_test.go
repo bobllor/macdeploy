@@ -3,6 +3,7 @@ package sandbox
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -17,4 +18,5 @@ func TestMain(t *testing.T) {
 	fmt.Println(os.Getwd())
 
 	//utils.RemoveFiles(testFileMap)
+	fmt.Println(runtime.GOARCH)
 }

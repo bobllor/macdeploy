@@ -83,9 +83,10 @@ func main() {
 	}
 
 	filesToRemove := map[string]struct{}{
-		utils.Globals.PKGDirName:  {},
-		utils.Globals.BinaryName:  {},
-		utils.Globals.ZIPFileName: {},
+		utils.Globals.PKGDirName:       {},
+		utils.Globals.ARMBinaryName:    {},
+		utils.Globals.ZIPFileName:      {},
+		utils.Globals.X86_64BinaryName: {},
 	}
 
 	if config.Always_Cleanup {
@@ -157,7 +158,7 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 	for key := range *accounts {
 		currAccount := (*accounts)[key]
 
-		core.CreateAccount(currAccount, adminStatus)
+		core.CreateAccount(currAccount, config.Admin, adminStatus, config.Add_Change_Password)
 	}
 }
 

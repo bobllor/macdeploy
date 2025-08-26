@@ -7,7 +7,7 @@ class TestVars:
     _DIST_DIR_NAME: str = "dist-test"
     _PKG_DIR_NAME: str = "pkg-files-test"
 
-    _BINARY_NAME: str = "deploy-test.bin"
+    _BINARY_NAME: str = "deploy-arm-test.bin"
     _ZIP_NAME: str = "deploy-test.zip"
 
     DIST_DIR_PATH: str = f"{ROOT_PATH}/{_DIST_DIR_NAME}"

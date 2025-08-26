@@ -15,7 +15,7 @@ import (
 
 // CreateAccount creates the user account on the device.
 // Returns true if the account is successfully made, else false.
-func CreateAccount(user yaml.User, isAdmin bool) bool {
+func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool, addChangePassword bool) bool {
 	// username will be used for both entries needed.
 	username := user.User_Name
 
@@ -75,12 +75,26 @@ func CreateAccount(user yaml.User, isAdmin bool) bool {
 		return false
 	}
 
+	// turns out i forgot secure token access... that was rough to find out in prod
+	secureTokenCmd := fmt.Sprintf("sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
+		username, user.Password, adminInfo.User_Name, adminInfo.Password)
+
+	_, err = exec.Command("bash", "-c", secureTokenCmd).Output()
+	if err != nil {
+		logger.Log(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err), 3)
+		return false
+	}
+
+	logger.Log(fmt.Sprintf("Secure token added for %s", username), 6)
+
 	createdLog := fmt.Sprintf("User %s created", username)
 	logger.Log(createdLog, 6)
 
-	err = moveScriptToDesktop("ChangePassword.command", username)
-	if err != nil {
-		logger.Log(fmt.Sprintf("Unexpected error moving password script: %v", err), 4)
+	if addChangePassword {
+		err = moveScriptToDesktop("ChangePassword.command", username)
+		if err != nil {
+			logger.Log(fmt.Sprintf("Unexpected error moving password script: %v", err), 4)
+		}
 	}
 
 	return true

@@ -18,6 +18,7 @@ It uses HTTPS to encrypt data with a self-signed cert. There is no additional se
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deploy Flags](#deploy-flags)
+  - [Distributable](#distributable-directory)
   - [Logging](#logging)
   - [Action Runner](#action-runner)
 - [Issues](#issues)
@@ -79,11 +80,11 @@ the configuration to setup the deployment process for the clients.
 
 The ***YAML should be configured prior to building the binary*** or *before the deployment process begins*.
 It is <u>embed into the binary</u>, and *any changes will require an update to the binary* 
-via `bash scripts/go_build.sh` and `bash scripts/create_zip.sh`.
+via `bash scripts/go_zip.sh`.
 
 A sample config can be found in the repository or by looking at the top of this section.
 
-Some of the script functionality *will be skipped* if no value is given.
+If certain values are omitted, the script functionality *will be skipped*.
 - For example, if no `packages` are given, then no attempts are made to install any packages.
 
 ### YAML Reference
@@ -120,7 +121,12 @@ By default it is the private IP of the server on port 5000.
 `always_cleanup`: Boolean used to enable/disable the file removal process on the client device. If the server is not reachable, then
 the cleanup function will not run regardless of value.
 
-## Deployment Initializiation
+`add_change_password`: Boolean used to add the `ChangePassword.command` script to the user's desktop. This is a script that upon
+activation, will prompt a terminal for the user to change their password.
+- I recommend enabling this due to *not being able to change password on login in non-MDM environments*.
+- This requires the user to manually click on the script, a guide is recommended.
+
+## Deployment Initialization
 
 One liner version:
 ```shell
@@ -154,21 +160,25 @@ The server must also be reachable, for example via `ping`.
 You must have a **YAML configuration file** set up prior to deploying, otherwise there will be issues running.
 - Run `bash scripts/go_zip.sh` after configuring to setup the ZIP file for deployment.
 
+There are ***two binaries generated*** when running the script: `deploy-arm.bin` and `deploy-x86_64.bin`.
+- `deploy-arm.bin` is used on *Apple Silicon*/`ARM64` MacBooks.
+- `deploy-x86_64.bin` is used on *Intel*/`x86_64` MacBooks.
 
-The command below is an example one liner. It installs all packages and creates a standard user. 
-Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP).
+As Intel MacBooks are being phased out, the most often use case would be `deploy-arm.bin`. In any case,
+`deploy-x86_64.bin` will remain for scenarios with Intel MacBooks.
+
+The command below is an example one liner. It installs all packages and creates a standard user for `ARM64` MacBoooks. 
+Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP):
 ```shell
 curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
 unzip deploy.zip && \
-./deploy.bin
+./deploy-arm.bin
 ```
-To only unzip the ZIP file and use `deploy.bin` with flags:
+To only unzip the ZIP file and use the `deploy` binary with flags:
 ```shell
 curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
 unzip deploy.zip
 ```
-
-</br>
 
 1. Access the ZIP file endpoint to obtain the deployment zip file. Replace the `<YOUR_DOMAIN>`
 with your domain (by default the server's private IP): 
@@ -176,11 +186,11 @@ with your domain (by default the server's private IP):
 
 2. Unzip the contents of the ZIP file to the home directory of the client: `unzip deploy.zip`.
 
-3. Run `./deploy.bin` to start the deployment process.
+3. Run `./deploy-arm.bin` or `./deploy-x86_64.bin` to start the deployment process.
 
-`deploy.bin` has three flags and can be used based on the requirements of the device.
+The `deploy` binary has three flags that can be passed.
 
-**NOTE**: It is not possible to fully automate macOS deployments due to Apple's policies.
+**DISCLAIMER**: It is not possible to fully automate macOS deployments due to Apple's policies.
 Some processes will still require manual interactions.
 
 ## Deploy Flags
@@ -201,7 +211,16 @@ to install on all devices.
 These files usually end with the `.app` extension.
 - If the delimiter is omitted, then the deployment will attempt to install without checking for previous
 installs.
-- Functions similarily to packages defined in the YAML configuration.
+
+## Distributable Directory
+
+The `dist` directory holds all files that are expected to be downloaded over to the client device.
+This includes the **packages** directory, `pkg-files`.
+
+The *ZIP file* and binaries are placed in this location as well.
+
+All files that does not end in `.zip` will be compressed into a ZIP file, where the distribution can occur.
+Any packages that need to be installed on a device is placed in the `pkg-files` located in the directory.
 
 ## Logging
 
@@ -230,6 +249,9 @@ Additional checks for `.github/workflows` or the `*.yml` in the repository if th
 
 By default, there is no password change on login similar to that in JAMF or Windows. This is a concern since
 the end user will have a default password and is very likely not changing it upon logging into their device.
+
+It is **heavily recommended to set** `add_change_password` to `true` in the YAML configuration which adds 
+the script `ChangePassword.command` to the user's desktop.
 
 Due to this, there is a script in the `scripts` directory named `ChangePassword.command` that prompts for a password change I created.
 

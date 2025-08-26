@@ -16,9 +16,10 @@ func InitializeGlobals() {
 	initPaths()
 	initSerialTag()
 
-	Globals.BinaryName = "deploy.bin"
 	Globals.PKGDirName = "pkg-files"
 	Globals.ZIPFileName = "deploy.zip"
+	Globals.ARMBinaryName = "deploy-arm.bin"
+	Globals.X86_64BinaryName = "deploy-x86_64.bin"
 }
 
 func initPaths() {

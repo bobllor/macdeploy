@@ -26,8 +26,12 @@ fi
 
 cp $config_name ./src/config/$dest_config
 
-binary_name="deploy.bin"
+binary_name="deploy-arm.bin"
 env GOOS=darwin GOARCH=arm64 go build -C ./src -o "../dist/$binary_name"
+
+# need another binary for intel based macs
+amd_binary="deploy-x86_64.bin"
+env GOOS=darwin GOARCH=amd64 go build -C ./src -o "../dist/$amd_binary"
 
 pkg_name="pkg-files"
 pkg_dir="$dist_dir/$pkg_name"
@@ -39,4 +43,4 @@ fi
 cd $dist_dir
 zip_name="deploy.zip"
 
-zip -ru "$zip_name" $pkg_name $binary_name
+zip -ru "$zip_name" "$pkg_name" "$binary_name" "$amd_binary"
