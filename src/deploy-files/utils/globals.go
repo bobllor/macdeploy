@@ -19,7 +19,7 @@ func InitializeGlobals() {
 	Globals.PKGDirName = "pkg-files"
 	Globals.ZIPFileName = "deploy.zip"
 	Globals.ARMBinaryName = "deploy-arm.bin"
-	Globals.X86BinaryName = "deploy-x86.bin"
+	Globals.X86_64BinaryName = "deploy-x86_64.bin"
 }
 
 func initPaths() {

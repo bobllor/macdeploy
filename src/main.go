@@ -83,10 +83,10 @@ func main() {
 	}
 
 	filesToRemove := map[string]struct{}{
-		utils.Globals.PKGDirName:    {},
-		utils.Globals.ARMBinaryName: {},
-		utils.Globals.ZIPFileName:   {},
-		utils.Globals.X86BinaryName: {},
+		utils.Globals.PKGDirName:       {},
+		utils.Globals.ARMBinaryName:    {},
+		utils.Globals.ZIPFileName:      {},
+		utils.Globals.X86_64BinaryName: {},
 	}
 
 	if config.Always_Cleanup {
