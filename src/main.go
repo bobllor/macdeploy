@@ -86,7 +86,7 @@ func main() {
 		utils.Globals.PKGDirName:    {},
 		utils.Globals.ARMBinaryName: {},
 		utils.Globals.ZIPFileName:   {},
-		utils.Globals.AMDBinaryName: {},
+		utils.Globals.X86BinaryName: {},
 	}
 
 	if config.Always_Cleanup {
@@ -158,7 +158,7 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 	for key := range *accounts {
 		currAccount := (*accounts)[key]
 
-		core.CreateAccount(currAccount, config.Admin, adminStatus)
+		core.CreateAccount(currAccount, config.Admin, adminStatus, config.Add_Change_Password)
 	}
 }
 

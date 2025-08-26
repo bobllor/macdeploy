@@ -8,5 +8,5 @@ type Global struct {
 	PKGDirName    string
 	ARMBinaryName string
 	ZIPFileName   string
-	AMDBinaryName string
+	X86BinaryName string
 }

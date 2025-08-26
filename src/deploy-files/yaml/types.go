@@ -1,14 +1,15 @@
 package yaml
 
 type Config struct {
-	Accounts           map[string]User
-	Packages           PackageData
-	Search_Directories []string
-	Admin              User
-	Server_Host        string
-	FileVault          bool
-	Firewall           bool
-	Always_Cleanup     bool
+	Accounts            map[string]User
+	Packages            PackageData
+	Search_Directories  []string
+	Admin               User
+	Server_Host         string
+	FileVault           bool
+	Firewall            bool
+	Always_Cleanup      bool
+	Add_Change_Password bool
 }
 
 type User struct {
