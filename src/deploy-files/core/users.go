@@ -130,7 +130,7 @@ func moveScriptToDesktop(fileName string, user string) error {
 		return err
 	}
 
-	moveCmd := fmt.Sprintf("sudo mv %s /Users/%s/desktop", fileName, user)
+	moveCmd := fmt.Sprintf("sudo cp %s /Users/%s/desktop", fileName, user)
 	err = exec.Command("bash", "-c", moveCmd).Run()
 	if err != nil {
 		return err
