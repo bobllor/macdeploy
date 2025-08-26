@@ -106,10 +106,9 @@ def update_zip():
         return jsonify(utils.generate_response(status="error", content="Unauthorized access")), 401
 
     zip_path: Path = Path(Vars.DIST_PATH.value) / Vars.ZIP_FILE_NAME.value
-    pkg_path: Path = Path(Vars.PKG_PATH.value)
 
     zipper: Zip = Zip(zip_path)
-    zip_status, zip_msg = zipper.start_zip(pkg_path)
+    zip_status, zip_msg = zipper.start_zip()
 
     if not zip_status:
         return jsonify(utils.generate_response("error", content=zip_msg)), 500
