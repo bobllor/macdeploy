@@ -5,6 +5,7 @@ accounts:
     ignore_admin: true
   client:
     password: PASSWORD
+    change_password: true
 packages:
   teamviewer:
     - TeamViewer
@@ -20,4 +21,3 @@ server_ip: https://127.0.0.1:5000
 filevault: true
 firewall: true
 always_cleanup: true
-add_change_password: false
