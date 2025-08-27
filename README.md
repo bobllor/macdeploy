@@ -9,6 +9,19 @@ It all wraps with *Docker* containerizing the deployment.
 ***Security warning***: This server was built with the intention to be running on a *secure, private network*.
 It uses HTTPS to encrypt data with a self-signed cert. There is no additional security implemented.
 
+# Features
+
+No MDM? No JAMF? No problem! 
+
+This is a light server and automation framework used to deploy MacBooks with minimal manual interactions needed.
+It features:
+- Automation of user creation, SecureToken handling, package installations, FileVault key handling, logging, and more.
+- Password change on login similar to that of Windows.
+- A lightweight file server to facilitate distribution and communications.
+- Easy deployment of the server and script anywhere, on any device.
+- Uses a self-signed certificate to utilize HTTPS for encryption of data transmitted via HTTP.
+- Customizable YAML configuration.
+
 # Table of Contents
 
 - [Getting Started](#getting-started)
@@ -18,7 +31,7 @@ It uses HTTPS to encrypt data with a self-signed cert. There is no additional se
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deploy Flags](#deploy-flags)
-  - [Distributable Directory](#distributable-directory)
+  - [Distributable](#distributable-directory)
   - [Logging](#logging)
   - [Action Runner](#action-runner)
 - [Issues](#issues)
@@ -55,6 +68,7 @@ accounts:
     ignore_admin: true
   account_two:
     password: "PASSWORD"
+    change_password: true
 admin: # REQUIRED
   user_name: "USERNAME"
   password: "PASSWORD"
@@ -94,6 +108,8 @@ If certain values are omitted, the script functionality *will be skipped*.
     - `user_name`: The username of the user, this value *must be unique*. If omitted, the binary
     will prompt for an input to create the user.
     - `password` (REQUIRED): The password of the user used to login. Required if a user is being made.
+    - `change_password`: If true, requires
+    It is recommended that this is enabled. the user to change their password upon logging in for the first time.
     - `ignore_admin`: Ignores creating the user as admin if the `-a` flag is used. This is only used for
     default accounts in the YAML config.
 
@@ -114,17 +130,12 @@ If certain values are omitted, the script functionality *will be skipped*.
 `server_host` (REQUIRED): The URL of the server, this is required for communications and must be in HTTPS. 
 By default it is the private IP of the server on port 5000. 
 
-`file_vault`: Boolean used to enable or disable FileVault activation in the deployment.
+`file_vault`: Enable or disable FileVault activation in the deployment.
 
-`firewall`: Boolean used to enable or disable Firewall activation in the deployment.
+`firewall`: Enable or disable Firewall activation in the deployment.
 
-`always_cleanup`: Boolean used to enable/disable the file removal process on the client device. If the server is not reachable, then
-the cleanup function will not run regardless of value.
-
-`add_change_password`: Boolean used to add the `ChangePassword.command` script to the user's desktop. This is a script that upon
-activation, will prompt a terminal for the user to change their password.
-- I recommend enabling this due to *not being able to change password on login in non-MDM environments*.
-- This requires the user to manually click on the script, a guide is recommended.
+`always_cleanup`: Enable or disable the removal of the deployment files from the device. If the server is not reachable, then
+the cleanup will not occur regardless of value.
 
 ## Deployment Initialization
 
@@ -197,9 +208,9 @@ Some processes will still require manual interactions.
 
 | Flag | Usage | Example |
 | ---- | ---- | ---- |
-| `-a` | Gives admin to the user. | `./deploy.bin -a` |
-| `--exclude <file>` | Excludes a package from installation. | `./deploy.bin --exclude "Chrome"` |
-| `--include <file/installed_file_1>` | Include a package to install. | `./deploy.bin --include "zoomUSInstaller/zoom.us"` |
+| `-a` | Gives admin to the user. | `./deploy-arm.bin -a` |
+| `--exclude <file>` | Excludes a package from installation. | `./deploy-arm.bin --exclude "Chrome"` |
+| `--include <file/installed_file_1>` | Include a package to install. | `./deploy-arm.bin --include "zoomUSInstaller/zoom.us"` |
 
 `--exclude <file>` is used to prevent packages defined in the YAML config file from 
 being installed on a device.
@@ -215,11 +226,12 @@ installs.
 ## Distributable Directory
 
 The `dist` directory holds all files that are expected to be downloaded over to the client device.
-This includes the **packages** directory, `pkg-files`, *ZIP file*, and binaries.
+This includes the **packages** directory, `pkg-files`.
 
-All files that does not end in `.zip` will be compressed into a ZIP file.
-Keep all packages (`.pkg`) placed in the `pkg-files` located in the directory. If one doesn't exist,
-`go_zip.sh` creates one on use and during runtime.
+The *ZIP file* and binaries are placed in this location as well.
+
+All files that does not end in `.zip` will be compressed into a ZIP file, where the distribution can occur.
+Any packages that need to be installed on a device is placed in the `pkg-files` located in the directory.
 
 ## Logging
 
@@ -243,26 +255,6 @@ the flag argument `--action`.
 Additional checks for `.github/workflows` or the `*.yml` in the repository if the flag is used.
 
 # Issues
-
-## Password Change
-
-By default, there is no password change on login similar to that in JAMF or Windows. This is a concern since
-the end user will have a default password and is very likely not changing it upon logging into their device.
-
-It is **heavily recommended to set** `add_change_password` to `true` in the YAML configuration which adds 
-the script `ChangePassword.command` to the user's desktop.
-
-Due to this, there is a script in the `scripts` directory named `ChangePassword.command` that prompts for a password change I created.
-
-This script is added to the user's desktop during user creation of the deployment process. This can be ran by double clicking, which
-prompts the end user to input their old password, and a new password.
-- This is prompted twice: changing their login and updating their keychain.
-
-Temporary text files are created in `/tmp/` that is used to support the script: `passerr.txt` and `passcheck.txt`.
-These files are used as flags for the script, and if there is some issue where the script needs to be reran fresh then these
-two files can be deleted to essentially "reset" the script.
-- *However*, if the user successfully changed their password then they will need to change to a new password. There is no work
-around to this issue (at least what I can think of).
 
 ## Security
 
