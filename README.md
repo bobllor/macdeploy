@@ -28,14 +28,14 @@ It features:
   - [Server Prerequisites](#server-prerequisites)
   - [YAML Configuration File](#yaml-configuration-file)
     - [YAML Reference](#yaml-reference)
+  - [Deployment Initialization](#deployment-initialization)
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deploy Flags](#deploy-flags)
-  - [Distributable](#distributable-directory)
+  - [Distributable Directory](#distributable-directory)
   - [Logging](#logging)
   - [Action Runner](#action-runner)
-- [Issues](#issues)
-  - [Password Change](#password-change)
+- [Limitations and Security](#limitations-and-security)
   - [Security](#security)
   - [curl](#curl)
 
@@ -254,7 +254,7 @@ By default the action runner build is not built with `docker_build.sh`, and is e
 the flag argument `--action`. 
 Additional checks for `.github/workflows` or the `*.yml` in the repository if the flag is used.
 
-# Issues
+# Limitations and Security
 
 ## Security
 
