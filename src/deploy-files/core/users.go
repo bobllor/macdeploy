@@ -128,7 +128,7 @@ func userExists(username string) (bool, error) {
 	return false, nil
 }
 
-// moveScriptToDesktop moves an item to the user's desktop.
+// moveToDesktop moves a given file to the user's desktop.
 func moveToDesktop(fileName string, user string) error {
 	_, err := os.Stat(fileName)
 	if err != nil {

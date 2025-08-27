@@ -17,5 +17,5 @@ if [[ $isAdmin == "false" ]]; then
         -fullName "$user_name" -password "$password"
 else
     sudo sysadminctl -addUser "$folder_name" \
-        -fullName "$full_name" -password "$password" -admin
+        -fullName "$user_name" -password "$password" -admin
 fi
