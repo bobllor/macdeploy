@@ -1,18 +1,21 @@
 # <p align="center">MacDeploy</p>
 
-No MDM? No JAMF? No problem! 
+Looking to automate MacBook deployments? No MDM? No JAMF? No problem! 
 
 *MacDeploy* is a light-weight server and automation framework used to deploy MacBooks with minimal manual interactions needed.
 It features:
 - Automation of user creation, SecureToken handling, package installations, FileVault key handling, logging, and more.
+- FileVault key generation automatic storage to the server.
 - Password change on login similar to that of Windows.
-- A lightweight file server to facilitate client-server communication and file distributing.
-- Easy deployment the server and scripts anywhere, on any device.
-- Uses a self-signed certificate to utilize HTTPS for encryption of data transmitted via HTTP.
+- A lightweight file server to facilitate client-server communication and file distributing, bypassing SSH.
+- Easy deployment of the server and scripts anywhere, on any device.
+- Uses a self-signed certificate to enable HTTPS for encryption.
 - Customizable YAML configuration.
 
+It is powered by Go, Python, Bash, and Docker.
+
 ***Security warning***: This server was built with the intention to be running on a *secure, private network*.
-There is no security implemented to handle a public facing server.
+There is no additional security implemented to handle a public facing server.
 
 # Table of Contents
 
@@ -231,7 +234,9 @@ Any packages that need to be installed on a device must be placed in the `pkg-fi
 
 The log file is created in the temporary folder `/tmp` by default on the client. 
 The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
-- The permissions are 0600 by default, but can be removed safely, assuming you are able to get the logs on the server.
+- The permissions are 0600 by default, but can be removed safely.
+
+If the **log file fails to send to the server**, ensure to save this log file if the FileVault key was generated.
 
 Logs from the client and server goes to the `logs` folder in the repository. The server logs are located in the subdirectory
 `server-logs`.
