@@ -1,23 +1,22 @@
 accounts:
-  help:
-    user_name: TEST.USERNAME
+  default:
+    user_name: defaultuser0
     password: PASSWORD
     ignore_admin: true
   client:
     password: PASSWORD
     change_password: true
 packages:
-  teamviewer:
-    - TeamViewer
-  office_2016:
-    - Microsoft Word
+  chrome:
+    - Chrome
+  zoom:
+    - zoom.us
 search_directories:
   - /Applications 
-  - /Library/Application Support 
 admin:
-  user_name: USERNAME
+  user_name: ADMIN
   password: PASSWORD
 server_ip: https://127.0.0.1:5000
 filevault: true
 firewall: true
-always_cleanup: true
+always_cleanup: false
