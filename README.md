@@ -1,26 +1,18 @@
 # <p align="center">MacDeploy</p>
 
-*MacDeploy* is an automated deployment, file server used to deploy MacBook devices without the use of
-an MDM. The deployment process is powered by *Go and Bash*, automating user creation, package installation,
-Firewall & FileVault activation, FileVault key management, and logging. Communications between client
-and server is powered by *Python and Bash* with Flask and Gunicorn occur over HTTPS. 
-It all wraps with *Docker* containerizing the deployment. 
-
-***Security warning***: This server was built with the intention to be running on a *secure, private network*.
-It uses HTTPS to encrypt data with a self-signed cert. There is no additional security implemented.
-
-# Features
-
 No MDM? No JAMF? No problem! 
 
-This is a light server and automation framework used to deploy MacBooks with minimal manual interactions needed.
+*MacDeploy* is a light-weight server and automation framework used to deploy MacBooks with minimal manual interactions needed.
 It features:
 - Automation of user creation, SecureToken handling, package installations, FileVault key handling, logging, and more.
 - Password change on login similar to that of Windows.
-- A lightweight file server to facilitate distribution and communications.
-- Easy deployment of the server and script anywhere, on any device.
+- A lightweight file server to facilitate client-server communication and file distributing.
+- Easy deployment the server and scripts anywhere, on any device.
 - Uses a self-signed certificate to utilize HTTPS for encryption of data transmitted via HTTP.
 - Customizable YAML configuration.
+
+***Security warning***: This server was built with the intention to be running on a *secure, private network*.
+There is no security implemented to handle a public facing server.
 
 # Table of Contents
 
@@ -32,7 +24,7 @@ It features:
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deploy Flags](#deploy-flags)
-  - [Distributable Directory](#distributable-directory)
+  - [Zipping](#zipping)
   - [Logging](#logging)
   - [Action Runner](#action-runner)
 - [Limitations and Security](#limitations-and-security)
@@ -108,8 +100,8 @@ If certain values are omitted, the script functionality *will be skipped*.
     - `user_name`: The username of the user, this value *must be unique*. If omitted, the binary
     will prompt for an input to create the user.
     - `password` (REQUIRED): The password of the user used to login. Required if a user is being made.
-    - `change_password`: If true, requires
-    It is recommended that this is enabled. the user to change their password upon logging in for the first time.
+    - `change_password`: Prompts for a password reset upon login of the account.
+    It is **highly recommended** to enable this for users with default passwords.
     - `ignore_admin`: Ignores creating the user as admin if the `-a` flag is used. This is only used for
     default accounts in the YAML config.
 
@@ -223,15 +215,17 @@ These files usually end with the `.app` extension.
 - If the delimiter is omitted, then the deployment will attempt to install without checking for previous
 installs.
 
-## Distributable Directory
+## Zipping
 
-The `dist` directory holds all files that are expected to be downloaded over to the client device.
-This includes the **packages** directory, `pkg-files`.
+The files that are to be *zipped* are located inside the `dist` directory.
+Any files that are to be unzipped on the client are placed in this directory.
 
-The *ZIP file* and binaries are placed in this location as well.
+The ZIP file is created inside this directory as well.
 
-All files that does not end in `.zip` will be compressed into a ZIP file, where the distribution can occur.
-Any packages that need to be installed on a device is placed in the `pkg-files` located in the directory.
+All files that does not end in `.zip` will be compressed into a ZIP file. Do not include ZIP files inside the directory,
+or it will be ignored upon zipping.
+
+Any packages that need to be installed on a device must be placed in the `pkg-files` located in the directory.
 
 ## Logging
 
@@ -242,24 +236,14 @@ The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
 Logs from the client and server goes to the `logs` folder in the repository. The server logs are located in the subdirectory
 `server-logs`.
 
-## Action Runner
-
-This is an optional feature and is not required to be used, it is for users who are looking to integrate
-a CI/CD pipeline.
-
-There is an included action runner Docker container for the server, called `gopipe`.
-This requires two action runners, one for the container and one one a spare macOS (or another work around).
-
-By default the action runner build is not built with `docker_build.sh`, and is enabled by including
-the flag argument `--action`. 
-Additional checks for `.github/workflows` or the `*.yml` in the repository if the flag is used.
-
 # Limitations and Security
 
 ## Security
 
 The deployment process is expected to be ran ***on a private network***, and therefore its security is at a level where it protects
-the bare minimum- encrypted communications and some basic token authentication.
+the bare minimum.
+
+The endpoints do not have proper safeguards in place, although only the updating ZIP endpoint has basic authentication.
 
 **Do not run this** publicly, which will cause the endpoints to be accessible to everyone.
 
