@@ -30,19 +30,6 @@ CMD /bin/bash -c "gunicorn --workers=6 \
 --certfile $HOME/ca/cert.pem src.server.app:app"
 
 ##############################################################################
-FROM golang:1.25.0-bookworm AS gopipe
-
-ARG USER=gopuser
-ARG GROUP=${USER}
-ENV HOME=/home/${USER}
-SHELL ["/bin/bash", "-c"]
-
-RUN groupadd ${GROUP} && useradd ${USER} -g ${GROUP}
-RUN mkdir ${HOME} && chown ${USER}:${GROUP} ${HOME}
-
-WORKDIR /macos-deployment
-
-##############################################################################
 FROM debian:bookworm-slim AS cronner
 
 ARG USER=cronuser
