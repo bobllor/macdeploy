@@ -1,13 +1,21 @@
 # <p align="center">MacDeploy</p>
 
-*MacDeploy* is an automated deployment, file server used to deploy MacBook devices without the use of
-an MDM. The deployment process is powered by *Go and Bash*, automating user creation, package installation,
-Firewall & FileVault activation, FileVault key management, and logging. Communications between client
-and server is powered by *Python and Bash* with Flask and Gunicorn occur over HTTPS. 
-It all wraps with *Docker* containerizing the deployment. 
+Looking to automate MacBook deployments? No MDM? No JAMF? No problem! 
+
+*MacDeploy* is a light-weight server and automation framework used to deploy MacBooks with minimal manual interactions needed.
+It features:
+- Automation of user creation, SecureToken handling, package installations, FileVault key handling, logging, and more.
+- FileVault key generation automatic storage to the server.
+- Password change on login similar to that of Windows.
+- A lightweight file server to facilitate client-server communication and file distributing, bypassing SSH.
+- Easy deployment of the server and scripts anywhere, on any device.
+- Uses a self-signed certificate to enable HTTPS for encryption.
+- Customizable YAML configuration.
+
+It is powered by Go, Python, Bash, and Docker.
 
 ***Security warning***: This server was built with the intention to be running on a *secure, private network*.
-It uses HTTPS to encrypt data with a self-signed cert. There is no additional security implemented.
+There is no additional security implemented to handle a public facing server.
 
 # Table of Contents
 
@@ -15,14 +23,14 @@ It uses HTTPS to encrypt data with a self-signed cert. There is no additional se
   - [Server Prerequisites](#server-prerequisites)
   - [YAML Configuration File](#yaml-configuration-file)
     - [YAML Reference](#yaml-reference)
+  - [Deployment Initialization](#deployment-initialization)
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deploy Flags](#deploy-flags)
-  - [Distributable](#distributable-directory)
+  - [Zipping](#zipping)
   - [Logging](#logging)
   - [Action Runner](#action-runner)
-- [Issues](#issues)
-  - [Password Change](#password-change)
+- [Limitations and Security](#limitations-and-security)
   - [Security](#security)
   - [curl](#curl)
 
@@ -55,6 +63,7 @@ accounts:
     ignore_admin: true
   account_two:
     password: "PASSWORD"
+    change_password: true
 admin: # REQUIRED
   user_name: "USERNAME"
   password: "PASSWORD"
@@ -94,6 +103,8 @@ If certain values are omitted, the script functionality *will be skipped*.
     - `user_name`: The username of the user, this value *must be unique*. If omitted, the binary
     will prompt for an input to create the user.
     - `password` (REQUIRED): The password of the user used to login. Required if a user is being made.
+    - `change_password`: Prompts for a password reset upon login of the account.
+    It is **highly recommended** to enable this for users with default passwords.
     - `ignore_admin`: Ignores creating the user as admin if the `-a` flag is used. This is only used for
     default accounts in the YAML config.
 
@@ -114,17 +125,12 @@ If certain values are omitted, the script functionality *will be skipped*.
 `server_host` (REQUIRED): The URL of the server, this is required for communications and must be in HTTPS. 
 By default it is the private IP of the server on port 5000. 
 
-`file_vault`: Boolean used to enable or disable FileVault activation in the deployment.
+`file_vault`: Enable or disable FileVault activation in the deployment.
 
-`firewall`: Boolean used to enable or disable Firewall activation in the deployment.
+`firewall`: Enable or disable Firewall activation in the deployment.
 
-`always_cleanup`: Boolean used to enable/disable the file removal process on the client device. If the server is not reachable, then
-the cleanup function will not run regardless of value.
-
-`add_change_password`: Boolean used to add the `ChangePassword.command` script to the user's desktop. This is a script that upon
-activation, will prompt a terminal for the user to change their password.
-- I recommend enabling this due to *not being able to change password on login in non-MDM environments*.
-- This requires the user to manually click on the script, a guide is recommended.
+`always_cleanup`: Enable or disable the removal of the deployment files from the device. If the server is not reachable, then
+the cleanup will not occur regardless of value.
 
 ## Deployment Initialization
 
@@ -197,9 +203,9 @@ Some processes will still require manual interactions.
 
 | Flag | Usage | Example |
 | ---- | ---- | ---- |
-| `-a` | Gives admin to the user. | `./deploy.bin -a` |
-| `--exclude <file>` | Excludes a package from installation. | `./deploy.bin --exclude "Chrome"` |
-| `--include <file/installed_file_1>` | Include a package to install. | `./deploy.bin --include "zoomUSInstaller/zoom.us"` |
+| `-a` | Gives admin to the user. | `./deploy-arm.bin -a` |
+| `--exclude <file>` | Excludes a package from installation. | `./deploy-arm.bin --exclude "Chrome"` |
+| `--include <file/installed_file_1>` | Include a package to install. | `./deploy-arm.bin --include "zoomUSInstaller/zoom.us"` |
 
 `--exclude <file>` is used to prevent packages defined in the YAML config file from 
 being installed on a device.
@@ -212,63 +218,37 @@ These files usually end with the `.app` extension.
 - If the delimiter is omitted, then the deployment will attempt to install without checking for previous
 installs.
 
-## Distributable Directory
+## Zipping
 
-The `dist` directory holds all files that are expected to be downloaded over to the client device.
-This includes the **packages** directory, `pkg-files`.
+The files that are to be *zipped* are located inside the `dist` directory.
+Any files that are to be unzipped on the client are placed in this directory.
 
-The *ZIP file* and binaries are placed in this location as well.
+The ZIP file is created inside this directory as well.
 
-All files that does not end in `.zip` will be compressed into a ZIP file, where the distribution can occur.
-Any packages that need to be installed on a device is placed in the `pkg-files` located in the directory.
+All files that does not end in `.zip` will be compressed into a ZIP file. Do not include ZIP files inside the directory,
+or it will be ignored upon zipping.
+
+Any packages that need to be installed on a device must be placed in the `pkg-files` located in the directory.
 
 ## Logging
 
 The log file is created in the temporary folder `/tmp` by default on the client. 
 The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
-- The permissions are 0600 by default, but can be removed safely, assuming you are able to get the logs on the server.
+- The permissions are 0600 by default, but can be removed safely.
+
+If the **log file fails to send to the server**, ensure to save this log file if the FileVault key was generated.
 
 Logs from the client and server goes to the `logs` folder in the repository. The server logs are located in the subdirectory
 `server-logs`.
 
-## Action Runner
-
-This is an optional feature and is not required to be used, it is for users who are looking to integrate
-a CI/CD pipeline.
-
-There is an included action runner Docker container for the server, called `gopipe`.
-This requires two action runners, one for the container and one one a spare macOS (or another work around).
-
-By default the action runner build is not built with `docker_build.sh`, and is enabled by including
-the flag argument `--action`. 
-Additional checks for `.github/workflows` or the `*.yml` in the repository if the flag is used.
-
-# Issues
-
-## Password Change
-
-By default, there is no password change on login similar to that in JAMF or Windows. This is a concern since
-the end user will have a default password and is very likely not changing it upon logging into their device.
-
-It is **heavily recommended to set** `add_change_password` to `true` in the YAML configuration which adds 
-the script `ChangePassword.command` to the user's desktop.
-
-Due to this, there is a script in the `scripts` directory named `ChangePassword.command` that prompts for a password change I created.
-
-This script is added to the user's desktop during user creation of the deployment process. This can be ran by double clicking, which
-prompts the end user to input their old password, and a new password.
-- This is prompted twice: changing their login and updating their keychain.
-
-Temporary text files are created in `/tmp/` that is used to support the script: `passerr.txt` and `passcheck.txt`.
-These files are used as flags for the script, and if there is some issue where the script needs to be reran fresh then these
-two files can be deleted to essentially "reset" the script.
-- *However*, if the user successfully changed their password then they will need to change to a new password. There is no work
-around to this issue (at least what I can think of).
+# Limitations and Security
 
 ## Security
 
 The deployment process is expected to be ran ***on a private network***, and therefore its security is at a level where it protects
-the bare minimum- encrypted communications and some basic token authentication.
+the bare minimum.
+
+The endpoints do not have proper safeguards in place, although only the updating ZIP endpoint has basic authentication.
 
 **Do not run this** publicly, which will cause the endpoints to be accessible to everyone.
 

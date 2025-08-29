@@ -27,14 +27,7 @@ func main() {
 
 	var flagValues *flags.FlagValues = flags.GetFlags()
 
-	// starts a sudo session, used to automate sudo commands.
-	// will also be used in other functions in case a timeout occurs.
-	initSudoCmd := fmt.Sprintf("sudo -S echo <<< '%s'", config.Admin.Password)
-	err := exec.Command("bash", "-c", initSudoCmd).Run()
-	if err != nil {
-		// not a major issue, just requires manual interaction instead.
-		logger.Log(fmt.Sprintf("Error with sudo: %v | maybe wrong password?", err), 4)
-	}
+	utils.InitSudo(config.Admin.Password)
 
 	// mutates the config packages
 	core.RemovePKG(config.Packages, *flagValues.ExcludePackages)
@@ -158,7 +151,7 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 	for key := range *accounts {
 		currAccount := (*accounts)[key]
 
-		core.CreateAccount(currAccount, config.Admin, adminStatus, config.Add_Change_Password)
+		core.CreateAccount(currAccount, config.Admin, adminStatus)
 	}
 }
 

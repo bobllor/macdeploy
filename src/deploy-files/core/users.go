@@ -15,7 +15,9 @@ import (
 
 // CreateAccount creates the user account on the device.
 // Returns true if the account is successfully made, else false.
-func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool, addChangePassword bool) bool {
+//
+// SecureToken is enabled for every user and if enabled, the user will require a password reset upon login.
+func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 	// username will be used for both entries needed.
 	username := user.User_Name
 
@@ -82,18 +84,21 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool, addChangeP
 	_, err = exec.Command("bash", "-c", secureTokenCmd).Output()
 	if err != nil {
 		logger.Log(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err), 3)
-		return false
+	} else {
+		logger.Log(fmt.Sprintf("Secure token added for %s", username), 6)
 	}
-
-	logger.Log(fmt.Sprintf("Secure token added for %s", username), 6)
 
 	createdLog := fmt.Sprintf("User %s created", username)
 	logger.Log(createdLog, 6)
 
-	if addChangePassword {
-		err = moveScriptToDesktop("ChangePassword.command", username)
+	if user.Change_Password {
+		pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u %s -setpolicy 'newPasswordRequired=1'", username)
+
+		err = exec.Command("bash", "-c", pwPolicyCmd).Run()
 		if err != nil {
-			logger.Log(fmt.Sprintf("Unexpected error moving password script: %v", err), 4)
+			logger.Log(fmt.Sprintf("Error adding password policy for %s", username), 3)
+		} else {
+			logger.Log(fmt.Sprintf("Added new password policy for %s", username), 6)
 		}
 	}
 
@@ -123,14 +128,14 @@ func userExists(username string) (bool, error) {
 	return false, nil
 }
 
-// moveScriptToDesktop moves a script name to the user's desktop.
-func moveScriptToDesktop(fileName string, user string) error {
+// moveToDesktop moves a given file to the user's desktop.
+func moveToDesktop(fileName string, user string) error {
 	_, err := os.Stat(fileName)
 	if err != nil {
 		return err
 	}
 
-	moveCmd := fmt.Sprintf("sudo mv %s /Users/%s/desktop", fileName, user)
+	moveCmd := fmt.Sprintf("sudo cp %s /Users/%s/desktop", fileName, user)
 	err = exec.Command("bash", "-c", moveCmd).Run()
 	if err != nil {
 		return err

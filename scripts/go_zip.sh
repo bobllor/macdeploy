@@ -43,4 +43,7 @@ fi
 cd $dist_dir
 zip_name="deploy.zip"
 
-zip -ru "$zip_name" "$pkg_name" "$binary_name" "$amd_binary"
+# would prefer to keep it on one line, but i am only concerned about multi-word values
+ls | grep -Ev ".*.zip" | while read line; do
+    zip -ru "$zip_name" "$line"
+done

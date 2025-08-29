@@ -4,35 +4,9 @@
 # Must run with sudo OR the current user has the "docker" group assigned.
 
 fs_target="fsserver"
-go_target="gopipe"
 cron_target="cronner"
 
-args=($fs_target)
-
-while (( $# > 0 )); do
-    case "$1" in
-        --action )
-            shift
-            if [[ ! -e "./.github/workflows" ]]; then
-                echo "no .github/workflows directory found"
-                exit 1
-            elif [[ -z $(find ./.github/workflows/ -name "*.yml") ]]; then
-                echo "no actions YAML found" 
-                exit 1
-            fi
-
-            args+=($go_target)
-            ;;
-        * )
-            echo "invalid option"
-            exit 1
-            ;;
-    esac
-    shift
-done
-
-# i want to keep the order of how it is in the dockerfile.
-args+=($cron_target)
+args=($fs_target $cron_target)
 
 for var in "${args[@]}"; do
     docker build . --target $var -t deploy:$var
