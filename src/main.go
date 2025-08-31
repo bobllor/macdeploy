@@ -76,10 +76,8 @@ func main() {
 	}
 
 	filesToRemove := map[string]struct{}{
-		utils.Globals.PKGDirName:       {},
-		utils.Globals.ARMBinaryName:    {},
-		utils.Globals.ZIPFileName:      {},
-		utils.Globals.X86_64BinaryName: {},
+		utils.Globals.DistDirName: {},
+		utils.Globals.ZIPFileName: {},
 	}
 
 	if config.Always_Cleanup {
@@ -168,7 +166,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 		return
 	}
 
-	pkgPath := utils.Globals.PKGPath
+	pkgPath := utils.Globals.DistDirName
 	scriptOut, scriptErr := exec.Command("bash", "-c", scripts.FindPackagesScript, pkgPath).Output()
 
 	debug := fmt.Sprintf("PKG folder: %s", pkgPath)
