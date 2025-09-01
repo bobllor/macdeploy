@@ -34,9 +34,6 @@ env GOOS=darwin GOARCH=arm64 go build -C ./src -o "../dist/$binary_name"
 amd_binary="deploy-x86_64.bin"
 env GOOS=darwin GOARCH=amd64 go build -C ./src -o "../dist/$amd_binary"
 
-cd $dist_dir
 zip_name="deploy.zip"
 
-ls | grep -Ev ".*.zip" | while read line; do
-    zip -ru "../$zip_name" "$line"
-done
+zip -ru "$zip_name" "$dist_dir"
