@@ -77,27 +77,27 @@ class Zip:
         '''
         zip_file_obj: zipfile.ZipFile = zipfile.ZipFile(self.zip_path, "a")
         logger.warning("ZIP file does not exist")
+        logger.debug("Searching in path %s", str(dist_path))
 
         zip_contents: list[str] = []
 
         for path, _, file_list in dist_path.walk():
             for file in file_list:
-                if file.split(".")[-1].lower() == "zip":
-                    continue
-
                 # adds the pkg_path value to nested directories to keep structure
-                # root level vs nested dictionary, needs slice 1: to skip the leading slash
-                file_name: str = f"{str(path)}/{file}".replace(Vars.ROOT_PATH.value, "")[1:]
+                # this works for both the test and production. did this at 2 am i have a brain aneurysm
+                file_name: str = f"{str(path)}/{file}".replace(Vars.ROOT_PATH.value + "/", "")
 
                 path_of_pkg: Path = Path(file_name)
 
                 if path_of_pkg.exists():
                     zip_file_obj.write(path_of_pkg)
                     zip_contents.append(path_of_pkg.name)
+                else:
+                    logger.error("Issue searching path %s", str(path_of_pkg))
                 
         zip_file_obj.close()
 
-        logger.info("Created ZIP file in %s", str(dist_path))
+        logger.info("Created ZIP file at %s", str(self.zip_path.absolute()))
         logger.debug(f"New ZIP contents: {zip_contents}")
 
         return "Created ZIP file"
