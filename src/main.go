@@ -72,16 +72,16 @@ func main() {
 		return
 	}
 	if status {
+		filesToRemove := map[string]struct{}{
+			utils.Globals.DistDirName: {},
+			utils.Globals.ZIPFileName: {},
+		}
+
+		if config.Always_Cleanup {
+			utils.RemoveFiles(filesToRemove)
+		}
+
 		sendPOST(fvJsonData, logJsonMap)
-	}
-
-	filesToRemove := map[string]struct{}{
-		utils.Globals.DistDirName: {},
-		utils.Globals.ZIPFileName: {},
-	}
-
-	if config.Always_Cleanup {
-		utils.RemoveFiles(filesToRemove)
 	}
 }
 
@@ -204,7 +204,6 @@ func startFileVault(jsonData *requests.FileVaultInfo) {
 		keyMsg := fmt.Sprintf("Generated FileVault key %s", fvKey)
 		logger.Log(keyMsg, 6)
 	} else {
-		logger.Log("Unexpected error during FileVault process", 3)
 		jsonData.Key = ""
 	}
 }
