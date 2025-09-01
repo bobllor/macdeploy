@@ -4,7 +4,7 @@ from system.zipper import Zip, PathArgs
 from zipfile import ZipFile
 
 def test_zip_update():
-    zip_path: Path = Path(Vars.ZIP_FILE_PATH)
+    zip_path: Path = Path(Vars.ROOT_PATH).parents[4] / "deploy-test.zip"
     opt_paths: PathArgs = {
         'arm_binary': Vars.BINARY_FILE_PATH,
         'x86_binary': "deploy-x86-test.bin",
