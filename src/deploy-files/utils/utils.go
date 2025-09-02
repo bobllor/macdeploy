@@ -146,7 +146,7 @@ func RemoveFiles[T any](filesToRemove map[string]T) error {
 		if _, ok := filesToRemove[fileName]; ok {
 			if file.IsDir() {
 				// could be unneeded but want to be extra safe
-				if Globals.PKGDirName == fileName {
+				if Globals.DistDirName == fileName {
 					err := os.RemoveAll(fileName)
 					if err != nil {
 						logger.Log(fmt.Sprintf("Error removing directory %v", err), 3)

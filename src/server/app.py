@@ -30,7 +30,7 @@ def get_client_files():
     The API is strictly used for serving the file. A scheduler to zip the files
     is required to ensure a zip file exists and is updated.
     '''
-    zip_file_path: str = f"{Vars.DIST_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
+    zip_file_path: str = f"{Vars.ROOT_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
 
     # second check after init during runtime. 
     zip_path_obj: Path = Path(Vars.DIST_PATH.value)
@@ -105,7 +105,7 @@ def update_zip():
         logger.info("Unauthorized access: %s", h_token)
         return jsonify(utils.generate_response(status="error", content="Unauthorized access")), 401
 
-    zip_path: Path = Path(Vars.DIST_PATH.value) / Vars.ZIP_FILE_NAME.value
+    zip_path: Path = Path(Vars.ROOT_PATH.value) / Vars.ZIP_FILE_NAME.value
 
     zipper: Zip = Zip(zip_path)
     zip_status, zip_msg = zipper.start_zip()
@@ -122,4 +122,4 @@ def update_zip():
 
 if __name__ == '__main__':
     host: str = "0.0.0.0"
-    app.run(host=host)
+    app.run(host=host, debug=True)

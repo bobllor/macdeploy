@@ -49,8 +49,7 @@ Below are the tools and software required on the server before starting the depl
 - `zip`
 - `unzip`
 
-`zip`, `unzip`, and `curl` are required on the clients.
-macOS devices have these installed by default.
+`zip`, `unzip`, and `curl` are required on the clients. MacBook devices have these installed by default.
 
 ## YAML Configuration File
 
@@ -69,10 +68,10 @@ admin: # REQUIRED
   password: "PASSWORD"
 packages:
   pkg_one_name:
-    - "pkg_one_folder_name_one"
-    - "pkg_one_folder_name_two"
+    - "pkg_one_app_name_one"
+    - "pkg_one_app_name_two"
   pkg_two_name:
-    - "pkg_two_folder_name_one"
+    - "pkg_two_app_name_one"
   pkg_three_name:
     -
 search_directories:
@@ -83,6 +82,8 @@ filevault: false
 firewall: false
 always_cleanup: false
 ```
+
+***IMPORTANT***: If special characters are used inside a string field, **it must be quoted**.
 
 The YAML configuration file is used for **default options** of the final binary build. The binary uses
 the configuration to setup the deployment process for the clients.
@@ -129,8 +130,8 @@ By default it is the private IP of the server on port 5000.
 
 `firewall`: Enable or disable Firewall activation in the deployment.
 
-`always_cleanup`: Enable or disable the removal of the deployment files from the device. If the server is not reachable, then
-the cleanup will not occur regardless of value.
+`always_cleanup`: Enable or disable the removal of the deployment files from the device. If the server is not reachable, 
+then the cleanup will not occur regardless of value.
 
 ## Deployment Initialization
 
@@ -163,22 +164,23 @@ to not use this unless an action runner is needed.
 The macOS devices must be connected to the same network as the server.
 The server must also be reachable, for example via `ping`.
 
+The files on the client device is located in the `dist` directory upon unzipping.
+
 You must have a **YAML configuration file** set up prior to deploying, otherwise there will be issues running.
 - Run `bash scripts/go_zip.sh` after configuring to setup the ZIP file for deployment.
 
 There are ***two binaries generated*** when running the script: `deploy-arm.bin` and `deploy-x86_64.bin`.
 - `deploy-arm.bin` is used on *Apple Silicon*/`ARM64` MacBooks.
 - `deploy-x86_64.bin` is used on *Intel*/`x86_64` MacBooks.
-
 As Intel MacBooks are being phased out, the most often use case would be `deploy-arm.bin`. In any case,
 `deploy-x86_64.bin` will remain for scenarios with Intel MacBooks.
 
-The command below is an example one liner. It installs all packages and creates a standard user for `ARM64` MacBoooks. 
+The command below is an example one liner for `ARM` MacBooks. It installs all packages and creates a standard user.
 Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP):
 ```shell
 curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
 unzip deploy.zip && \
-./deploy-arm.bin
+./dist/deploy-arm.bin
 ```
 To only unzip the ZIP file and use the `deploy` binary with flags:
 ```shell
@@ -191,8 +193,9 @@ with your domain (by default the server's private IP):
 `curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip`
 
 2. Unzip the contents of the ZIP file to the home directory of the client: `unzip deploy.zip`.
+This unzips the `dist` directory containing the deployment files.
 
-3. Run `./deploy-arm.bin` or `./deploy-x86_64.bin` to start the deployment process.
+3. Run `./dist/deploy-arm.bin` or `./dist/deploy-x86_64.bin` to start the deployment process.
 
 The `deploy` binary has three flags that can be passed.
 
@@ -220,15 +223,17 @@ installs.
 
 ## Zipping
 
-The files that are to be *zipped* are located inside the `dist` directory.
-Any files that are to be unzipped on the client are placed in this directory.
+Upon generation, the ZIP file is placed inside the root directory.
 
-The ZIP file is created inside this directory as well.
+The files that are to be *zipped* are located inside the `dist` directory. The entire directory will be zipped
+and placed into the ZIP file.
 
-All files that does not end in `.zip` will be compressed into a ZIP file. Do not include ZIP files inside the directory,
-or it will be ignored upon zipping.
+To add a file that is downloaded to the client, place the file inside the `dist` directory. 
+Directory structure does not affect the zipping process.
 
-Any packages that need to be installed on a device must be placed in the `pkg-files` located in the directory.
+It is *important to update the ZIP file after any changes*, running `bash scripts/go_zip.sh` will update it properly.
+Additionally, there is a Docker container (`cronner`) that periodically runs a cron job every 10 minutes by
+accessing a token-based endpoint to update the ZIP file.
 
 ## Logging
 
@@ -238,19 +243,23 @@ The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
 
 If the **log file fails to send to the server**, ensure to save this log file if the FileVault key was generated.
 
-Logs from the client and server goes to the `logs` folder in the repository. The server logs are located in the subdirectory
-`server-logs`.
+By default, the file removal is not activated. If it is, then failure of log sending will not remove the files.
+From here you can troubleshoot the server and rerun the binary to complete the full sequence.
+
+Logs from the client and server goes to the `logs` folder in the repository. The server logs are located in the 
+subdirectory `server-logs`.
 
 # Limitations and Security
 
 ## Security
 
-The deployment process is expected to be ran ***on a private network***, and therefore its security is at a level where it protects
-the bare minimum.
+**Do not run this** publicly, which will cause the endpoints to be accessible to everyone.
+
+The deployment process is expected to be ran ***on a private network***, and therefore its security is at a level where it 
+protects the bare minimum. 
 
 The endpoints do not have proper safeguards in place, although only the updating ZIP endpoint has basic authentication.
-
-**Do not run this** publicly, which will cause the endpoints to be accessible to everyone.
+Exposing these endpoints can cause unintended consequences.
 
 ## curl
 

@@ -1,11 +1,19 @@
 package utils
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"strings"
 )
+
+type Global struct {
+	Home        string
+	ProjectName string
+	ProjectPath string
+	SerialTag   string
+	ZIPFileName string
+	DistDirName string
+}
 
 // all client-side files and directories will be placed in the home directory
 
@@ -13,21 +21,17 @@ var Globals = &Global{}
 
 // InitializeGlobals initializes the global variables for paths and device information.
 func InitializeGlobals() {
+	Globals.ZIPFileName = "deploy.zip"
+	Globals.DistDirName = "dist"
+	Globals.ProjectName = "macos-deployment"
+
 	initPaths()
 	initSerialTag()
-
-	Globals.PKGDirName = "pkg-files"
-	Globals.ZIPFileName = "deploy.zip"
-	Globals.ARMBinaryName = "deploy-arm.bin"
-	Globals.X86_64BinaryName = "deploy-x86_64.bin"
 }
 
 func initPaths() {
 	Globals.Home = os.Getenv("HOME")
 	Globals.ProjectPath = getProjectPath()
-
-	pkgFileName := "pkg-files"
-	Globals.PKGPath = fmt.Sprintf("%s/%s", Globals.Home, pkgFileName)
 }
 
 func initSerialTag() {
@@ -47,7 +51,7 @@ func getProjectPath() string {
 	var mainDirIndex int
 
 	for i, path := range paths {
-		if strings.Contains(strings.ToLower(path), "macos-deployment") {
+		if strings.Contains(strings.ToLower(path), Globals.ProjectName) {
 			mainDirIndex = i
 			break
 		}

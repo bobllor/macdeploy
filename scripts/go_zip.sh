@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Creates the binary and updates the ZIP package.
+# Creates the binary and updates the ZIP package in the root directory.
 # Used if a new binary is required for an update, for example a change in the YAML config.
 
 dist_dir="dist"
@@ -24,6 +24,7 @@ if [[ ! -e "$config_name" ]]; then
     config_name=$alt_config_name
 fi
 
+# copies the YAML config into src for embedding
 cp $config_name ./src/config/$dest_config
 
 binary_name="deploy-arm.bin"
@@ -33,17 +34,6 @@ env GOOS=darwin GOARCH=arm64 go build -C ./src -o "../dist/$binary_name"
 amd_binary="deploy-x86_64.bin"
 env GOOS=darwin GOARCH=amd64 go build -C ./src -o "../dist/$amd_binary"
 
-pkg_name="pkg-files"
-pkg_dir="$dist_dir/$pkg_name"
-
-if [[ ! -d "$pkg_dir" ]]; then
-    mkdir $pkg_dir
-fi
-
-cd $dist_dir
 zip_name="deploy.zip"
 
-# would prefer to keep it on one line, but i am only concerned about multi-word values
-ls | grep -Ev ".*.zip" | while read line; do
-    zip -ru "$zip_name" "$line"
-done
+zip -ru "$zip_name" "$dist_dir"

@@ -72,18 +72,16 @@ func main() {
 		return
 	}
 	if status {
+		filesToRemove := map[string]struct{}{
+			utils.Globals.DistDirName: {},
+			utils.Globals.ZIPFileName: {},
+		}
+
+		if config.Always_Cleanup {
+			utils.RemoveFiles(filesToRemove)
+		}
+
 		sendPOST(fvJsonData, logJsonMap)
-	}
-
-	filesToRemove := map[string]struct{}{
-		utils.Globals.PKGDirName:       {},
-		utils.Globals.ARMBinaryName:    {},
-		utils.Globals.ZIPFileName:      {},
-		utils.Globals.X86_64BinaryName: {},
-	}
-
-	if config.Always_Cleanup {
-		utils.RemoveFiles(filesToRemove)
 	}
 }
 
@@ -168,7 +166,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 		return
 	}
 
-	pkgPath := utils.Globals.PKGPath
+	pkgPath := utils.Globals.DistDirName
 	scriptOut, scriptErr := exec.Command("bash", "-c", scripts.FindPackagesScript, pkgPath).Output()
 
 	debug := fmt.Sprintf("PKG folder: %s", pkgPath)
@@ -206,7 +204,6 @@ func startFileVault(jsonData *requests.FileVaultInfo) {
 		keyMsg := fmt.Sprintf("Generated FileVault key %s", fvKey)
 		logger.Log(keyMsg, 6)
 	} else {
-		logger.Log("Unexpected error during FileVault process", 3)
 		jsonData.Key = ""
 	}
 }
