@@ -21,25 +21,25 @@ There is no additional security implemented to handle a public facing server.
 
 - [Getting Started](#getting-started)
   - [Server Prerequisites](#server-prerequisites)
-  - [YAML Configuration File](#yaml-configuration-file)
-    - [YAML Reference](#yaml-reference)
-  - [Deployment Initialization](#deployment-initialization)
+  - [Installation](#installation)
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deploy Flags](#deploy-flags)
   - [Zipping](#zipping)
   - [Logging](#logging)
-  - [Action Runner](#action-runner)
+- [YAML Configuration File](#yaml-configuration-file)
+  - [YAML Reference](#yaml-reference)
 - [Limitations and Security](#limitations-and-security)
   - [Security](#security)
   - [curl](#curl)
+- [License](#license)
 
 # Getting Started
 
 ## Server Prerequisites
 
 The server must **run on a macOS or Linux** operating system.
-Windows is not supported.
+Windows is not supported (WSL is fine).
 
 Below are the tools and software required on the server before starting the deployment process.
 - `Go`
@@ -51,7 +51,144 @@ Below are the tools and software required on the server before starting the depl
 
 `zip`, `unzip`, and `curl` are required on the clients. MacBook devices have these installed by default.
 
-## YAML Configuration File
+## Installation
+
+```shell
+git clone REPLACE_ME_HERE && \
+cd macos-deployment && \
+bash scripts/docker_build.sh && bash scripts/go_zip.sh && \
+docker compose create && docker compose start
+```
+
+Clone the repository and change the working directory: 
+```shell
+git clone REPLACE_ME_HERE && cd macos-deployment
+```
+
+Create the Docker images, the deployment binary, and the ZIP file:
+```shell
+bash scripts/docker_build.sh && bash scripts/go_zip.sh
+```
+
+Create and run the containers:
+```shell
+docker compose create && docker compose start
+```
+
+Alternatively, you can run `docker compose` to create and start the containers.
+```shell
+docker compose up
+```
+
+**IMPORTANT**: Before starting the deployment process, it is required to configure the *YAML* configuration file in order
+for the deployment process to work.
+Click [here](#yaml-configuration-file) to get started on the YAML configuration file.
+
+# Usage
+
+## Deployment
+
+The macOS devices must be connected to the same network as the server.
+
+The files on the client device is located in the `dist` directory upon unzipping.
+
+You must have a **YAML configuration file** set up prior to deploying, otherwise there will be issues running the
+deployment process.
+- Run `bash scripts/go_zip.sh` after configuring to setup the ZIP file for deployment.
+
+There are ***two binaries generated*** when running the script: `deploy-arm.bin` and `deploy-x86_64.bin`.
+- `deploy-arm.bin` is used on *Apple Silicon*/`ARM64` MacBooks.
+- `deploy-x86_64.bin` is used on *Intel*/`x86_64` MacBooks.
+As Intel MacBooks are being phased out, the most often use case would be `deploy-arm.bin`. In any case,
+`deploy-x86_64.bin` will remain for scenarios with Intel MacBooks.
+
+Both binaries has three flags that can be used with arguments.
+
+The command below is an example one liner for `ARM` MacBooks. It installs all packages and creates a standard user.
+Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP):
+```shell
+curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
+unzip deploy.zip && \
+./dist/deploy-arm.bin
+```
+
+Access the ZIP file endpoint to obtain the deployment zip file. 
+Replace the `<YOUR_DOMAIN>` with your domain (by default the server's private IP): 
+```shell
+curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip
+```
+
+Unzip the contents of the ZIP file: 
+```shell
+unzip deploy.zip
+```
+This unzips the `dist` directory into the current working directory, which contains all the files for the clients.
+
+Run the binary to start the deployment process (`deploy-x86_64.bin` if Intel is required):
+```shell
+./dist/deploy-arm.bin
+```
+
+To only unzip the ZIP file and use the `deploy` binary with flags:
+```shell
+curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
+unzip deploy.zip
+```
+
+**DISCLAIMER**: It is not possible to fully automate macOS deployments due to Apple's policies.
+Some processes will still require manual interactions.
+
+## Deploy Flags
+
+| Flag | Usage | Example |
+| ---- | ---- | ---- |
+| `-a` | Gives admin to the user. If `ignore_admin` is true for a user, this is ignored. | `./deploy-arm.bin -a` |
+| `--exclude <file>` | Excludes a package from installation. | `./deploy-arm.bin --exclude "Chrome"` |
+| `--include "<file/file_name_1/file_name_2>"` | Include a package to install. | `./deploy-arm.bin --include "zoomUSInstaller/zoom.us"` |
+
+`--exclude <file>` is used to prevent packages defined in the YAML config file from 
+being installed on a device.
+
+`--include <file>` is used to *download a package found in the package folder*, but *not in the YAML config*. 
+This is intended to be used to separate the packages in the YAML config as default applications 
+to install on all devices.
+- Strings past the delimiter (`/`) are used as search values in the given search directories. 
+These files usually end with the `.app` extension.
+- If the delimiter is omitted, then the deployment will attempt to install without checking for previous
+installs.
+- If including files with spaces or special characters, wrap them in **quotes**.
+
+## Zipping
+
+Upon generation, the ZIP file is placed inside the root directory.
+
+The files that are to be *zipped* are located inside the `dist` directory. The entire directory will be zipped
+and placed into the ZIP file.
+
+To add a file that is downloaded to the client, place the file inside the `dist` directory. 
+Directory structure does not affect the zipping process.
+
+It is *important to update the ZIP file after any changes*, running `bash scripts/go_zip.sh` will update it properly.
+Additionally, there is a Docker container (`cronner`) that periodically runs a cron job every 10 minutes by
+accessing the token-based endpoint to update the ZIP file.
+
+## Logging
+
+The log file is created in the temporary folder `/tmp` by default on the client. 
+The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
+- The permissions are 0600 by default, but can be removed safely.
+
+If the **log file fails to send to the server**, ensure to save this log file if the FileVault key was generated.
+
+By default, the file removal is not activated. If it is enabled, an unresponsive server will not remove the files.
+This is done to allow you to troubleshoot the server and rerun the binary to properly add the logs to the server.
+
+The **FileVault key will not be in subsequent logs** assuming it succeeded on the first attempt. 
+
+Logs from the client and server goes to the `logs` folder in the repository. The server logs are located in the 
+subdirectory `server-logs`.
+
+# YAML Configuration File
 
 ```yaml
 # sample config
@@ -89,7 +226,7 @@ The YAML configuration file is used for **default options** of the final binary 
 the configuration to setup the deployment process for the clients.
 
 The ***YAML should be configured prior to building the binary*** or *before the deployment process begins*.
-It is <u>embed into the binary</u>, and *any changes will require an update to the binary* 
+It is <u>embedded into the binary</u>, and *any changes will require an update to the binary* 
 via `bash scripts/go_zip.sh`.
 
 A sample config can be found in the repository or by looking at the top of this section.
@@ -97,7 +234,7 @@ A sample config can be found in the repository or by looking at the top of this 
 If certain values are omitted, the script functionality *will be skipped*.
 - For example, if no `packages` are given, then no attempts are made to install any packages.
 
-### YAML Reference
+## YAML Reference
 
 `accounts`: Creates the default users on the client device.
 - `account_name`: Groups info for a user, it can be named anything but *must be unique*.
@@ -126,128 +263,12 @@ If certain values are omitted, the script functionality *will be skipped*.
 `server_host` (REQUIRED): The URL of the server, this is required for communications and must be in HTTPS. 
 By default it is the private IP of the server on port 5000. 
 
-`file_vault`: Enable or disable FileVault activation in the deployment.
+`filevault`: Enable or disable FileVault activation in the deployment.
 
 `firewall`: Enable or disable Firewall activation in the deployment.
 
 `always_cleanup`: Enable or disable the removal of the deployment files from the device. If the server is not reachable, 
 then the cleanup will not occur regardless of value.
-
-## Deployment Initialization
-
-One liner version:
-```shell
-git clone REPLACE_ME_HERE && \
-cd macos-deployment && \
-bash scripts/docker_build.sh && bash scripts/go_zip.sh && \
-docker compose create && docker compose start
-```
-
-1. Clone the repository: `git clone REPLACE_ME_HERE`
-
-2. Change the current directory into the repository: `cd macos-deployment`.
-
-3. Run the following commands with the scripts to initialize the files and container:
-`bash scripts/docker_build.sh && bash scripts/go_zip.sh`.
-
-4. Create the containers using `docker compose create`.
-
-5. Run the containers using `docker compose start`.
-
-`docker_build.sh` has a flag `--action`, which will create the action runner container. It is recommended
-to not use this unless an action runner is needed.
-
-# Usage
-
-## Deployment
-
-The macOS devices must be connected to the same network as the server.
-The server must also be reachable, for example via `ping`.
-
-The files on the client device is located in the `dist` directory upon unzipping.
-
-You must have a **YAML configuration file** set up prior to deploying, otherwise there will be issues running.
-- Run `bash scripts/go_zip.sh` after configuring to setup the ZIP file for deployment.
-
-There are ***two binaries generated*** when running the script: `deploy-arm.bin` and `deploy-x86_64.bin`.
-- `deploy-arm.bin` is used on *Apple Silicon*/`ARM64` MacBooks.
-- `deploy-x86_64.bin` is used on *Intel*/`x86_64` MacBooks.
-As Intel MacBooks are being phased out, the most often use case would be `deploy-arm.bin`. In any case,
-`deploy-x86_64.bin` will remain for scenarios with Intel MacBooks.
-
-The command below is an example one liner for `ARM` MacBooks. It installs all packages and creates a standard user.
-Replace `<YOUR_DOMAIN>` with your domain (by default the server's private IP):
-```shell
-curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
-unzip deploy.zip && \
-./dist/deploy-arm.bin
-```
-To only unzip the ZIP file and use the `deploy` binary with flags:
-```shell
-curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip && \
-unzip deploy.zip
-```
-
-1. Access the ZIP file endpoint to obtain the deployment zip file. Replace the `<YOUR_DOMAIN>`
-with your domain (by default the server's private IP): 
-`curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip`
-
-2. Unzip the contents of the ZIP file to the home directory of the client: `unzip deploy.zip`.
-This unzips the `dist` directory containing the deployment files.
-
-3. Run `./dist/deploy-arm.bin` or `./dist/deploy-x86_64.bin` to start the deployment process.
-
-The `deploy` binary has three flags that can be passed.
-
-**DISCLAIMER**: It is not possible to fully automate macOS deployments due to Apple's policies.
-Some processes will still require manual interactions.
-
-## Deploy Flags
-
-| Flag | Usage | Example |
-| ---- | ---- | ---- |
-| `-a` | Gives admin to the user. | `./deploy-arm.bin -a` |
-| `--exclude <file>` | Excludes a package from installation. | `./deploy-arm.bin --exclude "Chrome"` |
-| `--include <file/installed_file_1>` | Include a package to install. | `./deploy-arm.bin --include "zoomUSInstaller/zoom.us"` |
-
-`--exclude <file>` is used to prevent packages defined in the YAML config file from 
-being installed on a device.
-
-`--include <file>` is used to *download a package found in the package folder*, but *not in the YAML config*. 
-This is intended to be used to separate the packages in the YAML config as default applications 
-to install on all devices.
-- Strings past the delimiter (`/`) are used as search values in the given search directories. 
-These files usually end with the `.app` extension.
-- If the delimiter is omitted, then the deployment will attempt to install without checking for previous
-installs.
-
-## Zipping
-
-Upon generation, the ZIP file is placed inside the root directory.
-
-The files that are to be *zipped* are located inside the `dist` directory. The entire directory will be zipped
-and placed into the ZIP file.
-
-To add a file that is downloaded to the client, place the file inside the `dist` directory. 
-Directory structure does not affect the zipping process.
-
-It is *important to update the ZIP file after any changes*, running `bash scripts/go_zip.sh` will update it properly.
-Additionally, there is a Docker container (`cronner`) that periodically runs a cron job every 10 minutes by
-accessing a token-based endpoint to update the ZIP file.
-
-## Logging
-
-The log file is created in the temporary folder `/tmp` by default on the client. 
-The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
-- The permissions are 0600 by default, but can be removed safely.
-
-If the **log file fails to send to the server**, ensure to save this log file if the FileVault key was generated.
-
-By default, the file removal is not activated. If it is, then failure of log sending will not remove the files.
-From here you can troubleshoot the server and rerun the binary to complete the full sequence.
-
-Logs from the client and server goes to the `logs` folder in the repository. The server logs are located in the 
-subdirectory `server-logs`.
 
 # Limitations and Security
 
@@ -266,3 +287,7 @@ Exposing these endpoints can cause unintended consequences.
 The `curl` command uses the `--insecure` option to bypass the verify check (used in the Go code too).
 Although this is not recommended, it is used in this case due to the nature of device deployment- 
 or in other words the devices are fully wiped prior to deployment.
+
+# License
+
+MacDeploy is available under the [MIT License](https://opensource.org/license/MIT).
