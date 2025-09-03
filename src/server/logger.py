@@ -31,7 +31,7 @@ class Log(Logger):
                 The name of the logger. By default, it uses the __name__ variable, or
                 in other words __main__.
             
-            filename: str default `logs/serverYYYY-MM-DD.log`
+            filename: str default `logs/server/YYYY-MM-DD.log`
                 The log file name. By default it names the logs based on the current date
                 and is stored in the logs folder, for example: `logs/server-2000-11-01.log`.
             
