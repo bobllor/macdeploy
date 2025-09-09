@@ -92,7 +92,7 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 	logger.Log(createdLog, 6)
 
 	if user.Change_Password {
-		pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u %s -setpolicy 'newPasswordRequired=1'", username)
+		pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1'", fullName)
 
 		err = exec.Command("bash", "-c", pwPolicyCmd).Run()
 		if err != nil {
