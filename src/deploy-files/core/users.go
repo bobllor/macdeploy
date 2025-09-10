@@ -47,6 +47,8 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 		username = input
 	}
 
+	// IMPORTANT: this is the actual internal name of the user!
+	// because mac is stupid and named it fullname for some reason!
 	fullName := utils.FormatFullName(username)
 
 	initLog := fmt.Sprintf("Creating user %s | Home Directory Name %s", username, fullName)
@@ -57,14 +59,14 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	userExists, err := userExists(username)
+	userExists, err := userExists(fullName)
 	if err != nil {
 		// this is going to assume the user exists
 		errMsg := fmt.Sprintf("Failed to read user directory: %s", err.Error())
 		logger.Log(errMsg, 3)
 	}
 	if userExists {
-		logger.Log(fmt.Sprintf("User %s already exists", username), 6)
+		logger.Log(fmt.Sprintf("User %s already exists %s", username, fullName), 6)
 		return false
 	}
 
