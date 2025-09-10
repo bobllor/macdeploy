@@ -16,7 +16,8 @@ import (
 // CreateAccount creates the user account on the device.
 // Returns true if the account is successfully made, else false.
 //
-// SecureToken is enabled for every user and if enabled, the user will require a password reset upon login.
+// SecureToken is enabled for every user created.
+// If enabled, the user will require a password reset upon login.
 func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 	// username will be used for both entries needed.
 	username := user.User_Name
@@ -88,15 +89,20 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 		logger.Log(fmt.Sprintf("Secure token added for %s", username), 6)
 	}
 
-	createdLog := fmt.Sprintf("User %s created", username)
+	// msg used for logging purposes.
+	createdUserString := ""
+	if isAdmin && !user.Ignore_Admin {
+		createdUserString = "with admin"
+	}
+	createdLog := fmt.Sprintf("User %s created %s", username, createdUserString)
 	logger.Log(createdLog, 6)
 
 	if user.Change_Password {
-		pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u %s -setpolicy 'newPasswordRequired=1'", username)
+		pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1'", fullName)
 
 		err = exec.Command("bash", "-c", pwPolicyCmd).Run()
 		if err != nil {
-			logger.Log(fmt.Sprintf("Error adding password policy for %s", username), 3)
+			logger.Log(fmt.Sprintf("Failed password policy for %s: %v", fullName, err), 3)
 		} else {
 			logger.Log(fmt.Sprintf("Added new password policy for %s", username), 6)
 		}

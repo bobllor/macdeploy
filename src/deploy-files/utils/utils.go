@@ -121,7 +121,8 @@ func RemoveFiles[T any](filesToRemove map[string]T) error {
 	}
 
 	if strings.Contains(currDir, Globals.ProjectPath) {
-		err := errors.New("project directory is forbidden, clean up aborted")
+		errMsg := fmt.Sprintf("project directory is forbidden, clean up aborted: %v, %v", currDir, Globals.ProjectPath)
+		err := errors.New(errMsg)
 		logger.Log(err.Error(), 3)
 
 		return err
