@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	embedhandler "macos-deployment/config"
@@ -149,7 +150,13 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 	for key := range *accounts {
 		currAccount := (*accounts)[key]
 
-		core.CreateAccount(currAccount, config.Admin, adminStatus)
+		err := core.CreateAccount(currAccount, config.Admin, adminStatus)
+		if err != nil {
+			// if user creation is skipped then dont log the error
+			if !strings.Contains(err.Error(), "skipped") {
+				logger.Log("error making user: %v", 3)
+			}
+		}
 	}
 }
 
@@ -189,7 +196,16 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	for pkge, pkgeArr := range packagesMap {
 		isInstalled := core.IsInstalled(pkgeArr, &searchDirFilesArr)
 		if !isInstalled {
-			core.InstallPKG(pkge, &foundPKGs)
+			err := core.InstallPKG(pkge, &foundPKGs)
+			if err != nil {
+				msgBytes := []byte(err.Error())
+				upperFirstBytes := bytes.ToUpper(msgBytes[:1])
+				msgBytes[0] = upperFirstBytes[0]
+
+				msg := string(msgBytes)
+
+				logger.Log(fmt.Sprintf("Failed to install %s.pkg: %s", pkge, msg), 3)
+			}
 		}
 	}
 }
