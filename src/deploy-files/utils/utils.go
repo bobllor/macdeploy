@@ -6,7 +6,6 @@ import (
 	"macos-deployment/deploy-files/logger"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -26,9 +25,9 @@ func InitSudo(adminPassword string) error {
 }
 
 // GetPathMap searches the contents of a directory and returns a map of the files.
-// The keys in the map are all lowercase and the extension is removed.
-func GetFileMap(dirPath string) (map[string]bool, error) {
-	pathContent := make(map[string]bool)
+// The keys in the map are all lowercase.
+func GetSearchFiles(dirPath string) ([]string, error) {
+	pathContent := make([]string, 0)
 
 	dirEntries, dirErr := os.ReadDir(dirPath)
 	if dirErr != nil {
@@ -37,12 +36,8 @@ func GetFileMap(dirPath string) (map[string]bool, error) {
 
 	for _, file := range dirEntries {
 		fileName := strings.ToLower(file.Name())
-		ext := filepath.Ext(fileName)
-		if ext != "" {
-			fileName = fileName[0 : len(fileName)-len(ext)]
-		}
 
-		pathContent[fileName] = true
+		pathContent = append(pathContent, fileName)
 	}
 
 	return pathContent, nil

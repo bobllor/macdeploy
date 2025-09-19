@@ -2,6 +2,7 @@ package core
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/deploy-files/scripts"
@@ -14,17 +15,15 @@ import (
 )
 
 // CreateAccount creates the user account on the device.
-// Returns true if the account is successfully made, else false.
+// It will return nil upon success, if there are any errors then an error is returned.
 //
-// SecureToken is enabled for every user created.
-// If enabled, the user will require a password reset upon login.
-func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
+// SecureToken is enabled for every user and if enabled, the user will require a password reset upon login.
+func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) error {
 	// username will be used for both entries needed.
 	username := user.User_Name
 
 	if user.Password == "" {
-		logger.Log("Cannot have an empty password for the user.", 3)
-		return false
+		return errors.New("empty password given for user, config file must be checked")
 	}
 
 	if username == "" {
@@ -41,7 +40,7 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 
 		if input == "" {
 			logger.Log("User creation skipped", 6)
-			return false
+			return errors.New("user creation skipped")
 		}
 
 		username = input
@@ -61,34 +60,25 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 
 	userExists, err := userExists(fullName)
 	if err != nil {
-		// this is going to assume the user exists
-		errMsg := fmt.Sprintf("Failed to read user directory: %s", err.Error())
-		logger.Log(errMsg, 3)
+		return fmt.Errorf("error occurred reading user directory %s: %v", username, err)
 	}
 	if userExists {
-		logger.Log(fmt.Sprintf("User %s already exists %s", username, fullName), 6)
-		return false
+		return fmt.Errorf("user %s already exists in the system", username)
 	}
 
 	// CreateUserScript takes 3 arguments.
 	out, err := exec.Command("sudo", "bash", "-c",
 		scripts.CreateUserScript, username, fullName, user.Password, admin).CombinedOutput()
 	if err != nil {
-		fmt.Println(string(out))
-		errMsg := fmt.Sprintf("Failed to create user %s | Script exit status: %v", username, err)
-		logger.Log(errMsg, 3)
-		return false
+		logger.Log(fmt.Sprintf("user creation failed info: %s", string(out)), 7)
+		return fmt.Errorf("failed to create user %s: %v", username, err)
 	}
 
 	// turns out i forgot secure token access... that was rough to find out in prod
-	secureTokenCmd := fmt.Sprintf("sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
-		username, user.Password, adminInfo.User_Name, adminInfo.Password)
-
-	_, err = exec.Command("bash", "-c", secureTokenCmd).Output()
+	// always make securetoken, even if filevault is not enabled.
+	err = addSecureToken(username, user.Password, adminInfo)
 	if err != nil {
-		logger.Log(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err), 3)
-	} else {
-		logger.Log(fmt.Sprintf("Secure token added for %s", username), 6)
+		return err
 	}
 
 	// msg used for logging purposes.
@@ -104,13 +94,13 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) bool {
 
 		err = exec.Command("bash", "-c", pwPolicyCmd).Run()
 		if err != nil {
-			logger.Log(fmt.Sprintf("Failed password policy for %s: %v", fullName, err), 3)
+			return fmt.Errorf("failed to create user policy for %s: %v", username, err)
 		} else {
 			logger.Log(fmt.Sprintf("Added new password policy for %s", username), 6)
 		}
 	}
 
-	return true
+	return nil
 }
 
 func userExists(username string) (bool, error) {

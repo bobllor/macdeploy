@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	embedhandler "macos-deployment/config"
@@ -39,20 +40,22 @@ func main() {
 	var logJsonMap = &requests.LogInfo{}
 	var fvJsonData = &requests.FileVaultInfo{}
 
-	var searchDirFilesArr []map[string]bool
+	searchingFiles := make([]string, 0)
 	for _, searchDir := range config.Search_Directories {
-		searchMap, searchErr := utils.GetFileMap(searchDir)
-		if searchErr != nil {
+		searchFiles, err := utils.GetSearchFiles(searchDir)
+		if err != nil {
 			msg := fmt.Sprintf("Path %s does not exist, skipping path", searchDir)
 			logger.Log(msg, 4)
 			continue
 		}
 
-		searchDirFilesArr = append(searchDirFilesArr, searchMap)
+		searchingFiles = append(searchingFiles, searchFiles...)
 	}
 
-	if len(searchDirFilesArr) > 0 {
-		pkgInstallation(config.Packages, searchDirFilesArr)
+	logger.Log(fmt.Sprintf("search directory contents: %v", searchingFiles), 7)
+
+	if len(searchingFiles) > 0 {
+		pkgInstallation(config.Packages, searchingFiles)
 	}
 
 	if config.FileVault {
@@ -149,7 +152,14 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 	for key := range *accounts {
 		currAccount := (*accounts)[key]
 
-		core.CreateAccount(currAccount, config.Admin, adminStatus)
+		err := core.CreateAccount(currAccount, config.Admin, adminStatus)
+		if err != nil {
+			// if user creation is skipped then dont log the error
+			if !strings.Contains(err.Error(), "skipped") {
+				logMsg := fmt.Sprintf("error making user: %v", err)
+				logger.Log(logMsg, 3)
+			}
+		}
 	}
 }
 
@@ -159,7 +169,7 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 // package is found in the searchDirFilesArr.
 // searchDirFilesArr is a map of strings used only for finding if the package files are found to be installed.
 // This data is obtained from the search_directories array YAML config.
-func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[string]bool) {
+func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []string) {
 	roseErr := core.InstallRosetta()
 	if roseErr != nil {
 		logger.Log("Failed to install Rosetta | Unable to install packages", 3)
@@ -187,9 +197,18 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	}
 
 	for pkge, pkgeArr := range packagesMap {
-		isInstalled := core.IsInstalled(pkgeArr, &searchDirFilesArr)
+		isInstalled := core.IsInstalled(pkgeArr, searchDirFilesArr, pkge)
 		if !isInstalled {
-			core.InstallPKG(pkge, &foundPKGs)
+			err := core.InstallPKG(pkge, foundPKGs)
+			if err != nil {
+				msgBytes := []byte(err.Error())
+				upperFirstBytes := bytes.ToUpper(msgBytes[:1])
+				msgBytes[0] = upperFirstBytes[0]
+
+				msg := string(msgBytes)
+
+				logger.Log(fmt.Sprintf("Error with package %s: %s", pkge, msg), 3)
+			}
 		}
 	}
 }

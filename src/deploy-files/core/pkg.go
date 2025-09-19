@@ -62,48 +62,55 @@ func AddPKG(packages map[string][]string, addedPackages []string) {
 // InstallPKG runs a Bash script with arguments to install the given packages.
 //
 // foundPKGs is an array of strings that consist of all packages found in the packages directory.
-func InstallPKG(pkg string, foundPKGs *[]string) {
+func InstallPKG(pkg string, foundPKGs []string) error {
 	pkg = strings.ToLower(pkg)
 
-	for _, file := range *foundPKGs {
+	for _, file := range foundPKGs {
 		fileLowered := strings.ToLower(file)
 
 		if strings.Contains(fileLowered, pkg) {
 			logger.Log(fmt.Sprintf("Installing package %s", pkg), 6)
 
-			cmd := fmt.Sprintf("installer -pkg %s -target /", file)
+			cmd := fmt.Sprintf(`installer -pkg "%s" -target /`, file)
+			logger.Log(fmt.Sprintf("Package: %s | Package Path: %s | Command: %s", pkg, file, cmd), 7)
+
 			_, pkgErr := exec.Command("sudo", "bash", "-c", cmd).Output()
 			if pkgErr != nil {
-				// FIXME: add logging
-				logger.Log(fmt.Sprintf("Failed to install %s.pkg\n", pkg), 3)
+				return pkgErr
 			}
 
-			logger.Log(fmt.Sprintf("[DEBUG] Package: %s | Package Path: %s | Command: %s", pkg, file, cmd), 7)
 			logger.Log(fmt.Sprintf("Successfully installed %s.pkg", pkg), 6)
 
-			return
+			return nil
 		}
 	}
 
-	logger.Log(fmt.Sprintf("Unable to install package %s.pkg", pkg), 4)
+	return fmt.Errorf("unable to install %s", pkg)
 }
 
 // IsInstalled searches for a given package in a search path from a given array of paths.
 // Ensure all keys in searchPaths are lowercase, which can be done by using the function GetFileMap.
-func IsInstalled(pkgNames []string, searchPaths *[]map[string]bool) bool {
+//
+// pkgNames contains the file names of an installed .pkg, not the actual .pkg installer.
+// These can be found in the default directories where they are installed, for example /Applications.
+func IsInstalled(pkgNames []string, searchPaths []string, pkgToInstall string) bool {
 	for _, pkg := range pkgNames {
 		// if no installed names are given, then install regardless.
 		if pkg == "" {
 			return false
 		}
 
-		// unfortunately double loop is required here due to the array condition.
+		pkgLowered := strings.ToLower(pkg)
+		// unfortunately a nested loop is required here due to the array.
 		// on the bright side it does exit out early if it finds a match.
-		for _, pathMap := range *searchPaths {
-			pkgLowered := strings.ToLower(pkg)
+		for _, installedPkg := range searchPaths {
+			loweredInstalledPkgName := strings.ToLower(installedPkg)
 
-			if _, found := pathMap[pkgLowered]; found {
-				logger.Log(fmt.Sprintf("Found existing installation for package %s", pkg), 6)
+			// NOTE: this is a fuzzy finder, so the exact names should be expected.
+			// if a generic name is given, there is a good possibility the wrong name will be matched.
+			if strings.Contains(loweredInstalledPkgName, pkgLowered) {
+				logger.Log(fmt.Sprintf("Found existing installation for package %s", pkgLowered), 6)
+				logger.Log(fmt.Sprintf("Package: %s | Given package name: %s", pkgToInstall, pkgLowered), 7)
 				return true
 			}
 		}

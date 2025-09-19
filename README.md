@@ -134,7 +134,6 @@ Some processes will still require manual interactions.
 This is intended to be used to keep the defined packages in the YAML config as default applications 
 to install on all devices.
 - Strings after the delimiter (`/`) are used as an installation check in the given search directories. 
-These files usually end with the `.app` extension.
 - If the delimiter is omitted, then the deployment will attempt to install without checking for previous
 installs.
 
@@ -224,12 +223,13 @@ A sample config can be found in the repository or by looking at the top of this 
   - `password` (REQUIRED): The password of the admin account.
 
 `packages`: Package file names that are being installed from the `pkg-files` directory on the client device.
-  - `package_name`: The package file, *it is case sensitive and must have the same name* as
-  the `.pkg` files in the package directory. Do not include the extension `.pkg`.
-    - `installed_file_name`: The application or directory of the package files after installation, *it is
-    case sensitive and must have the same name* as the files as they are in the directories. 
-    Do not include the extension `.app` if applicable. Can be omitted but must pass an 
-    empty value `-` or `- ""`.
+  - `package_name`: The package file. The `dist` folder will be read to find any files ending in `.pkg`. The file names
+  can be an exact match or fuzzy matched, but it is recommended to put the full package name in, e.g. `teamviewer.pkg`. 
+  Quotes are required if there are spaces in the package name, e.g. `"Office 2016.pkg"`.
+    - `installed_file_name`: This is the file that is installed when a `.pkg` is successfully installed. It can
+    be either a `.app` file or a directory. It is *not case sensitive*, and should match the file name in the
+    given search directory. For example, `Microsoft Word.app` is searched by `"microsoft word"` or `"Microsoft Word.app"`.
+    Can be omitted in the config but must pass an empty value `-` or `- ""`. Spaces or special characters requires quotes.
 
 `search_directories`: Array of paths that are used for `installed_file_name` to search for applications.
 
