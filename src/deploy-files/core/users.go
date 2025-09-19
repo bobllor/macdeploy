@@ -46,6 +46,8 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) error {
 		username = input
 	}
 
+	// IMPORTANT: this is the actual internal name of the user!
+	// because mac is stupid and named it fullname for some reason!
 	fullName := utils.FormatFullName(username)
 
 	initLog := fmt.Sprintf("Creating user %s | Home Directory Name %s", username, fullName)
@@ -56,7 +58,7 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) error {
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	userExists, err := userExists(username)
+	userExists, err := userExists(fullName)
 	if err != nil {
 		return fmt.Errorf("error occurred reading user directory %s: %v", username, err)
 	}
@@ -79,7 +81,12 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) error {
 		return err
 	}
 
-	createdLog := fmt.Sprintf("User %s created", username)
+	// msg used for logging purposes.
+	createdUserString := ""
+	if isAdmin && !user.Ignore_Admin {
+		createdUserString = "with admin"
+	}
+	createdLog := fmt.Sprintf("User %s created %s", username, createdUserString)
 	logger.Log(createdLog, 6)
 
 	if user.Change_Password {
