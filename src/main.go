@@ -199,7 +199,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []string
 	for pkge, pkgeArr := range packagesMap {
 		isInstalled := core.IsInstalled(pkgeArr, searchDirFilesArr, pkge)
 		if !isInstalled {
-			err := core.InstallPKG(pkge, &foundPKGs)
+			err := core.InstallPKG(pkge, foundPKGs)
 			if err != nil {
 				msgBytes := []byte(err.Error())
 				upperFirstBytes := bytes.ToUpper(msgBytes[:1])
@@ -207,7 +207,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []string
 
 				msg := string(msgBytes)
 
-				logger.Log(fmt.Sprintf("Failed to install %s.pkg: %s", pkge, msg), 3)
+				logger.Log(fmt.Sprintf("Error with package %s: %s", pkge, msg), 3)
 			}
 		}
 	}
