@@ -72,7 +72,7 @@ func InstallPKG(pkg string, foundPKGs *[]string) error {
 			logger.Log(fmt.Sprintf("Installing package %s", pkg), 6)
 
 			cmd := fmt.Sprintf(`installer -pkg "%s" -target /`, file)
-			logger.Log(fmt.Sprintf("[DEBUG] Package: %s | Package Path: %s | Command: %s", pkg, file, cmd), 7)
+			logger.Log(fmt.Sprintf("Package: %s | Package Path: %s | Command: %s", pkg, file, cmd), 7)
 
 			_, pkgErr := exec.Command("sudo", "bash", "-c", cmd).Output()
 			if pkgErr != nil {
@@ -91,20 +91,27 @@ func InstallPKG(pkg string, foundPKGs *[]string) error {
 
 // IsInstalled searches for a given package in a search path from a given array of paths.
 // Ensure all keys in searchPaths are lowercase, which can be done by using the function GetFileMap.
-func IsInstalled(pkgNames []string, searchPaths *[]map[string]bool) bool {
+//
+// pkgNames contains the file names of an installed .pkg, not the actual .pkg installer.
+// These can be found in the default directories where they are installed, for example /Applications.
+func IsInstalled(pkgNames []string, searchPaths []string, pkgToInstall string) bool {
 	for _, pkg := range pkgNames {
 		// if no installed names are given, then install regardless.
 		if pkg == "" {
 			return false
 		}
 
-		// unfortunately double loop is required here due to the array condition.
+		pkgLowered := strings.ToLower(pkg)
+		// unfortunately a nested loop is required here due to the array.
 		// on the bright side it does exit out early if it finds a match.
-		for _, pathMap := range *searchPaths {
-			pkgLowered := strings.ToLower(pkg)
+		for _, installedPkg := range searchPaths {
+			loweredInstalledPkgName := strings.ToLower(installedPkg)
 
-			if _, found := pathMap[pkgLowered]; found {
-				logger.Log(fmt.Sprintf("Found existing installation for package %s", pkg), 6)
+			// NOTE: this is a fuzzy finder, so the exact names should be expected.
+			// if a generic name is given, there is a good possibility the wrong name will be matched.
+			if strings.Contains(loweredInstalledPkgName, pkgLowered) {
+				logger.Log(fmt.Sprintf("Found existing installation for package %s", pkgLowered), 6)
+				logger.Log(fmt.Sprintf("Package: %s | Given package name: %s", pkgToInstall, pkgLowered), 7)
 				return true
 			}
 		}

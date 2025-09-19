@@ -40,20 +40,22 @@ func main() {
 	var logJsonMap = &requests.LogInfo{}
 	var fvJsonData = &requests.FileVaultInfo{}
 
-	var searchDirFilesArr []map[string]bool
+	searchingFiles := make([]string, 0)
 	for _, searchDir := range config.Search_Directories {
-		searchMap, searchErr := utils.GetFileMap(searchDir)
-		if searchErr != nil {
+		searchFiles, err := utils.GetSearchFiles(searchDir)
+		if err != nil {
 			msg := fmt.Sprintf("Path %s does not exist, skipping path", searchDir)
 			logger.Log(msg, 4)
 			continue
 		}
 
-		searchDirFilesArr = append(searchDirFilesArr, searchMap)
+		searchingFiles = append(searchingFiles, searchFiles...)
 	}
 
-	if len(searchDirFilesArr) > 0 {
-		pkgInstallation(config.Packages, searchDirFilesArr)
+	logger.Log(fmt.Sprintf("search directory contents: %v", searchingFiles), 7)
+
+	if len(searchingFiles) > 0 {
+		pkgInstallation(config.Packages, searchingFiles)
 	}
 
 	if config.FileVault {
@@ -154,7 +156,8 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 		if err != nil {
 			// if user creation is skipped then dont log the error
 			if !strings.Contains(err.Error(), "skipped") {
-				logger.Log("error making user: %v", 3)
+				logMsg := fmt.Sprintf("error making user: %v", err)
+				logger.Log(logMsg, 3)
 			}
 		}
 	}
@@ -166,7 +169,7 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 // package is found in the searchDirFilesArr.
 // searchDirFilesArr is a map of strings used only for finding if the package files are found to be installed.
 // This data is obtained from the search_directories array YAML config.
-func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[string]bool) {
+func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []string) {
 	roseErr := core.InstallRosetta()
 	if roseErr != nil {
 		logger.Log("Failed to install Rosetta | Unable to install packages", 3)
@@ -194,7 +197,7 @@ func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []map[st
 	}
 
 	for pkge, pkgeArr := range packagesMap {
-		isInstalled := core.IsInstalled(pkgeArr, &searchDirFilesArr)
+		isInstalled := core.IsInstalled(pkgeArr, searchDirFilesArr, pkge)
 		if !isInstalled {
 			err := core.InstallPKG(pkge, &foundPKGs)
 			if err != nil {
