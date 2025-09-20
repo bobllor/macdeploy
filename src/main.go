@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	_ "embed"
 	"fmt"
 	embedhandler "macos-deployment/config"
@@ -13,7 +12,6 @@ import (
 	"macos-deployment/deploy-files/utils"
 	"macos-deployment/deploy-files/yaml"
 	"os"
-	"os/exec"
 )
 
 func main() {
@@ -126,38 +124,6 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 		logger.Log("Sending log file to server", 6)
 	} else {
 		logger.Log("Unknown serial tag, skipping log transfer process", 4)
-	}
-}
-
-// pkgInstallation begins the package installation process.
-//
-// It takes a map of an array of strings, the keys representing the file name and the name of the installed
-// package is found in the searchDirFilesArr.
-// searchDirFilesArr is a map of strings used only for finding if the package files are found to be installed.
-// This data is obtained from the search_directories array YAML config.
-func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []string) {
-	pkgPath := utils.Globals.DistDirName
-	scriptOut, scriptErr := exec.Command("bash", "-c", scripts.FindPackagesScript, pkgPath).Output()
-
-	// turns out there is an invisible element inside the array...
-	if len(foundPKGs) < 2 {
-		logger.Log("No packages found", 4)
-	}
-
-	for pkge, pkgeArr := range packagesMap {
-		isInstalled := core.IsInstalled(pkgeArr, searchDirFilesArr, pkge)
-		if !isInstalled {
-			err := core.InstallPKG(pkge, foundPKGs)
-			if err != nil {
-				msgBytes := []byte(err.Error())
-				upperFirstBytes := bytes.ToUpper(msgBytes[:1])
-				msgBytes[0] = upperFirstBytes[0]
-
-				msg := string(msgBytes)
-
-				logger.Log(fmt.Sprintf("Error with package %s: %s", pkge, msg), 3)
-			}
-		}
 	}
 }
 

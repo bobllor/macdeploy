@@ -125,5 +125,10 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 		return
 	}
 
+	if len(packages) < 2 {
+		r.log.Warn.Println("No packages found")
+		return
+	}
+
 	packager.InstallPackages(packages)
 }
