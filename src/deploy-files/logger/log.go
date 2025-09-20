@@ -1,61 +1,40 @@
 package logger
 
 import (
+	"bytes"
 	"fmt"
 	"log"
-	"os"
 	"time"
 )
 
-var LogFile string
-var LogFilePath string
-
-var WarningLevels map[int]string = map[int]string{
-	0: "EMERGENCY",
-	1: "ALERT",
-	2: "CRITICAL",
-	3: "ERROR",
-	4: "WARNING",
-	5: "NOTIFICATION",
-	6: "INFO",
-	7: "DEBUG",
+type Log struct {
+	logFilePath string
+	content     *bytes.Buffer
+	Debug       *log.Logger
+	Error       *log.Logger
+	Info        *log.Logger
+	Warn        *log.Logger
 }
 
-func NewLog(serialTag string) {
+// NewLog creates a Log struct for logging.
+// This requires the serial tag of the device.
+func NewLog(serialTag string) *Log {
 	date := time.Now().Format("2006-01-02T15-04-05")
 
-	LogFile = fmt.Sprintf("%s.%s.log", date, serialTag)
-	LogFilePath = fmt.Sprintf("/tmp/%s", LogFile)
-}
+	logFile := fmt.Sprintf("%s.%s.log", date, serialTag)
+	logFilePath := fmt.Sprintf("/tmp/%s", logFile)
 
-// Log creates and writes to the log file.
-//
-// There are 7 levels:
-//   - 0: EMERGENCY
-//   - 1: ALERT
-//   - 2: CRITICAL
-//   - 3: ERROR
-//   - 4: WARNING
-//   - 5: NOTIFICATION
-//   - 6: INFO
-//   - 7: DEBUG
-func Log(msg string, level int) {
-	file, err := os.OpenFile(LogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-	if err != nil {
-		panic(err)
+	buf := bytes.NewBuffer([]byte{})
+	flag := log.Ltime | log.Lmsgprefix
+
+	log := Log{
+		content:     buf,
+		logFilePath: logFilePath,
+		Debug:       log.New(buf, "[DEBUG] ", flag),
+		Info:        log.New(buf, "[INFO] ", flag),
+		Error:       log.New(buf, "[ERROR] ", flag),
+		Warn:        log.New(buf, "[WARNING] ", flag),
 	}
 
-	defer file.Close()
-
-	log.SetOutput(file)
-	log.SetFlags(log.Ltime | log.Lmsgprefix)
-
-	prefix := fmt.Sprintf("[%s] ", WarningLevels[level])
-	log.SetPrefix(prefix)
-
-	// lazy way to display info to the user.
-	if level != 7 {
-		fmt.Println(msg)
-	}
-	log.Println(msg)
+	return &log
 }

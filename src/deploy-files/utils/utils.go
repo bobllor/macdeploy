@@ -9,15 +9,14 @@ import (
 	"strings"
 )
 
-// InitSudo starts a sudo session without the need of manual input.
+// InitializeSudo starts a sudo session without the need of manual input.
 // This can be called multiple times to refresh the sudo timer.
-func InitSudo(adminPassword string) error {
+func InitializeSudo(adminPassword string) error {
 	initSudoCmd := fmt.Sprintf("sudo -S echo <<< '%s'", adminPassword)
 	err := exec.Command("bash", "-c", initSudoCmd).Run()
 
 	if err != nil {
 		// not a major issue, just requires manual interaction instead.
-		logger.Log(fmt.Sprintf("Error with sudo: %v", err), 4)
 		return err
 	}
 
@@ -46,7 +45,7 @@ func GetSearchFiles(dirPath string) ([]string, error) {
 // FormatFullName returns a formatted name: lowercase and replacement of spaces with periods.
 // It will remove all invalid characters.
 //
-// This follows the same rule of macOS' naming convention.
+// This follows the Apple's naming convention for macOS.
 func FormatFullName(value string) string {
 	newName := strings.ToLower(value)
 	newName = strings.TrimSpace(newName)
@@ -91,7 +90,7 @@ func FormatFullName(value string) string {
 
 // GetSerialTag retrieves the serial tag for the device.
 //
-// This only works on macOS devices.
+// An error will return if the serial tag cannot be retrieved.
 func GetSerialTag() (string, error) {
 	cmd := "ioreg -l | grep IOPlatformSerialNumber"
 	out, err := exec.Command("bash", "-c", cmd).Output()

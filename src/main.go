@@ -5,8 +5,8 @@ import (
 	_ "embed"
 	"fmt"
 	embedhandler "macos-deployment/config"
+	"macos-deployment/deploy-files/cmd"
 	"macos-deployment/deploy-files/core"
-	"macos-deployment/deploy-files/flags"
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/deploy-files/scripts"
 	requests "macos-deployment/deploy-files/server-requests"
@@ -14,49 +14,37 @@ import (
 	"macos-deployment/deploy-files/yaml"
 	"os"
 	"os/exec"
-	"strings"
 )
 
-var config *yaml.Config
-
 func main() {
-	utils.InitializeGlobals()
-	logger.NewLog(utils.Globals.SerialTag)
-	config = yaml.ReadYAML(embedhandler.YAMLBytes)
+	const projectName string = "macos-deployment"
+	const distDirectory string = "dist"
+	const zipFile string = "deploy.zip"
 
-	logger.Log(fmt.Sprintf("Starting deployment for %s", utils.Globals.SerialTag), 6)
+	// not exiting, just in case mac fails somehow. but there are checks for non-mac devices.
+	serialTag, err := utils.GetSerialTag()
+	log := logger.NewLog(serialTag)
+	if err != nil {
+		log.Error.Println("Unable to get serial number: %v", err)
+	}
 
-	var flagValues *flags.FlagValues = flags.GetFlags()
+	metadata := utils.NewMetadata(projectName, serialTag, distDirectory, zipFile)
 
-	utils.InitSudo(config.Admin.Password)
+	config, err := yaml.NewConfig(embedhandler.YAMLBytes)
+	if err != nil {
+		log.Error.Println(fmt.Sprintf("Error parsing YAML config: %v", err))
+		os.Exit(1)
+	}
 
-	// mutates the config packages
-	core.RemovePKG(config.Packages, *flagValues.ExcludePackages)
-	core.AddPKG(config.Packages, *flagValues.IncludePackages)
+	scripts := scripts.NewScript()
 
-	var accounts *map[string]yaml.User = &config.Accounts
-	accountCreation(accounts, flagValues.AdminStatus)
+	cmd.InitializeRoot(log, config, scripts, metadata)
+	cmd.Execute()
+
+	os.Exit(1) // TODO: REMOVE ME LATER
 
 	var logJsonMap = &requests.LogInfo{}
 	var fvJsonData = &requests.FileVaultInfo{}
-
-	searchingFiles := make([]string, 0)
-	for _, searchDir := range config.Search_Directories {
-		searchFiles, err := utils.GetSearchFiles(searchDir)
-		if err != nil {
-			msg := fmt.Sprintf("Path %s does not exist, skipping path", searchDir)
-			logger.Log(msg, 4)
-			continue
-		}
-
-		searchingFiles = append(searchingFiles, searchFiles...)
-	}
-
-	logger.Log(fmt.Sprintf("search directory contents: %v", searchingFiles), 7)
-
-	if len(searchingFiles) > 0 {
-		pkgInstallation(config.Packages, searchingFiles)
-	}
 
 	if config.FileVault {
 		startFileVault(fvJsonData)
@@ -66,7 +54,7 @@ func main() {
 		startFirewall()
 	}
 
-	status, err := requests.VerifyConnection(config.Server_Host)
+	status, err := requests.VerifyConnection(config.ServerHost)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Unable to connect to server: %s", err.Error()), 3)
 		logger.Log("Unable to send FileVault key to the server", 4)
@@ -80,7 +68,7 @@ func main() {
 			utils.Globals.ZIPFileName: {},
 		}
 
-		if config.Always_Cleanup {
+		if config.AlwaysCleanup {
 			utils.RemoveFiles(filesToRemove)
 		}
 
@@ -101,8 +89,8 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 		return
 	}
 
-	logUrl := config.Server_Host + "/api/log"
-	fvUrl := config.Server_Host + "/api/fv"
+	logUrl := config.ServerHost + "/api/log"
+	fvUrl := config.ServerHost + "/api/fv"
 
 	logBytes, err := os.ReadFile(logger.LogFilePath)
 	if err != nil {
@@ -141,28 +129,6 @@ func sendPOST(fvData *requests.FileVaultInfo, logData *requests.LogInfo) {
 	}
 }
 
-// accountCreation starts the account making process.
-//
-// It takes a map of the User struct from the YAML file.
-func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
-	if len(*accounts) < 1 {
-		logger.Log("No account information given in YAML file", 4)
-	}
-
-	for key := range *accounts {
-		currAccount := (*accounts)[key]
-
-		err := core.CreateAccount(currAccount, config.Admin, adminStatus)
-		if err != nil {
-			// if user creation is skipped then dont log the error
-			if !strings.Contains(err.Error(), "skipped") {
-				logMsg := fmt.Sprintf("error making user: %v", err)
-				logger.Log(logMsg, 3)
-			}
-		}
-	}
-}
-
 // pkgInstallation begins the package installation process.
 //
 // It takes a map of an array of strings, the keys representing the file name and the name of the installed
@@ -170,27 +136,9 @@ func accountCreation(accounts *map[string]yaml.User, adminStatus bool) {
 // searchDirFilesArr is a map of strings used only for finding if the package files are found to be installed.
 // This data is obtained from the search_directories array YAML config.
 func pkgInstallation(packagesMap map[string][]string, searchDirFilesArr []string) {
-	roseErr := core.InstallRosetta()
-	if roseErr != nil {
-		logger.Log("Failed to install Rosetta | Unable to install packages", 3)
-		return
-	}
-
 	pkgPath := utils.Globals.DistDirName
 	scriptOut, scriptErr := exec.Command("bash", "-c", scripts.FindPackagesScript, pkgPath).Output()
 
-	debug := fmt.Sprintf("PKG folder: %s", pkgPath)
-	logger.Log(debug, 7)
-
-	if scriptErr != nil {
-		scriptErrMsg := "Failed to locate package folder"
-		logger.Log(scriptErrMsg, 3)
-		return
-	}
-
-	foundPKGs := strings.Split(string(scriptOut), "\n")
-
-	logger.Log(fmt.Sprintf("Packages in folder: %v", foundPKGs), 7)
 	// turns out there is an invisible element inside the array...
 	if len(foundPKGs) < 2 {
 		logger.Log("No packages found", 4)
