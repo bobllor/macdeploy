@@ -1,6 +1,6 @@
 accounts:
   default:
-    user_name: defaultuser0
+    username: defaultuser0
     password: "PASSWORD"
     ignore_admin: true
   client:
@@ -14,7 +14,7 @@ packages:
 search_directories:
   - /Applications 
 admin:
-  user_name: ADMIN
+  username: ADMIN
   password: "PASSWORD"
 server_host: "https://127.0.0.1:5000"
 filevault: true
