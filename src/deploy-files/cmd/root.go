@@ -175,10 +175,11 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 		if err != nil {
 			r.log.Error.Println(fmt.Sprintf("Failed to add user to secure token, manual interaction needed"))
 
-			// REMOVE THE USER, this will cause issues if secure token does not exist.
+			// REMOVE THE USER, this will cause a major issue if the user does not have secure token enabled.
+			// i found this out the hard way in a prod environment...
 			err = user.DeleteAccount(internalUsername)
 			if err != nil {
-				r.log.Error.Println(fmt.Sprintf("Failed to run user removal command: %v", err))
+				r.log.Error.Println(fmt.Sprintf("Failed to run user removal command, manual deletion needed: %v", err))
 			}
 		}
 
