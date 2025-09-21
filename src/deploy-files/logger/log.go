@@ -9,11 +9,16 @@ import (
 
 type Log struct {
 	logFilePath string
+	logFileName string
 	content     *bytes.Buffer
-	Debug       *log.Logger
-	Error       *log.Logger
-	Info        *log.Logger
-	Warn        *log.Logger
+	Debug       Logger
+	Error       Logger
+	Info        Logger
+	Warn        Logger
+}
+
+type Logger struct {
+	*log.Logger
 }
 
 // NewLog creates a Log struct for logging.
@@ -30,11 +35,25 @@ func NewLog(serialTag string) *Log {
 	log := Log{
 		content:     buf,
 		logFilePath: logFilePath,
-		Debug:       log.New(buf, "[DEBUG] ", flag),
-		Info:        log.New(buf, "[INFO] ", flag),
-		Error:       log.New(buf, "[ERROR] ", flag),
-		Warn:        log.New(buf, "[WARNING] ", flag),
+		logFileName: logFile,
+		Debug:       Logger{Logger: log.New(buf, "[DEBUG] ", flag)},
+		Info:        Logger{Logger: log.New(buf, "[INFO] ", flag)},
+		Error:       Logger{Logger: log.New(buf, "[ERROR] ", flag)},
+		Warn:        Logger{Logger: log.New(buf, "[WARNING] ", flag)},
 	}
 
 	return &log
+}
+
+// GetLogName returns the log file name ending in .log.
+// This is not the full file path.
+func (l *Log) GetLogName() string {
+	return l.logFileName
+}
+
+// SilentPrintln writes to the buffer without printing to the terminal.
+func (l *Logger) SilentPrintln(msg string) {
+	msg = fmt.Sprintf("%s%s\n", l.Prefix(), msg)
+
+	_, _ = l.Writer().Write([]byte(msg))
 }
