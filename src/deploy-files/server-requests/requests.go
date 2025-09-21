@@ -12,21 +12,21 @@ type Payload interface {
 	SetBody(string)
 }
 
-type ResponseData struct {
+type Response struct {
 	Status  string
 	Content string
 }
 
 // POSTData sends a JSON POST request to the server.
-func POSTData(url string, payload Payload) (ResponseData, error) {
+func POSTData(url string, payload Payload) (*Response, error) {
 	jsonStr, err := json.Marshal(payload)
 	if err != nil {
-		return ResponseData{}, err
+		return nil, err
 	}
 
 	req, err := newJSONRequest(url, jsonStr)
 	if err != nil {
-		return ResponseData{}, err
+		return nil, err
 	}
 
 	// needed for the private server, due to client wipes false cannot be done
@@ -37,20 +37,23 @@ func POSTData(url string, payload Payload) (ResponseData, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return ResponseData{}, err
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return ResponseData{}, err
+		return nil, err
 	}
 
-	var jsonResponse ResponseData
-	json.Unmarshal(body, &jsonResponse)
+	var response Response
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return nil, err
+	}
 
-	return jsonResponse, nil
+	return &response, nil
 }
 
 // VerifyConnection checks for basic connectivity to the host.

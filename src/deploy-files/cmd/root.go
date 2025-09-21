@@ -5,6 +5,7 @@ import (
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/deploy-files/scripts"
+	requests "macos-deployment/deploy-files/server-requests"
 	"macos-deployment/deploy-files/utils"
 	"macos-deployment/deploy-files/yaml"
 	"os"
@@ -21,6 +22,7 @@ type RootData struct {
 	config          *yaml.Config
 	script          *scripts.BashScripts
 	metadata        *utils.Metadata
+	filevaultKey    string
 }
 
 var root RootData
@@ -36,8 +38,15 @@ var rootCmd = &cobra.Command{
 			root.log.Warn.Println("Failed to authenticate sudo: %v", err)
 		}
 
+		// initializations for structs
+		filevault := core.NewFileVault(&root.config.Admin, root.script, root.log)
 		user := core.NewUser(root.config.Admin, root.log)
-		root.startAccountCreation(user, root.AdminStatus)
+
+		root.startAccountCreation(user, filevault, root.AdminStatus)
+		err = root.log.WriteFile()
+		if err != nil {
+
+		}
 
 		// creating the files found in the search directories, it is flattened.
 		searchingFiles := make([]string, 0)
@@ -58,6 +67,60 @@ var rootCmd = &cobra.Command{
 		if len(searchingFiles) > 0 {
 			packager := core.NewPackager(root.config.Packages, searchingFiles, root.log)
 			root.startPackageInstallation(packager)
+		}
+
+		// payload for sending to the server
+		logPayload := requests.NewLogPayload(root.log.GetLogName())
+		// initialized with an empty key, Key gets updated below.
+		// used for sending the log over to the server.
+		filevaultPayload := requests.NewFileVaultPayload("")
+
+		if root.config.FileVault {
+			fvKey := root.startFileVault(filevault)
+
+			filevaultPayload.Key = fvKey
+			filevaultPayload.SetBody(root.metadata.SerialTag)
+		}
+
+		if root.config.Firewall {
+			firewall := core.NewFirewall(root.log)
+
+			root.startFirewall(firewall)
+		}
+
+		root.log.Info.Println("Sending log file to the server")
+
+		err = root.log.WriteFile()
+		if err != nil {
+
+		}
+
+		logPayload.Body = string(root.log.GetContent())
+		err = root.startRequest(logPayload, "/api/log")
+		if err != nil {
+			root.log.Error.Println(fmt.Sprintf("Failed to send to data to server: %v", err))
+
+			if filevaultPayload.Key != "" {
+				root.log.Error.Println("The log file must be saved in order not to lose the generated FileVault key")
+			}
+
+			return
+		}
+
+		if filevaultPayload.Key != "" {
+			root.log.Info.Println("Sending FileVault key to the server")
+
+			err = root.startRequest(filevaultPayload, "/api/fv")
+			if err != nil {
+				root.log.Error.Println(fmt.Sprintf("Failed to send to data to server: %v", err))
+				root.log.Error.Println("The log file must be saved in order not to lose the generated FileVault key")
+
+				return
+			}
+		}
+
+		if root.config.AlwaysCleanup {
+
 		}
 	},
 }
@@ -89,7 +152,7 @@ func InitializeRoot(
 // accountCreation starts the account making process.
 //
 // User is used to call and start the account creation process.
-func (r *RootData) startAccountCreation(user *core.UserMaker, adminStatus bool) {
+func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.FileVault, adminStatus bool) {
 	if len(r.config.Accounts) < 1 {
 		r.log.Warn.Println("No account information given in YAML file")
 	}
@@ -97,14 +160,28 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, adminStatus bool) 
 	for key := range r.config.Accounts {
 		currAccount := r.config.Accounts[key]
 
-		err := user.CreateAccount(currAccount, adminStatus)
+		internalUsername, err := user.CreateAccount(currAccount, adminStatus)
 		if err != nil {
 			// if user creation is skipped then dont log the error
 			if !strings.Contains(err.Error(), "skipped") {
 				logMsg := fmt.Sprintf("Error making user: %v", err)
 				root.log.Error.Println(logMsg)
 			}
+
+			continue
 		}
+
+		err = filevault.AddSecureToken(internalUsername, currAccount.Password)
+		if err != nil {
+			r.log.Error.Println(fmt.Sprintf("Failed to add user to secure token, manual interaction needed"))
+
+			// REMOVE THE USER, this will cause issues if secure token does not exist.
+			err = user.DeleteAccount(internalUsername)
+			if err != nil {
+				r.log.Error.Println(fmt.Sprintf("Failed to run user removal command: %v", err))
+			}
+		}
+
 	}
 }
 
@@ -131,4 +208,66 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 	}
 
 	packager.InstallPackages(packages)
+}
+
+// startFileVault begins the FileVault process and returns the generated key.
+func (r *RootData) startFileVault(filevault *core.FileVault) string {
+	fvKey := ""
+
+	// doesn't matter if it fails, an attempt will always occur.
+	fvStatus, err := filevault.Status()
+	if err != nil {
+		r.log.Warn.Println(fmt.Sprintf("Failed to check FileVault status: %v", err))
+	}
+
+	if !fvStatus {
+		fvKey = filevault.Enable(r.config.Admin.Username, r.config.Admin.Password)
+	}
+
+	return fvKey
+}
+
+func (r *RootData) startFirewall(firewall *core.Firewall) {
+	fwStatus, err := firewall.Status()
+	if err != nil {
+		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %v", err))
+		root.log.Error.Println(firewallErrMsg, 3)
+	}
+
+	root.log.Debug.Println(fmt.Sprintf("Firewall status: %t", fwStatus))
+
+	if !fwStatus && err == nil {
+		err = firewall.Enable()
+		if err != nil {
+			root.log.Error.Println(err)
+		}
+	}
+}
+
+// startRequest sends the logs to the server.
+func (r *RootData) startRequest(payload requests.Payload, endpoint string) error {
+	host := r.config.ServerHost + endpoint
+
+	serverStatus, err := requests.VerifyConnection(host)
+	if err != nil {
+		r.log.Error.Println(fmt.Sprintf("Error reaching host: %v", err))
+
+		return err
+	}
+
+	if serverStatus {
+		res, err := requests.POSTData(host, payload)
+		if err != nil {
+			return err
+		}
+
+		if !strings.Contains(res.Status, "success") {
+			r.log.Warn.Println("Failed to send payload to server")
+		}
+
+	} else {
+		r.log.Warn.Println("Unable to connect to host, manual interactions needed")
+	}
+
+	return nil
 }

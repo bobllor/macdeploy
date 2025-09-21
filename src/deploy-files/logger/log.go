@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -23,11 +25,28 @@ type Logger struct {
 
 // NewLog creates a Log struct for logging.
 // This requires the serial tag of the device.
-func NewLog(serialTag string) *Log {
+func NewLog(serialTag string, logDirectory string) *Log {
 	date := time.Now().Format("2006-01-02T15-04-05")
 
+	// just in case backslash is used for some reason.
+	// honestly maybe this should throw an error in a config validation
+	logDirectory = strings.ReplaceAll(logDirectory, "\\", "/")
+
+	logDirLen := len(logDirectory)
+	logDirArr := strings.Split(logDirectory, "/")
+
+	slashFinder := logDirLen
+	for i := logDirLen - 1; i > 0; i-- {
+		if logDirArr[i] != "" {
+			slashFinder = i
+			break
+		}
+	}
+
+	logDirectory = strings.Join(logDirArr[:slashFinder+1], "/")
+
 	logFile := fmt.Sprintf("%s.%s.log", date, serialTag)
-	logFilePath := fmt.Sprintf("/tmp/%s", logFile)
+	logFilePath := fmt.Sprintf("%s/%s", logDirectory, logFile)
 
 	buf := bytes.NewBuffer([]byte{})
 	flag := log.Ltime | log.Lmsgprefix
@@ -49,6 +68,21 @@ func NewLog(serialTag string) *Log {
 // This is not the full file path.
 func (l *Log) GetLogName() string {
 	return l.logFileName
+}
+
+// Write writes the contents to the log file.
+func (l *Log) WriteFile() error {
+	err := os.WriteFile(l.logFilePath, l.content.Bytes(), 0o600)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetContent returns the buffer data in bytes.
+func (l *Log) GetContent() []byte {
+	return l.content.Bytes()
 }
 
 // SilentPrintln writes to the buffer without printing to the terminal.

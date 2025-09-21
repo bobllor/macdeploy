@@ -106,7 +106,7 @@ func GetSerialTag() (string, error) {
 
 // RemoveFiles removes the files based on a given map. It searches for the files in the map
 // of the directory the execution process started in.
-func RemoveFiles[T any](filesToRemove map[string]T) error {
+func RemoveFiles[T any](filesToRemove map[string]T, projectDirectory string) error {
 	currDir, err := os.Getwd()
 	// i am unsure what errors can happen here
 	if err != nil {
@@ -114,7 +114,7 @@ func RemoveFiles[T any](filesToRemove map[string]T) error {
 		return err
 	}
 
-	if strings.Contains(currDir, Globals.ProjectPath) {
+	if strings.Contains(currDir, projectDirectory) {
 		errMsg := fmt.Sprintf("project directory is forbidden, clean up aborted %v", currDir)
 		err := errors.New(errMsg)
 		logger.Log(err.Error(), 3)

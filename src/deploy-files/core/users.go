@@ -17,9 +17,10 @@ import (
 type UserMaker struct {
 	adminInfo yaml.UserInfo
 	log       *logger.Log
+	filevault *FileVault
 }
 
-// NewUser creates a new User to handle user creation.
+// NewUser creates a new UserMaker to handle user creation.
 func NewUser(adminInfo yaml.UserInfo, logger *logger.Log) *UserMaker {
 	user := UserMaker{
 		adminInfo: adminInfo,
@@ -30,15 +31,15 @@ func NewUser(adminInfo yaml.UserInfo, logger *logger.Log) *UserMaker {
 }
 
 // CreateAccount creates the user account on the device.
-// It will return nil upon success, if there are any errors then an error is returned.
 //
-// SecureToken is enabled for every user and if enabled, the user will require a password reset upon login.
-func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) error {
+// It will return the internal username of the macOS account upon success.
+// If there are any errors then an error is returned.
+func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, error) {
 	// username will be used for both entries needed.
 	username := user.Username
 
 	if user.Password == "" {
-		return errors.New("empty password given for user, config file must be checked")
+		return "", errors.New("empty password given for user, config file must be checked")
 	}
 
 	if username == "" {
@@ -55,7 +56,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) error {
 
 		if input == "" {
 			u.log.Info.Println("User creation skipped")
-			return errors.New("user creation skipped")
+			return "", errors.New("user creation skipped")
 		}
 
 		username = input
@@ -72,12 +73,12 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) error {
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	userExists, err := u.userExists(username)
+	userExists, err := u.userExists(fullName)
 	if err != nil {
-		return fmt.Errorf("error occurred reading user directory %s: %v", username, err)
+		return "", fmt.Errorf("error occurred reading user directory %s: %v", username, err)
 	}
 	if userExists {
-		return fmt.Errorf("user %s already exists in the system", username)
+		return "", fmt.Errorf("user %s already exists in the system", username)
 	}
 
 	// CreateUserScript takes 3 arguments.
@@ -85,33 +86,48 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) error {
 		scripts.CreateUserScript, username, fullName, user.Password, admin).CombinedOutput()
 	if err != nil {
 		u.log.Debug.Println(fmt.Sprintf("create user script error: %s", string(out)))
-		return fmt.Errorf("failed to create user %s: %v", username, err)
-	}
-
-	// turns out i forgot secure token access... that was rough to find out in prod
-	// always make securetoken, even if filevault is not enabled.
-	err = addSecureToken(username, user.Password, u.adminInfo)
-	if err != nil {
-		return err
+		return "", fmt.Errorf("failed to create user %s: %v", username, err)
 	}
 
 	createdLog := fmt.Sprintf("User %s created", username)
 	u.log.Info.Println(createdLog)
 
-	if user.ChangePassword {
-		pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1'", fullName)
+	return username, nil
+}
 
-		err = exec.Command("bash", "-c", pwPolicyCmd).Run()
-		if err != nil {
-			return fmt.Errorf("failed to create user policy for %s: %v", username, err)
-		} else {
-			u.log.Info.Println(fmt.Sprintf("Added new password policy for %s", username))
-		}
+// DeleteAccount removes the given user from the device.
+func (u *UserMaker) DeleteAccount(username string) error {
+	cmd := fmt.Sprintf(
+		"sudo sysadminctl -deleteUser '%s' -adminUser '%s' -adminPassword '%s'",
+		username,
+		u.adminInfo.Username,
+		u.adminInfo.Password)
+	_, err := exec.Command("sudo", "bash", "-c", cmd).Output()
+	if err != nil {
+		return err
 	}
+
+	u.log.Info.Println(fmt.Sprintf("Removed user %s", username))
 
 	return nil
 }
 
+// AddPasswordPolicy adds a password policy for the user.
+//
+// If the password policy fails to run then an error returns.
+func (u *UserMaker) AddPasswordPolicy(username string) error {
+	pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1'", username)
+	err := exec.Command("bash", "-c", pwPolicyCmd).Run()
+	if err != nil {
+		return fmt.Errorf("failed to create user policy for %s: %v", username, err)
+	}
+
+	u.log.Info.Println(fmt.Sprintf("Added new password policy for %s", username))
+
+	return nil
+}
+
+// userExists checks the Users directory for the given username.
 func (u *UserMaker) userExists(username string) (bool, error) {
 	usersPath := "/Users"
 
