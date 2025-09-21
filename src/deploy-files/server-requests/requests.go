@@ -8,11 +8,18 @@ import (
 	"net/http"
 )
 
-// POSTData sends a json POST request to the server.
-//
-// Errors must be handled.
-func POSTData[J LogInfo | FileVaultInfo](url string, mapData *J) (ResponseData, error) {
-	jsonStr, err := json.Marshal(mapData)
+type Payload interface {
+	SetBody(string)
+}
+
+type ResponseData struct {
+	Status  string
+	Content string
+}
+
+// POSTData sends a JSON POST request to the server.
+func POSTData(url string, payload Payload) (ResponseData, error) {
+	jsonStr, err := json.Marshal(payload)
 	if err != nil {
 		return ResponseData{}, err
 	}
