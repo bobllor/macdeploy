@@ -14,7 +14,8 @@ type Config struct {
 	ServerHost        string `yaml:"server_host"`
 	FileVault         bool
 	Firewall          bool
-	AlwaysCleanup     bool `yaml:"always_cleanup"`
+	LogDirectory      string `yaml:"log_directory"`
+	AlwaysCleanup     bool   `yaml:"always_cleanup"`
 }
 
 type UserInfo struct {
