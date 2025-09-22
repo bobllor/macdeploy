@@ -14,15 +14,15 @@ type Config struct {
 	ServerHost        string `yaml:"server_host"`
 	FileVault         bool
 	Firewall          bool
-	LogDirectory      string `yaml:"log_directory"`
+	LogOutput         string `yaml:"log_output"`
 	AlwaysCleanup     bool   `yaml:"always_cleanup"`
 }
 
 type UserInfo struct {
 	Username       string `yaml:"username"`
-	Password       string
-	IgnoreAdmin    bool `yaml:"ignore_admin"`
-	ChangePassword bool `yaml:"change_password"`
+	Password       string `yaml:"password"`
+	IgnoreAdmin    bool   `yaml:"ignore_admin"`
+	ChangePassword bool   `yaml:"change_password"`
 }
 
 // NewConfig returns a struct containing data read from the YAML file. The file is read
