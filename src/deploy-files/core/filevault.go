@@ -30,17 +30,17 @@ func NewFileVault(admin *yaml.UserInfo, script *scripts.BashScripts, log *logger
 func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 	key := ""
 
-	f.log.Info.Println("Starting FileVault process")
+	f.log.Info.Log("Starting FileVault process")
 
 	out, err := exec.Command("sudo", "bash", "-c", scripts.EnableFileVaultScript,
 		adminUser, adminPassword).CombinedOutput()
 
 	outText := string(out)
 	logMsg := strings.TrimSpace(fmt.Sprintf("Output: %s", outText))
-	f.log.Debug.Println(logMsg, 7)
+	f.log.Debug.Log(logMsg, 7)
 
 	if err != nil {
-		f.log.Warn.Println("Failed to enable FileVault")
+		f.log.Warn.Log("Failed to enable FileVault")
 		return ""
 	}
 
@@ -50,7 +50,7 @@ func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 	// also println is not the same as fmt.Println...
 	key = outArr[1]
 
-	f.log.Info.Println("Enabled FileVault")
+	f.log.Info.Log("Enabled FileVault")
 
 	return key
 }
@@ -71,8 +71,7 @@ func (f *FileVault) Status() (bool, error) {
 		return false, fmt.Errorf("filevault checking failed: %s", fileVaultStatus)
 	}
 
-	fileVaultMsg := fmt.Sprintf("FileVault status: %s", fileVaultStatus)
-	f.log.Info.Println(fileVaultMsg, 6)
+	f.log.Info.Log("FileVault status: %s", fileVaultStatus)
 
 	if strings.Contains(fileVaultStatus, "true") {
 		return true, nil
@@ -91,10 +90,10 @@ func (f *FileVault) AddSecureToken(username string, userPassword string) error {
 
 	_, err := exec.Command("bash", "-c", secureTokenCmd).Output()
 	if err != nil {
-		f.log.Error.Println(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err))
+		f.log.Error.Log(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err))
 		return fmt.Errorf("failed to enable secure token for user %s: %v", username, err)
 	} else {
-		f.log.Info.Println(fmt.Sprintf("Secure token added for %s", username), 6)
+		f.log.Info.Log("Secure token added for %s", username)
 	}
 
 	return nil

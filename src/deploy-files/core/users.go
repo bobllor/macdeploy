@@ -17,7 +17,6 @@ import (
 type UserMaker struct {
 	adminInfo yaml.UserInfo
 	log       *logger.Log
-	filevault *FileVault
 }
 
 // NewUser creates a new UserMaker to handle user creation.
@@ -55,7 +54,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 		input = input[:len(input)-1]
 
 		if input == "" {
-			u.log.Info.Println("User creation skipped")
+			u.log.Info.Log("User creation skipped")
 			return "", errors.New("user creation skipped")
 		}
 
@@ -66,7 +65,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 	fullName := utils.FormatFullName(username)
 
 	initInfoLog := fmt.Sprintf("Creating user %s | Home Directory Name %s", username, fullName)
-	u.log.Info.Println(initInfoLog)
+	u.log.Info.Log(initInfoLog)
 
 	admin := "false"
 	if isAdmin && !user.IgnoreAdmin {
@@ -85,12 +84,12 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 	out, err := exec.Command("sudo", "bash", "-c",
 		scripts.CreateUserScript, username, fullName, user.Password, admin).CombinedOutput()
 	if err != nil {
-		u.log.Debug.Println(fmt.Sprintf("create user script error: %s", string(out)))
+		u.log.Debug.Log(fmt.Sprintf("create user script error: %s", string(out)))
 		return "", fmt.Errorf("failed to create user %s: %v", username, err)
 	}
 
 	createdLog := fmt.Sprintf("User %s created", username)
-	u.log.Info.Println(createdLog)
+	u.log.Info.Log(createdLog)
 
 	return username, nil
 }
@@ -107,7 +106,7 @@ func (u *UserMaker) DeleteAccount(username string) error {
 		return err
 	}
 
-	u.log.Info.Println(fmt.Sprintf("Removed user %s", username))
+	u.log.Info.Log(fmt.Sprintf("Removed user %s", username))
 
 	return nil
 }
@@ -122,7 +121,7 @@ func (u *UserMaker) AddPasswordPolicy(username string) error {
 		return fmt.Errorf("failed to create user policy for %s: %v", username, err)
 	}
 
-	u.log.Info.Println(fmt.Sprintf("Added new password policy for %s", username))
+	u.log.Info.Log(fmt.Sprintf("Added new password policy for %s", username))
 
 	return nil
 }
@@ -133,11 +132,11 @@ func (u *UserMaker) userExists(username string) (bool, error) {
 
 	dirs, err := os.ReadDir(usersPath)
 	if err != nil {
-		u.log.Error.Println(fmt.Sprintf("Error reading directory: %v", err))
+		u.log.Error.Log(fmt.Sprintf("Error reading directory: %v", err))
 		return false, err
 	}
 
-	u.log.Debug.Println(fmt.Sprintf("User directory content: %v", dirs))
+	u.log.Debug.Log(fmt.Sprintf("User directory content: %v", dirs))
 
 	for _, dir := range dirs {
 		dirName := strings.ToLower(dir.Name())

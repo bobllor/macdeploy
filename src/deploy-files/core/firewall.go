@@ -22,10 +22,10 @@ func (f *Firewall) Enable() error {
 	out, err := exec.Command("sudo", "bash", "-c", scripts.EnableFirewallScript).CombinedOutput()
 	if err != nil {
 		// FIXME: i dont remember why i use string(out) instead of just error. i added err in a rewrite.
-		return fmt.Errorf("Failed to enable Firewall: %s | %v", string(out), err)
+		return fmt.Errorf("failed to enable Firewall: %s | %v", string(out), err)
 	}
 
-	f.log.Info.Println("Firewall enabled")
+	f.log.Info.Log("Firewall enabled")
 
 	return nil
 }
@@ -36,7 +36,7 @@ func (f *Firewall) Status() (bool, error) {
 	out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
 	if err != nil {
 		errMsg := strings.TrimSpace(fmt.Sprintf("Failed to check Firewall status | %s", string(out)))
-		f.log.Error.Println(errMsg, 3)
+		f.log.Error.Log(errMsg, 3)
 
 		return false, errors.New(string(out))
 	}

@@ -32,7 +32,7 @@ func NewPackager(packagesToInstall map[string][]string, searchingFiles []string,
 // If the installation of Rosetta fails then an error will be returned.
 func (p *Packager) InstallRosetta() error {
 	if runtime.GOARCH == "amd64" {
-		p.log.Info.Println(fmt.Sprintf("Skipping Rosetta installation, architecture: %s", runtime.GOARCH))
+		p.log.Info.Log("Skipping Rosetta installation, architecture: %s", runtime.GOARCH)
 		return nil
 	}
 
@@ -48,9 +48,9 @@ func (p *Packager) InstallRosetta() error {
 			return errors.New("rosetta failed to install")
 		}
 
-		p.log.Info.Println("Rosetta successfully installed")
+		p.log.Info.Log("Rosetta successfully installed")
 	} else {
-		p.log.Warn.Println("Found existing Rosetta installation")
+		p.log.Warn.Log("Found existing Rosetta installation")
 	}
 
 	return nil
@@ -72,10 +72,10 @@ func (p *Packager) AddPackages(packagesToAdd []string) {
 		}
 
 		p.packagesToInstall[pkg] = pkgInstalledArr
-		p.log.Info.Println(fmt.Sprintf("Added %s to the installation list", pkg))
+		p.log.Info.Log("Added %s to the installation list", pkg)
 	}
 
-	p.log.Debug.Println(fmt.Sprintf("Packages: %v"), p.packagesToInstall)
+	p.log.Debug.Log("Packages: %v", p.packagesToInstall)
 }
 
 // RemovePackages removes packages from the list of packages to install by removing the packages
@@ -84,7 +84,7 @@ func (p *Packager) RemovePackages(packagesToRemove []string) {
 	for _, excludedPkg := range packagesToRemove {
 		_, ok := p.packagesToInstall[excludedPkg]
 		if ok {
-			p.log.Info.Println(fmt.Sprintf("Excluded package %s from installation", excludedPkg))
+			p.log.Info.Log("Excluded package %s from installation", excludedPkg)
 			delete(p.packagesToInstall, excludedPkg)
 		}
 	}
@@ -98,17 +98,17 @@ func (p *Packager) RemovePackages(packagesToRemove []string) {
 // If the directory does not exist or if there is an issue reading the directory, then an error
 // is returned.
 func (p *Packager) GetPackages(pkgDirectory string, getPackageScript string) ([]string, error) {
-	p.log.Debug.Println(fmt.Sprintf("Package folder: %s", pkgDirectory))
+	p.log.Debug.Log(fmt.Sprintf("Package folder: %s", pkgDirectory))
 
 	out, err := exec.Command("bash", "-c", getPackageScript, pkgDirectory).Output()
 	if err != nil {
-		p.log.Error.Println(fmt.Sprintf("Failed to search directory: %v", err))
+		p.log.Error.Log(fmt.Sprintf("Failed to search directory: %v", err))
 		return nil, err
 	}
 
 	pkgArray := strings.Split(string(out), "\n")
 
-	p.log.Debug.Println("Packages found: %v", pkgArray)
+	p.log.Debug.Log("Packages found: %v", pkgArray)
 
 	return pkgArray, nil
 }
@@ -122,7 +122,7 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 		isInstalled := p.isInstalled(installedPkgNames, pkg)
 
 		if isInstalled {
-			p.log.Warn.Println(fmt.Sprintf("Package %s is already installed", pkg))
+			p.log.Warn.Log(fmt.Sprintf("Package %s is already installed", pkg))
 			continue
 		}
 
@@ -132,17 +132,17 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 		for _, file := range packagesPath {
 			relativePkgLow := strings.ToLower(file)
 			if strings.Contains(relativePkgLow, pkgLowered) {
-				p.log.Info.Println(fmt.Sprintf("Installing package %s", pkg))
+				p.log.Info.Log("Installing package %s", pkg)
 
 				cmd := fmt.Sprintf(`installer -pkg "%s" -target /`, file)
-				p.log.Debug.Println(fmt.Sprintf("Package: %s | Package path: %s | Command: %s", pkg, file, cmd))
+				p.log.Debug.Log("Package: %s | Package path: %s | Command: %s", pkg, file, cmd)
 
 				_, err := exec.Command("sudo", "bash", "-c", cmd).Output()
 				if err != nil {
-					p.log.Warn.Println(fmt.Sprintf("Failed to install %s: %v", pkg, err))
+					p.log.Warn.Log(fmt.Sprintf("Failed to install %s: %v", pkg, err))
 				}
 
-				p.log.Info.Println(fmt.Sprintf("Successfully installed %s.pkg", pkg))
+				p.log.Info.Log(fmt.Sprintf("Successfully installed %s.pkg", pkg))
 			}
 		}
 	}
@@ -171,8 +171,8 @@ func (p *Packager) isInstalled(installedPkgNames []string, pkgToInstall string) 
 			// if a generic name is given, there is a good possibility the wrong name will be matched.
 			// compares the files in the search directory, to the user defined package name for installation checks.
 			if strings.Contains(lowInstalledPkgName, lowPkgSearchName) {
-				p.log.Info.Println(fmt.Sprintf("Found existing installation for package %s", pkgToInstall))
-				p.log.Debug.Println(fmt.Sprintf("Package: %s | Given package name: %s", pkgToInstall, pkgSearchName))
+				p.log.Info.Log(fmt.Sprintf("Found existing installation for package %s", pkgToInstall))
+				p.log.Debug.Log(fmt.Sprintf("Package: %s | Given package name: %s", pkgToInstall, pkgSearchName))
 				return true
 			}
 		}
