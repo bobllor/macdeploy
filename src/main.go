@@ -42,14 +42,16 @@ func main() {
 		logDirectory = logger.FormatLogOutput(logDirectory)
 	}
 
-	if err != nil {
-		fmt.Printf("Changing log output to home directory, unable to create directory: %s\n", logDirectory)
-		logDirectory = metadata.Home
-	}
-
 	err = logger.MkdirAll(logDirectory, 0o744)
 	if err != nil {
-		fmt.Printf("Unable to make logging directories: %v\n", err)
+		fmt.Printf("Unable to make logging directory: %v\n", err)
+		fmt.Printf("Changing log output to home directory: %s\n", defaultLogDir)
+		logDirectory = defaultLogDir
+
+		err = logger.MkdirAll(defaultLogDir, 0o744)
+		if err != nil {
+			fmt.Printf("Unable to make logging directory: %v\n", err)
+		}
 	}
 
 	log := logger.NewLog(serialTag, logDirectory)
