@@ -140,9 +140,16 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 				_, err := exec.Command("sudo", "bash", "-c", cmd).Output()
 				if err != nil {
 					p.log.Warn.Log(fmt.Sprintf("Failed to install %s: %v", pkg, err))
+					continue
 				}
 
-				p.log.Info.Log(fmt.Sprintf("Successfully installed %s.pkg", pkg))
+				outMsg := "Successfully installed"
+				if !strings.Contains(pkgLowered, ".pkg") {
+					outMsg = fmt.Sprintf("%s %s.pkg", outMsg, pkg)
+				} else {
+					outMsg = fmt.Sprintf("%s %s", outMsg, pkg)
+				}
+				p.log.Info.Log(outMsg)
 			}
 		}
 	}
