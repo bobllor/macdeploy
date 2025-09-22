@@ -22,20 +22,18 @@ type RootData struct {
 	config          *yaml.Config
 	script          *scripts.BashScripts
 	metadata        *utils.Metadata
-	filevaultKey    string
 }
 
 var root RootData
 
 var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(root.AdminStatus, root.ExcludePackages, root.IncludePackages)
-		root.log.Info.Println(fmt.Sprintf("Starting deployment for %s", root.metadata.SerialTag))
+		root.log.Info.Log("Starting deployment for %s", root.metadata.SerialTag)
 
 		// initializes sudo for automation purposes.
 		err := utils.InitializeSudo(root.config.Admin.Password)
 		if err != nil {
-			root.log.Warn.Println("Failed to authenticate sudo: %v", err)
+			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
 		}
 
 		// initializations for structs
@@ -45,7 +43,7 @@ var rootCmd = &cobra.Command{
 		root.startAccountCreation(user, filevault, root.AdminStatus)
 		err = root.log.WriteFile()
 		if err != nil {
-
+			fmt.Printf("Failed to write to log file: %v\n", err)
 		}
 
 		// creating the files found in the search directories, it is flattened.
@@ -53,20 +51,22 @@ var rootCmd = &cobra.Command{
 		for _, searchDir := range root.config.SearchDirectories {
 			searchFiles, err := utils.GetSearchFiles(searchDir)
 			if err != nil {
-				msg := fmt.Sprintf("Path %s does not exist, skipping path", searchDir)
-				root.log.Warn.Println(msg)
+				root.log.Warn.Log("Path %s does not exist, skipping path", searchDir)
 				continue
 			}
 
 			searchingFiles = append(searchingFiles, searchFiles...)
 		}
 
-		root.log.Debug.Println(
-			fmt.Sprintf("File amount: %d | Directories: %v", len(searchingFiles), root.config.SearchDirectories))
+		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchingFiles), root.config.SearchDirectories)
 
 		if len(searchingFiles) > 0 {
 			packager := core.NewPackager(root.config.Packages, searchingFiles, root.log)
 			root.startPackageInstallation(packager)
+		}
+		err = root.log.WriteFile()
+		if err != nil {
+			fmt.Printf("Failed to write to log file: %v\n", err)
 		}
 
 		// payload for sending to the server
@@ -81,6 +81,10 @@ var rootCmd = &cobra.Command{
 			filevaultPayload.Key = fvKey
 			filevaultPayload.SetBody(root.metadata.SerialTag)
 		}
+		err = root.log.WriteFile()
+		if err != nil {
+			fmt.Printf("Failed to write to log file: %v\n", err)
+		}
 
 		if root.config.Firewall {
 			firewall := core.NewFirewall(root.log)
@@ -88,39 +92,49 @@ var rootCmd = &cobra.Command{
 			root.startFirewall(firewall)
 		}
 
-		root.log.Info.Println("Sending log file to the server")
+		root.log.Info.Log("Sending log file to the server")
 
 		err = root.log.WriteFile()
 		if err != nil {
-
+			fmt.Printf("Failed to write to log file: %v\n", err)
 		}
 
 		logPayload.Body = string(root.log.GetContent())
 		err = root.startRequest(logPayload, "/api/log")
 		if err != nil {
-			root.log.Error.Println(fmt.Sprintf("Failed to send to data to server: %v", err))
+			root.log.Error.Log("Failed to send to data to server: %v", err)
 
 			if filevaultPayload.Key != "" {
-				root.log.Error.Println("The log file must be saved in order not to lose the generated FileVault key")
+				root.log.Error.Log("The log file must be saved in order not to lose the generated FileVault key")
 			}
 
 			return
 		}
 
 		if filevaultPayload.Key != "" {
-			root.log.Info.Println("Sending FileVault key to the server")
+			root.log.Info.Log("Sending FileVault key to the server")
 
 			err = root.startRequest(filevaultPayload, "/api/fv")
 			if err != nil {
-				root.log.Error.Println(fmt.Sprintf("Failed to send to data to server: %v", err))
-				root.log.Error.Println("The log file must be saved in order not to lose the generated FileVault key")
+				root.log.Error.Log("Failed to send to data to server: %v", err)
+				fmt.Println("The log file must be saved in order not to lose the generated FileVault key")
+
+				err = root.log.WriteFile()
+				if err != nil {
+					fmt.Printf("Failed to write to log file: %v\n", err)
+				}
 
 				return
 			}
 		}
 
 		if root.config.AlwaysCleanup {
+			filesToRemove := map[string]struct{}{
+				root.metadata.DistDirectory: {},
+				root.metadata.ZipFile:       {},
+			}
 
+			root.startCleanup(filesToRemove)
 		}
 	},
 }
@@ -154,7 +168,7 @@ func InitializeRoot(
 // User is used to call and start the account creation process.
 func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.FileVault, adminStatus bool) {
 	if len(r.config.Accounts) < 1 {
-		r.log.Warn.Println("No account information given in YAML file")
+		r.log.Warn.Log("No account information given in YAML file")
 	}
 
 	for key := range r.config.Accounts {
@@ -165,7 +179,7 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 			// if user creation is skipped then dont log the error
 			if !strings.Contains(err.Error(), "skipped") {
 				logMsg := fmt.Sprintf("Error making user: %v", err)
-				root.log.Error.Println(logMsg)
+				root.log.Error.Log(logMsg)
 			}
 
 			continue
@@ -173,13 +187,13 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 
 		err = filevault.AddSecureToken(internalUsername, currAccount.Password)
 		if err != nil {
-			r.log.Error.Println(fmt.Sprintf("Failed to add user to secure token, manual interaction needed"))
+			r.log.Error.Log("Failed to add user to secure token, manual interaction needed")
 
 			// REMOVE THE USER, this will cause a major issue if the user does not have secure token enabled.
 			// i found this out the hard way in a prod environment...
 			err = user.DeleteAccount(internalUsername)
 			if err != nil {
-				r.log.Error.Println(fmt.Sprintf("Failed to run user removal command, manual deletion needed: %v", err))
+				r.log.Error.Log("Failed to run user removal command, manual deletion needed: %v", err)
 			}
 		}
 
@@ -190,7 +204,7 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 func (r *RootData) startPackageInstallation(packager *core.Packager) {
 	err := packager.InstallRosetta()
 	if err != nil {
-		r.log.Error.Println(fmt.Sprintf("Failed to install Rosetta: %v", err))
+		r.log.Error.Printf("Failed to install Rosetta: %v", err)
 		return
 	}
 
@@ -199,12 +213,12 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 
 	packages, err := packager.GetPackages(r.metadata.DistDirectory, r.script.FindPackages)
 	if err != nil {
-		r.log.Error.Println(fmt.Sprintf("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err))
+		r.log.Error.Log("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err)
 		return
 	}
 
 	if len(packages) < 2 {
-		r.log.Warn.Println("No packages found")
+		r.log.Warn.Log("No packages found")
 		return
 	}
 
@@ -218,7 +232,7 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 	// doesn't matter if it fails, an attempt will always occur.
 	fvStatus, err := filevault.Status()
 	if err != nil {
-		r.log.Warn.Println(fmt.Sprintf("Failed to check FileVault status: %v", err))
+		r.log.Warn.Printf("Failed to check FileVault status: %v", err)
 	}
 
 	if !fvStatus {
@@ -232,15 +246,15 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 	fwStatus, err := firewall.Status()
 	if err != nil {
 		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %v", err))
-		root.log.Error.Println(firewallErrMsg, 3)
+		root.log.Error.Printf(firewallErrMsg, 3)
 	}
 
-	root.log.Debug.Println(fmt.Sprintf("Firewall status: %t", fwStatus))
+	root.log.Debug.Printf("Firewall status: %t", fwStatus)
 
 	if !fwStatus && err == nil {
 		err = firewall.Enable()
 		if err != nil {
-			root.log.Error.Println(err)
+			root.log.Error.Log("%v", err)
 		}
 	}
 }
@@ -251,7 +265,7 @@ func (r *RootData) startRequest(payload requests.Payload, endpoint string) error
 
 	serverStatus, err := requests.VerifyConnection(host)
 	if err != nil {
-		r.log.Error.Println(fmt.Sprintf("Error reaching host: %v", err))
+		r.log.Error.Printf("Error reaching host: %v", err)
 
 		return err
 	}
@@ -263,12 +277,38 @@ func (r *RootData) startRequest(payload requests.Payload, endpoint string) error
 		}
 
 		if !strings.Contains(res.Status, "success") {
-			r.log.Warn.Println("Failed to send payload to server")
+			r.log.Warn.Log("Failed to send payload to server")
 		}
 
 	} else {
-		r.log.Warn.Println("Unable to connect to host, manual interactions needed")
+		r.log.Warn.Log("Unable to connect to host, manual interactions needed")
 	}
 
 	return nil
+}
+
+// startCleanup begins the cleanup process.
+func (r *RootData) startCleanup(filesToRemove map[string]struct{}) {
+	currDir, err := os.Getwd()
+	// i am unsure what errors can happen here
+	if err != nil {
+		fmt.Printf("Error getting working directory: %v\n", err)
+		return
+	}
+
+	currDir = strings.ToLower(currDir)
+
+	// just in case this is ran in the main project directory.
+	if strings.Contains(currDir, r.metadata.ProjectName) {
+		fmt.Printf("project directory is forbidden, clean up aborted %v\n", currDir)
+		return
+	}
+
+	files, err := os.ReadDir(currDir)
+	if err != nil {
+		fmt.Printf("Unable to read directory %v\n", err)
+		return
+	}
+
+	utils.RemoveFiles(filesToRemove, files)
 }
