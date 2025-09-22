@@ -17,28 +17,42 @@ func main() {
 	const distDirectory string = "dist"
 	const zipFile string = "deploy.zip"
 
-	config, err := yaml.NewConfig(embedhandler.YAMLBytes)
-	if err != nil {
-		// TODO: make this a better error message (incorrect keys, required keys missing, etc)
-		fmt.Println("Error parsing YAML configuration")
-		os.Exit(1)
-	}
-
-	// by default we will put in the tmp directory if none is given
-	logDirectory := config.LogDirectory
-	if logDirectory == "" {
-		logDirectory = "/tmp"
-	}
-
 	// not exiting, just in case mac fails somehow. but there are checks for non-mac devices.
 	serialTag, err := utils.GetSerialTag()
-	log := logger.NewLog(serialTag, logDirectory)
 	if err != nil {
-		log.Error.Println("Unable to get serial number: %v", err)
+		serialTag = "UNKNOWN"
+		fmt.Printf("Unable to get serial number: %v\n", err)
 	}
 
 	metadata := utils.NewMetadata(projectName, serialTag, distDirectory, zipFile)
 	scripts := scripts.NewScript()
+	config, err := yaml.NewConfig(embedhandler.YAMLBytes)
+	if err != nil {
+		// TODO: make this a better error message (incorrect keys, required keys missing, etc)
+		fmt.Printf("Error parsing YAML configuration, %v\n", err)
+		os.Exit(1)
+	}
+
+	// by default we will put in the home directory if none is given
+	logDirectory := config.LogOutput
+	defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, ".macdeploy")
+	if logDirectory == "" {
+		logDirectory = defaultLogDir
+	} else {
+		logDirectory = logger.FormatLogOutput(logDirectory)
+	}
+
+	if err != nil {
+		fmt.Printf("Changing log output to home directory, unable to create directory: %s\n", logDirectory)
+		logDirectory = metadata.Home
+	}
+
+	err = logger.MkdirAll(logDirectory, 0o744)
+	if err != nil {
+		fmt.Printf("Unable to make logging directories: %v\n", err)
+	}
+
+	log := logger.NewLog(serialTag, logDirectory)
 
 	cmd.InitializeRoot(log, config, scripts, metadata)
 	cmd.Execute()
