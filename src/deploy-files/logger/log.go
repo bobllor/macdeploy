@@ -20,6 +20,7 @@ type Log struct {
 }
 
 type Logger struct {
+	silent bool
 	*log.Logger
 }
 
@@ -27,23 +28,6 @@ type Logger struct {
 // This requires the serial tag of the device.
 func NewLog(serialTag string, logDirectory string) *Log {
 	date := time.Now().Format("2006-01-02T15-04-05")
-
-	// just in case backslash is used for some reason.
-	// honestly maybe this should throw an error in a config validation
-	logDirectory = strings.ReplaceAll(logDirectory, "\\", "/")
-
-	logDirLen := len(logDirectory)
-	logDirArr := strings.Split(logDirectory, "/")
-
-	slashFinder := logDirLen
-	for i := logDirLen - 1; i > 0; i-- {
-		if logDirArr[i] != "" {
-			slashFinder = i
-			break
-		}
-	}
-
-	logDirectory = strings.Join(logDirArr[:slashFinder+1], "/")
 
 	logFile := fmt.Sprintf("%s.%s.log", date, serialTag)
 	logFilePath := fmt.Sprintf("%s/%s", logDirectory, logFile)
@@ -55,10 +39,13 @@ func NewLog(serialTag string, logDirectory string) *Log {
 		content:     buf,
 		logFilePath: logFilePath,
 		logFileName: logFile,
-		Debug:       Logger{Logger: log.New(buf, "[DEBUG] ", flag)},
-		Info:        Logger{Logger: log.New(buf, "[INFO] ", flag)},
-		Error:       Logger{Logger: log.New(buf, "[ERROR] ", flag)},
-		Warn:        Logger{Logger: log.New(buf, "[WARNING] ", flag)},
+		Debug: Logger{
+			Logger: log.New(buf, "[DEBUG] ", flag),
+			silent: true,
+		},
+		Info:  Logger{Logger: log.New(buf, "[INFO] ", flag)},
+		Error: Logger{Logger: log.New(buf, "[ERROR] ", flag)},
+		Warn:  Logger{Logger: log.New(buf, "[WARNING] ", flag)},
 	}
 
 	return &log
@@ -85,9 +72,61 @@ func (l *Log) GetContent() []byte {
 	return l.content.Bytes()
 }
 
-// SilentPrintln writes to the buffer without printing to the terminal.
-func (l *Logger) SilentPrintln(msg string) {
-	msg = fmt.Sprintf("%s%s\n", l.Prefix(), msg)
+// Log prints the output to the terminal and logs the output.
+func (l *Logger) Log(msg string, v ...any) {
+	if len(v) > 0 {
+		msg = fmt.Sprintf(msg, v...)
+	}
+	l.Logger.Println(msg)
 
-	_, _ = l.Writer().Write([]byte(msg))
+	if !l.silent {
+		msg = fmt.Sprintf("%s%s", l.Prefix(), msg)
+		fmt.Println(msg)
+	}
+}
+
+// FormatLogOutput formats the output path of the log, based on if it ends with a
+// slash (/), if it ends in a *.log, or neither (directory).
+//
+// Any outputs ending in *.log will drop the *.log.
+func FormatLogOutput(logOutput string) string {
+	// just in case backslash is used for some reason.
+	// honestly maybe this should throw an error in a config validation
+	logOutput = strings.ReplaceAll(logOutput, "\\", "/")
+
+	logDirArr := strings.Split(logOutput, "/")
+	logDirArrLen := len(logDirArr)
+	lastArrElement := logDirArr[len(logDirArr)-1]
+
+	// drops .log or removes any ending slashes.
+	if strings.Contains(lastArrElement, ".log") {
+		return strings.Join(logDirArr[:logDirArrLen-1], "/")
+	} else if lastArrElement == "" {
+		wordIndex := logDirArrLen
+
+		for i := logDirArrLen - 1; i > 0; i-- {
+			if logDirArr[i] != "" {
+				wordIndex = i
+				break
+			}
+		}
+
+		if wordIndex == logDirArrLen {
+			logOutput = strings.Join(logDirArr[:wordIndex], "/")
+		} else {
+			logOutput = strings.Join(logDirArr[:wordIndex+1], "/")
+		}
+	}
+
+	return logOutput
+}
+
+// MkdirAll utilizes MkdirAll to create the all directories for the log file.
+func MkdirAll(logDir string, perm os.FileMode) error {
+	err := os.MkdirAll(logDir, perm)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
