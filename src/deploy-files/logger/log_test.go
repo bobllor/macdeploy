@@ -68,6 +68,45 @@ func TestFormatDir(t *testing.T) {
 	}
 }
 
+func TestWriteLog(t *testing.T) {
+	dir := GetDir(t, "some/dir")
+	log := GetLog(t, dir)
+
+	err := MkdirAll(dir, 0o744)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	errorMsg := "AN ERROR HERE"
+	warn := "A WARNING HERE"
+	info := "A INFO HERE"
+	debug := "A DEBUG HERE"
+
+	log.Error.Log(errorMsg)
+	log.Warn.Log(warn)
+	log.Info.Log(info)
+	log.Debug.Log(debug)
+
+	err = log.WriteFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contentBytes, err := os.ReadFile(log.logFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	messages := []string{errorMsg, warn, info, debug}
+	content := string(contentBytes)
+
+	for _, msg := range messages {
+		if !strings.Contains(content, msg) {
+			t.Fatalf("%s could not be found in %s", msg, content)
+		}
+	}
+}
+
 func GetLog(t *testing.T, dirPath string) *Log {
 	serialTag := "LOL12345"
 
