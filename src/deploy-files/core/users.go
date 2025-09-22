@@ -69,6 +69,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 
 	admin := "false"
 	if isAdmin && !user.IgnoreAdmin {
+		u.log.Info.Log("Admin enabled for user %s", username)
 		admin = strconv.FormatBool(isAdmin)
 	}
 
