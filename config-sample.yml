@@ -17,7 +17,7 @@ admin:
   username: ADMIN
   password: "PASSWORD"
 server_host: "https://127.0.0.1:5000"
-log_directory: "/tmp"
+log_output: "/tmp"
 filevault: true
 firewall: true
 always_cleanup: false
