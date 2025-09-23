@@ -3,29 +3,30 @@
 # Creates the binary and updates the ZIP package in the root directory.
 # Used if a new binary is required for an update, for example a change in the YAML config.
 
+# getting the latest changed yaml config in the server.
+configs=$(ls -t | grep -Ei "config\.(yaml|yml)$")
+config=""
+
+while read line; do
+    config=$line
+    break
+done <<< $configs
+
+if [[ -z "$config" ]]; then
+    echo "No YAML config found"
+    exit 1
+fi
+
 dist_dir="dist"
 
 if [[ ! -d "$dist_dir" ]]; then
     mkdir $dist_dir
 fi
 
-config_name="config.yml"
-# used for the destination copy, handles .yaml and .yml
-dest_config=$config_name
-
-if [[ ! -e "$config_name" ]]; then
-    alt_config_name="config.yaml"
-
-    if [[ ! -e "$alt_config_name" ]]; then
-        echo "cannot find YAML config file"
-        exit 1
-    fi
-
-    config_name=$alt_config_name
-fi
+dest_config="config.yml"
 
 # copies the YAML config into src for embedding
-cp $config_name ./src/config/$dest_config
+cp "$config" "./src/config/$dest_config"
 
 binary_name="deploy-arm.bin"
 env GOOS=darwin GOARCH=arm64 go build -C ./src -o "../dist/$binary_name"
