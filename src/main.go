@@ -55,6 +55,7 @@ func main() {
 	}
 
 	log := logger.NewLog(serialTag, logDirectory)
+	log.Info.Log("Log directory: %s", logDirectory)
 
 	cmd.InitializeRoot(log, config, scripts, metadata)
 	cmd.Execute()
