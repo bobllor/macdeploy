@@ -192,6 +192,13 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 			continue
 		}
 
+		if currAccount.ChangePassword {
+			err = user.AddPasswordPolicy(internalUsername)
+			if err != nil {
+				r.log.Warn.Log("Failed to add password policy to user %s: %v", internalUsername, err)
+			}
+		}
+
 		err = filevault.AddSecureToken(internalUsername, currAccount.Password)
 		if err != nil {
 			r.log.Error.Log("Failed to add user to secure token, manual interaction needed")
@@ -246,6 +253,10 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 		fvKey = filevault.Enable(r.config.Admin.Username, r.config.Admin.Password)
 	}
 
+	if fvKey != "" {
+		r.log.Info.Log("Generated key %s", fvKey)
+	}
+
 	return fvKey
 }
 
@@ -282,6 +293,8 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 		if err != nil {
 			return err
 		}
+
+		r.log.Info.Log("Server response: %s", res.Content)
 
 		if !strings.Contains(res.Status, "success") {
 			r.log.Warn.Log("Failed to send payload to server")
