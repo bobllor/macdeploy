@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/logger"
@@ -16,6 +17,7 @@ import (
 
 type RootData struct {
 	AdminStatus     bool
+	RemoveFiles     bool
 	ExcludePackages []string
 	IncludePackages []string
 	log             *logger.Log
@@ -27,6 +29,7 @@ type RootData struct {
 var root RootData
 
 var rootCmd = &cobra.Command{
+	Use: "deploy-arm.bin [options]",
 	Run: func(cmd *cobra.Command, args []string) {
 		root.log.Info.Log("Starting deployment for %s", root.metadata.SerialTag)
 
@@ -36,7 +39,7 @@ var rootCmd = &cobra.Command{
 			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
 		}
 
-		// initializations for structs
+		// dependency initializations
 		filevault := core.NewFileVault(&root.config.Admin, root.script, root.log)
 		user := core.NewUser(root.config.Admin, root.log)
 
@@ -99,8 +102,10 @@ var rootCmd = &cobra.Command{
 			fmt.Printf("Failed to write to log file: %v\n", err)
 		}
 
+		request := requests.NewRequest(root.log)
+
 		logPayload.Body = string(root.log.GetContent())
-		err = root.startRequest(logPayload, "/api/log")
+		err = root.startRequest(logPayload, request, "/api/log")
 		if err != nil {
 			root.log.Error.Log("Failed to send to data to server: %v", err)
 
@@ -114,7 +119,7 @@ var rootCmd = &cobra.Command{
 		if filevaultPayload.Key != "" {
 			root.log.Info.Log("Sending FileVault key to the server")
 
-			err = root.startRequest(filevaultPayload, "/api/fv")
+			err = root.startRequest(filevaultPayload, request, "/api/fv")
 			if err != nil {
 				root.log.Error.Log("Failed to send to data to server: %v", err)
 				fmt.Println("The log file must be saved in order not to lose the generated FileVault key")
@@ -128,7 +133,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		if root.config.AlwaysCleanup {
+		if root.RemoveFiles {
 			filesToRemove := map[string]struct{}{
 				root.metadata.DistDirectory: {},
 				root.metadata.ZipFile:       {},
@@ -153,9 +158,11 @@ func InitializeRoot(
 	rootCmd.Flags().BoolVarP(
 		&root.AdminStatus, "admin", "a", false, "Grants admin to the created user")
 	rootCmd.Flags().StringArrayVar(&root.ExcludePackages,
-		"exclude", []string{}, "Exclude a package from installation if it is defined in the YAML")
+		"exclude", []string{}, "Exclude a package from installation")
 	rootCmd.Flags().StringArrayVar(&root.IncludePackages,
 		"include", []string{}, "Include a package to install")
+	rootCmd.Flags().BoolVar(
+		&root.RemoveFiles, "remove-files", false, "Removes the files on the device upon successful execution")
 
 	root.log = logger
 	root.config = yamlConfig
@@ -260,10 +267,10 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 }
 
 // startRequest sends the logs to the server.
-func (r *RootData) startRequest(payload requests.Payload, endpoint string) error {
+func (r *RootData) startRequest(payload requests.Payload, request *requests.Request, endpoint string) error {
 	host := r.config.ServerHost + endpoint
 
-	serverStatus, err := requests.VerifyConnection(host)
+	serverStatus, err := request.VerifyConnection(r.config.ServerHost)
 	if err != nil {
 		r.log.Error.Printf("Error reaching host: %v", err)
 
@@ -271,17 +278,22 @@ func (r *RootData) startRequest(payload requests.Payload, endpoint string) error
 	}
 
 	if serverStatus {
-		res, err := requests.POSTData(host, payload)
+		res, err := request.POSTData(host, payload)
 		if err != nil {
 			return err
 		}
 
 		if !strings.Contains(res.Status, "success") {
 			r.log.Warn.Log("Failed to send payload to server")
+
+			return errors.New("payload failed to send to server")
 		}
 
+		r.log.Info.Log("Successfully sent log file to server")
 	} else {
 		r.log.Warn.Log("Unable to connect to host, manual interactions needed")
+
+		return errors.New("unable to connect to host")
 	}
 
 	return nil
