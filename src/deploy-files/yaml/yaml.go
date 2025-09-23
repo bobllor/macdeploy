@@ -15,7 +15,6 @@ type Config struct {
 	FileVault         bool
 	Firewall          bool
 	LogOutput         string `yaml:"log_output"`
-	AlwaysCleanup     bool   `yaml:"always_cleanup"`
 }
 
 type UserInfo struct {
