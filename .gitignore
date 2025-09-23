@@ -26,5 +26,8 @@ __pycache__/
 *.zip
 *.bin
 .token
-config.yml
-config.yaml
+
+# yaml stuff
+!config-sample.yaml
+!compose.yml
+config.*[yY][mM][lL]
