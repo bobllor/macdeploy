@@ -214,7 +214,7 @@ var rootCmd = &cobra.Command{
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Completed deployment for %s\n", root.metadata.SerialTag)
-		fmt.Printf("Log output: ./%s\n", root.log.GetLogPath())
+		fmt.Printf("Log output: %s\n", root.log.GetLogPath())
 	},
 }
 

@@ -28,15 +28,16 @@ func (d *Dmg) ReadDmgDirectory(dir string) ([]string, error) {
 		return nil, err
 	}
 
+	// will return arr[:-1] because an empty string is present at the end of the array
 	dmgArray := strings.Split(string(out), "\n")
 
-	d.log.Debug.Log("Packages found: %v", dmgArray)
+	d.log.Debug.Log("DMGs found: %v", dmgArray)
 
-	return dmgArray, nil
+	return dmgArray[:len(dmgArray)-1], nil
 }
 
 func (d *Dmg) MountDmgs(dmgPaths []string) {
-	cmd := "hdutil attach '%s'"
+	cmd := "hdiutil attach '%s'"
 
 	for _, dmgPath := range dmgPaths {
 		d.log.Debug.Log("DMG path: %s", dmgPath)
@@ -44,6 +45,8 @@ func (d *Dmg) MountDmgs(dmgPaths []string) {
 		if strings.Contains(dmgPath, ".dmg") {
 			newCmd := fmt.Sprintf(cmd, dmgPath)
 			out, err := exec.Command("bash", "-c", newCmd).Output()
+
+			d.log.Debug.Log("Command: %s", newCmd)
 
 			if err != nil {
 				d.log.Error.Log("failed to mount %s: %v", dmgPath, err)
@@ -55,7 +58,7 @@ func (d *Dmg) MountDmgs(dmgPaths []string) {
 }
 
 func (d *Dmg) UnmountDmgs(mountDir string, dmgPaths []string) {
-	cmd := "hdutil detach '%s'"
+	cmd := "hdiutil detach '%s'"
 
 	for _, dmgPath := range dmgPaths {
 		if strings.Contains(dmgPath, ".dmg") {
