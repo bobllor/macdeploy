@@ -10,16 +10,20 @@ import (
 )
 
 type Firewall struct {
-	log *logger.Log
+	log    *logger.Log
+	script *scripts.BashScripts
 }
 
-func NewFirewall(log *logger.Log) *Firewall {
-	return &Firewall{log: log}
+func NewFirewall(log *logger.Log, scripts *scripts.BashScripts) *Firewall {
+	return &Firewall{
+		log:    log,
+		script: scripts,
+	}
 }
 
 // Enable enables the Firewall.
 func (f *Firewall) Enable() error {
-	out, err := exec.Command("sudo", "bash", "-c", scripts.EnableFirewallScript).CombinedOutput()
+	out, err := exec.Command("sudo", "bash", "-c", f.script.EnableFirewall).CombinedOutput()
 	if err != nil {
 		// FIXME: i dont remember why i use string(out) instead of just error. i added err in a rewrite.
 		return fmt.Errorf("failed to enable Firewall: %s | %v", string(out), err)
