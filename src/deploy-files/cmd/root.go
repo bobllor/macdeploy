@@ -20,6 +20,7 @@ type RootData struct {
 	AdminStatus     bool
 	RemoveFiles     bool
 	Verbose         bool
+	NoSend          bool
 	ExcludePackages []string
 	IncludePackages []string
 	log             *logger.Log
@@ -149,41 +150,45 @@ var rootCmd = &cobra.Command{
 			root.startFirewall(firewall)
 		}
 
-		root.log.Info.Log("Sending log file to the server")
+		// flag to not send the log to the server. this is used for debugging purposes only
+		// if this is used for non-debugging purposes... not my issue.
+		if !root.NoSend {
+			root.log.Info.Log("Sending log file to the server")
 
-		err = root.log.WriteFile()
-		if err != nil {
-			fmt.Printf("Failed to write to log file: %v\n", err)
-		}
-
-		request := requests.NewRequest(root.log)
-
-		logPayload.Body = string(root.log.GetContent())
-		err = root.startRequest(logPayload, request, "/api/log")
-		if err != nil {
-			root.log.Error.Log("Failed to send to data to server: %v", err)
-
-			if filevaultPayload.Key != "" {
-				root.log.Error.Log("The log file must be saved in order not to lose the generated FileVault key")
+			err = root.log.WriteFile()
+			if err != nil {
+				fmt.Printf("Failed to write to log file: %v\n", err)
 			}
 
-			os.Exit(1)
-		}
+			request := requests.NewRequest(root.log)
 
-		if filevaultPayload.Key != "" {
-			root.log.Info.Log("Sending FileVault key to the server")
-
-			err = root.startRequest(filevaultPayload, request, "/api/fv")
+			logPayload.Body = string(root.log.GetContent())
+			err = root.startRequest(logPayload, request, "/api/log")
 			if err != nil {
 				root.log.Error.Log("Failed to send to data to server: %v", err)
-				fmt.Println("The log file must be saved in order not to lose the generated FileVault key")
 
-				err = root.log.WriteFile()
-				if err != nil {
-					fmt.Printf("Failed to write to log file: %v\n", err)
+				if filevaultPayload.Key != "" {
+					root.log.Error.Log("The log file must be saved in order not to lose the generated FileVault key")
 				}
 
 				os.Exit(1)
+			}
+
+			if filevaultPayload.Key != "" {
+				root.log.Info.Log("Sending FileVault key to the server")
+
+				err = root.startRequest(filevaultPayload, request, "/api/fv")
+				if err != nil {
+					root.log.Error.Log("Failed to send to data to server: %v", err)
+					fmt.Println("The log file must be saved in order not to lose the generated FileVault key")
+
+					err = root.log.WriteFile()
+					if err != nil {
+						fmt.Printf("Failed to write to log file: %v\n", err)
+					}
+
+					os.Exit(1)
+				}
 			}
 		}
 
@@ -228,6 +233,8 @@ func InitializeRoot() {
 		&root.RemoveFiles, "remove-file", false, "Remove the files on the device upon successful execution")
 	rootCmd.Flags().BoolVarP(
 		&root.Verbose, "verbose", "v", false, "Displays debug output of the tool")
+	rootCmd.Flags().BoolVar(
+		&root.NoSend, "no-send", false, "Does not send the log to the server")
 }
 
 // accountCreation starts the account making process.
