@@ -28,11 +28,11 @@ dest_config="config.yml"
 # copies the YAML config into src for embedding
 cp "$config" "./src/config/$dest_config"
 
-binary_name="deploy-arm.bin"
+binary_name="macdeploy"
 env GOOS=darwin GOARCH=arm64 go build -C ./src -o "../dist/$binary_name"
 
 # need another binary for intel based macs
-amd_binary="deploy-x86_64.bin"
+amd_binary="x86_64-macdeploy"
 env GOOS=darwin GOARCH=amd64 go build -C ./src -o "../dist/$amd_binary"
 
 zip_name="deploy.zip"
