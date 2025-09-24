@@ -82,7 +82,8 @@ func (f *FileVault) Status() (bool, error) {
 
 // AddSecureToken adds the user to the SecureToken list for FileVault.
 //
-// If successful then nil is returned, otherwise an error is thrown and manual interaction is needed.
+// If successful then nil is returned, otherwise an error is returned. Do not leave the
+// user on the device, otherwise issues will occur due to FileVault.
 func (f *FileVault) AddSecureToken(username string, userPassword string) error {
 	// turns out i forgot secure token access... that was rough to find out in prod
 	secureTokenCmd := fmt.Sprintf("sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
