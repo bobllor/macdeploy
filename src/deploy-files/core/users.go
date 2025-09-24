@@ -62,7 +62,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 	}
 
 	// follows apple's naming convention
-	accountName := utils.FormatFullName(username)
+	accountName := utils.FormatUsername(username)
 
 	initInfoLog := fmt.Sprintf("Creating user %s | Account Name %s", username, accountName)
 	u.log.Info.Log(initInfoLog)
