@@ -19,6 +19,7 @@ import (
 type RootData struct {
 	AdminStatus     bool
 	RemoveFiles     bool
+	Verbose         bool
 	ExcludePackages []string
 	IncludePackages []string
 	log             *logger.Log
@@ -32,7 +33,7 @@ var root RootData
 var rootCmd = &cobra.Command{
 	Use:   "macdeploy",
 	Short: "MacBook deployment tool",
-	Long:  `Automated deployment for MacBooks, creating the user, installing packages,`,
+	Long:  `Automated deployment for MacBooks for ITAMs.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		const projectName string = "macos-deployment"
 		const distDirectory string = "dist"
@@ -75,7 +76,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		log := logger.NewLog(serialTag, logDirectory)
+		log := logger.NewLog(serialTag, logDirectory, root.Verbose)
 		log.Info.Log("Log directory: %s", logDirectory)
 
 		root.log = log
@@ -166,7 +167,7 @@ var rootCmd = &cobra.Command{
 				root.log.Error.Log("The log file must be saved in order not to lose the generated FileVault key")
 			}
 
-			return
+			os.Exit(1)
 		}
 
 		if filevaultPayload.Key != "" {
@@ -182,7 +183,7 @@ var rootCmd = &cobra.Command{
 					fmt.Printf("Failed to write to log file: %v\n", err)
 				}
 
-				return
+				os.Exit(1)
 			}
 		}
 
@@ -194,6 +195,17 @@ var rootCmd = &cobra.Command{
 
 			root.startCleanup(filesToRemove)
 		}
+	},
+	PostRun: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Completed deployment for %s\n", root.metadata.SerialTag)
+
+		wd, err := os.Getwd()
+		if err != nil {
+			fmt.Printf("Got error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Log output: %s/%s\n", wd, root.log.GetLogPath())
 	},
 }
 
@@ -214,6 +226,8 @@ func InitializeRoot() {
 		"include", []string{}, "Include a package to install")
 	rootCmd.Flags().BoolVar(
 		&root.RemoveFiles, "remove-files", false, "Removes the files on the device upon successful execution")
+	rootCmd.Flags().BoolVarP(
+		&root.Verbose, "verbose", "v", false, "Displays debug output of the tool")
 }
 
 // accountCreation starts the account making process.
@@ -272,7 +286,7 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 	packager.AddPackages(root.IncludePackages)
 	packager.RemovePackages(root.ExcludePackages)
 
-	packages, err := packager.GetPackages(r.metadata.DistDirectory, r.script.FindPackages)
+	packages, err := packager.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindPackages)
 	if err != nil {
 		r.log.Error.Log("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err)
 		return
