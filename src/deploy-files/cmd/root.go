@@ -232,11 +232,11 @@ func InitializeRoot() {
 	rootCmd.Flags().StringArrayVar(&root.IncludePackages,
 		"include", []string{}, "Include a package to install")
 	rootCmd.Flags().BoolVar(
-		&root.RemoveFiles, "remove-file", false, "Remove the files on the device upon successful execution")
+		&root.RemoveFiles, "remove-files", false, "Remove the deployment files on the device upon successful execution")
 	rootCmd.Flags().BoolVarP(
 		&root.Verbose, "verbose", "v", false, "Displays debug output of the tool")
 	rootCmd.Flags().BoolVar(
-		&root.NoSend, "no-send", false, "Does not send the log to the server")
+		&root.NoSend, "no-send", false, "Do not send the log to the server")
 }
 
 // accountCreation starts the account making process.
