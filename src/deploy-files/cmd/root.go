@@ -150,9 +150,8 @@ var rootCmd = &cobra.Command{
 			root.startFirewall(firewall)
 		}
 
-		// flag to not send the log to the server. this is used for debugging purposes only
-		// if this is used for non-debugging purposes... not my issue.
-		if !root.NoSend {
+		// if a filevault key is present, always send regardless of flag usage
+		if filevaultPayload.Key != "" || !root.NoSend {
 			root.log.Info.Log("Sending log file to the server")
 
 			err = root.log.WriteFile()
@@ -190,6 +189,9 @@ var rootCmd = &cobra.Command{
 					os.Exit(1)
 				}
 			}
+		} else if filevaultPayload.Key == "" && root.NoSend {
+			root.log.Info.Log("No FileVault key generated")
+			root.log.Info.Log("Skipping sending logs to server, flag --no-send: %v", root.NoSend)
 		}
 
 		if root.RemoveFiles {
