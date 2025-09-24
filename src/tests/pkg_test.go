@@ -31,7 +31,7 @@ func TestAddPackages(t *testing.T) {
 	packager.AddPackages(packagesToAdd)
 
 	packages := packager.GetPackages()
-	newLen := len(*packages)
+	newLen := len(packages)
 
 	if newLen != baseLenPkgInstall+len(packagesToAdd) {
 		t.Errorf(
