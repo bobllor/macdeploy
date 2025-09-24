@@ -111,7 +111,7 @@ func (p *Packager) RemovePackages(packagesToRemove []string) {
 func (p *Packager) ReadPackagesDirectory(pkgDirectory string, getPackageScript string) ([]string, error) {
 	p.log.Debug.Log(fmt.Sprintf("Package folder: %s", pkgDirectory))
 
-	out, err := exec.Command("bash", "-c", getPackageScript, pkgDirectory).Output()
+	out, err := exec.Command("bash", "-c", getPackageScript, pkgDirectory, "*.pkg").Output()
 	if err != nil {
 		p.log.Error.Log(fmt.Sprintf("Failed to search directory: %v", err))
 		return nil, err
