@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	embedhandler "macos-deployment/config"
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/deploy-files/scripts"
@@ -29,7 +30,59 @@ type RootData struct {
 var root RootData
 
 var rootCmd = &cobra.Command{
-	Use: "deploy-arm.bin [options]",
+	Use:   "macdeploy",
+	Short: "MacBook deployment tool",
+	Long:  `Automated deployment for MacBooks, creating the user, installing packages,`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		const projectName string = "macos-deployment"
+		const distDirectory string = "dist"
+		const zipFile string = "deploy.zip"
+
+		// not exiting, just in case mac fails somehow. but there are checks for non-mac devices.
+		serialTag, err := utils.GetSerialTag()
+		if err != nil {
+			serialTag = "UNKNOWN"
+			fmt.Printf("Unable to get serial number: %v\n", err)
+		}
+
+		metadata := utils.NewMetadata(projectName, serialTag, distDirectory, zipFile)
+		scripts := scripts.NewScript()
+		config, err := yaml.NewConfig(embedhandler.YAMLBytes)
+		if err != nil {
+			// TODO: make this a better error message (incorrect keys, required keys missing, etc)
+			fmt.Printf("Error parsing YAML configuration, %v\n", err)
+			os.Exit(1)
+		}
+
+		// by default we will put in the home directory if none is given
+		logDirectory := config.LogOutput
+		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, ".macdeploy")
+		if logDirectory == "" {
+			logDirectory = defaultLogDir
+		} else {
+			logDirectory = logger.FormatLogOutput(logDirectory)
+		}
+
+		err = logger.MkdirAll(logDirectory, 0o744)
+		if err != nil {
+			fmt.Printf("Unable to make logging directory: %v\n", err)
+			fmt.Printf("Changing log output to home directory: %s\n", defaultLogDir)
+			logDirectory = defaultLogDir
+
+			err = logger.MkdirAll(defaultLogDir, 0o744)
+			if err != nil {
+				fmt.Printf("Unable to make logging directory: %v\n", err)
+			}
+		}
+
+		log := logger.NewLog(serialTag, logDirectory)
+		log.Info.Log("Log directory: %s", logDirectory)
+
+		root.log = log
+		root.config = config
+		root.script = scripts
+		root.metadata = metadata
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		root.log.Info.Log("Starting deployment for %s", root.metadata.SerialTag)
 
@@ -151,10 +204,8 @@ func Execute() {
 	}
 }
 
-// InitializeRoot initializes the flags and instances for the use of the tool.
-func InitializeRoot(
-	logger *logger.Log, yamlConfig *yaml.Config,
-	scripts *scripts.BashScripts, metadata *utils.Metadata) {
+// InitializeRoot initializes the flags for rootCmd.
+func InitializeRoot() {
 	rootCmd.Flags().BoolVarP(
 		&root.AdminStatus, "admin", "a", false, "Grants admin to the created user")
 	rootCmd.Flags().StringArrayVar(&root.ExcludePackages,
@@ -163,11 +214,6 @@ func InitializeRoot(
 		"include", []string{}, "Include a package to install")
 	rootCmd.Flags().BoolVar(
 		&root.RemoveFiles, "remove-files", false, "Removes the files on the device upon successful execution")
-
-	root.log = logger
-	root.config = yamlConfig
-	root.script = scripts
-	root.metadata = metadata
 }
 
 // accountCreation starts the account making process.
@@ -181,7 +227,7 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 	for key := range r.config.Accounts {
 		currAccount := r.config.Accounts[key]
 
-		internalUsername, err := user.CreateAccount(currAccount, adminStatus)
+		accountName, err := user.CreateAccount(currAccount, adminStatus)
 		if err != nil {
 			// if user creation is skipped then dont log the error
 			if !strings.Contains(err.Error(), "skipped") {
@@ -192,25 +238,25 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 			continue
 		}
 
-		if currAccount.ChangePassword {
-			err = user.AddPasswordPolicy(internalUsername)
-			if err != nil {
-				r.log.Warn.Log("Failed to add password policy to user %s: %v", internalUsername, err)
-			}
-		}
-
-		err = filevault.AddSecureToken(internalUsername, currAccount.Password)
+		err = filevault.AddSecureToken(accountName, currAccount.Password)
 		if err != nil {
 			r.log.Error.Log("Failed to add user to secure token, manual interaction needed")
 
-			// REMOVE THE USER, this will cause a major issue if the user does not have secure token enabled.
-			// i found this out the hard way in a prod environment...
-			err = user.DeleteAccount(internalUsername)
+			// do not skip this process if secure token fails
+			err = user.DeleteAccount(accountName)
 			if err != nil {
 				r.log.Error.Log("Failed to run user removal command, manual deletion needed: %v", err)
+
+				continue
 			}
 		}
 
+		if currAccount.ChangePassword {
+			err = user.AddPasswordPolicy(accountName)
+			if err != nil {
+				r.log.Warn.Log("Failed to add password policy to user %s: %v", accountName, err)
+			}
+		}
 	}
 }
 
@@ -222,8 +268,9 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 		return
 	}
 
-	packager.RemovePackages(root.ExcludePackages)
+	// removing packages take precedent.
 	packager.AddPackages(root.IncludePackages)
+	packager.RemovePackages(root.ExcludePackages)
 
 	packages, err := packager.GetPackages(r.metadata.DistDirectory, r.script.FindPackages)
 	if err != nil {
