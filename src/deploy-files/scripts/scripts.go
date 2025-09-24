@@ -8,31 +8,31 @@ import (
 // NOTE: next time, read the man page...
 
 //go:embed create_user.sh
-var CreateUserScript string
+var createUserScript string
 
 //go:embed enable_filevault.sh
-var EnableFileVaultScript string
+var enableFileVaultScript string
 
 //go:embed enable_firewall.sh
-var EnableFirewallScript string
+var enableFirewallScript string
 
-//go:embed find_pkgs.sh
-var FindPackagesScript string
+//go:embed find_files.sh
+var findFilesScript string
 
 type BashScripts struct {
 	CreateUser      string
 	EnableFileVault string
 	EnableFirewall  string
-	FindPackages    string
+	FindFiles       string
 }
 
 // NewScript generates an embedded struct for scripts created in Bash.
 func NewScript() *BashScripts {
 	scripts := BashScripts{
-		CreateUser:      CreateUserScript,
-		EnableFileVault: EnableFileVaultScript,
-		EnableFirewall:  EnableFirewallScript,
-		FindPackages:    FindPackagesScript,
+		CreateUser:      createUserScript,
+		EnableFileVault: enableFileVaultScript,
+		EnableFirewall:  enableFirewallScript,
+		FindFiles:       findFilesScript,
 	}
 
 	return &scripts
