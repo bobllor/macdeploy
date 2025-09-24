@@ -32,7 +32,7 @@ func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 
 	f.log.Info.Log("Starting FileVault process")
 
-	out, err := exec.Command("sudo", "bash", "-c", scripts.EnableFileVaultScript,
+	out, err := exec.Command("sudo", "bash", "-c", f.script.EnableFileVault,
 		adminUser, adminPassword).CombinedOutput()
 
 	outText := string(out)
