@@ -17,13 +17,15 @@ import (
 type UserMaker struct {
 	adminInfo yaml.UserInfo
 	log       *logger.Log
+	script    *scripts.BashScripts
 }
 
 // NewUser creates a new UserMaker to handle user creation.
-func NewUser(adminInfo yaml.UserInfo, logger *logger.Log) *UserMaker {
+func NewUser(adminInfo yaml.UserInfo, scripts *scripts.BashScripts, logger *logger.Log) *UserMaker {
 	user := UserMaker{
 		adminInfo: adminInfo,
 		log:       logger,
+		script:    scripts,
 	}
 
 	return &user
@@ -83,7 +85,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 
 	// CreateUserScript takes 3 arguments.
 	out, err := exec.Command("sudo", "bash", "-c",
-		scripts.CreateUserScript, username, accountName, user.Password, admin).CombinedOutput()
+		u.script.CreateUser, username, accountName, user.Password, admin).CombinedOutput()
 	if err != nil {
 		u.log.Debug.Log(fmt.Sprintf("create user script error: %s", string(out)))
 		return "", fmt.Errorf("failed to create user %s: %v", username, err)
