@@ -60,7 +60,11 @@ func (d *Dmg) MountDmgs(dmgPaths []string) {
 			}
 
 			d.log.Debug.Log("Command output: %s", strings.TrimSpace(string(out)))
-			fmt.Println(strings.Split(string(out), " "))
+
+			outArr1 := strings.Split(string(out), " ")
+			outArr2 := strings.Split(string(out), "\t")
+			fmt.Println(outArr1[len(outArr1)-1])
+			fmt.Println(outArr2[len(outArr2)-1])
 		}
 	}
 
