@@ -17,8 +17,16 @@ type Packager struct {
 
 // NewPackager creates a new Packager for package modifications for macOS.
 func NewPackager(packagesToInstall map[string][]string, searchingFiles []string, logger *logger.Log) *Packager {
+	packagesLowered := make(map[string][]string)
+
+	for pkg, appNames := range packagesToInstall {
+		lowPkg := strings.ToLower(pkg)
+
+		packagesLowered[lowPkg] = appNames
+	}
+
 	packager := Packager{
-		packagesToInstall: packagesToInstall,
+		packagesToInstall: packagesLowered,
 		searchingFiles:    searchingFiles,
 		log:               logger,
 	}
@@ -57,11 +65,13 @@ func (p *Packager) InstallRosetta() error {
 }
 
 // AddPKG adds new packages to the list of packages to install by adding packages
-// included in the --include flag.
+// included in the --include flag. All package names are lowered.
 func (p *Packager) AddPackages(packagesToAdd []string) {
 	for _, includedPkg := range packagesToAdd {
 		// used to extract the package and its installed files from the flag argument.
 		includeArgArr := strings.Split(includedPkg, "/")
+
+		p.toLowerArray(&includeArgArr)
 
 		pkg := includeArgArr[0]
 
@@ -82,7 +92,8 @@ func (p *Packager) AddPackages(packagesToAdd []string) {
 // given in the --exclude flag.
 func (p *Packager) RemovePackages(packagesToRemove []string) {
 	for _, excludedPkg := range packagesToRemove {
-		_, ok := p.packagesToInstall[excludedPkg]
+		excludedPkgLow := strings.ToLower(excludedPkg)
+		_, ok := p.packagesToInstall[excludedPkgLow]
 		if ok {
 			p.log.Info.Log("Excluded package %s from installation", excludedPkg)
 			delete(p.packagesToInstall, excludedPkg)
@@ -90,14 +101,14 @@ func (p *Packager) RemovePackages(packagesToRemove []string) {
 	}
 }
 
-// GetPackages gets the package files path from the package directory.
+// ReadPackagesDirectory gets the package files path from the package directory.
 // It returns an array of strings, based on the relative path from the current directory
 // when the binary was executed.
 // It requires the embedded find_pkgs.sh script.
 //
 // If the directory does not exist or if there is an issue reading the directory, then an error
 // is returned.
-func (p *Packager) GetPackages(pkgDirectory string, getPackageScript string) ([]string, error) {
+func (p *Packager) ReadPackagesDirectory(pkgDirectory string, getPackageScript string) ([]string, error) {
 	p.log.Debug.Log(fmt.Sprintf("Package folder: %s", pkgDirectory))
 
 	out, err := exec.Command("bash", "-c", getPackageScript, pkgDirectory).Output()
@@ -155,6 +166,17 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 	}
 }
 
+// GetPackages returns the packages that are being installed.
+func (p *Packager) GetPackages() []string {
+	packages := make([]string, 0, len(p.packagesToInstall))
+
+	for pkg := range p.packagesToInstall {
+		packages = append(packages, pkg)
+	}
+
+	return packages
+}
+
 // isInstalled searches for the names of an installed package in the search directory.
 //
 // If an installed package name is found in the search directory, true is returned indicating
@@ -186,4 +208,14 @@ func (p *Packager) isInstalled(installedPkgNames []string, pkgToInstall string) 
 	}
 
 	return false
+}
+
+// toLowerArray lowers all strings to lowercase in an array by mutating
+// the pointer to the given array.
+//
+// Used to remove the case sensitivity of package matching.
+func (p *Packager) toLowerArray(arr *[]string) {
+	for i, str := range *arr {
+		(*arr)[i] = strings.ToLower(str)
+	}
 }
