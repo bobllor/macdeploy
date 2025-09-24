@@ -205,14 +205,7 @@ var rootCmd = &cobra.Command{
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Completed deployment for %s\n", root.metadata.SerialTag)
-
-		wd, err := os.Getwd()
-		if err != nil {
-			fmt.Printf("Got error: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Log output: %s/%s\n", wd, root.log.GetLogPath())
+		fmt.Printf("Log output: ./%s\n", root.log.GetLogPath())
 	},
 }
 
