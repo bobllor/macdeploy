@@ -17,7 +17,7 @@ var packagesToAdd = []string{
 
 var packagesToInstall = map[string][]string{
 	"TeamViewer.pkg":   {"teamviewer"},
-	"Test packAGe.PkG": {"lol"},
+	"Test packAGe.PkG": {"test.package"},
 }
 
 var baseLenPkgInstall int = len(packagesToInstall)
@@ -26,6 +26,26 @@ func TestArrayCase(t *testing.T) {
 	packager := getPackager(t)
 
 	packager.AddPackages(packagesToAdd)
+
+	loweredPackages := make(map[string]struct{}, 0)
+
+	for pkg := range packagesToInstall {
+		pkgLow := strings.ToLower(pkg)
+
+		loweredPackages[pkgLow] = struct{}{}
+	}
+	for _, pkg := range packagesToAdd {
+		pkgLow := strings.ToLower(pkg)
+
+		loweredPackages[pkgLow] = struct{}{}
+	}
+
+	// should already be lowered here during the constructor and add packages.
+	for _, pkg := range packager.GetPackages() {
+		if _, ok := loweredPackages[pkg]; !ok {
+			t.Errorf("value %s does not exist", pkg)
+		}
+	}
 }
 
 func TestAddPackages(t *testing.T) {
