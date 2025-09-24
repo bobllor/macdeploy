@@ -148,9 +148,10 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 				cmd := fmt.Sprintf(`installer -pkg "%s" -target /`, file)
 				p.log.Debug.Log("Package: %s | Package path: %s | Command: %s", pkg, file, cmd)
 
-				_, err := exec.Command("sudo", "bash", "-c", cmd).Output()
+				out, err := exec.Command("sudo", "bash", "-c", cmd).Output()
 				if err != nil {
-					p.log.Warn.Log(fmt.Sprintf("Failed to install %s: %v", pkg, err))
+					outStr := strings.TrimSpace(string(out))
+					p.log.Warn.Log(fmt.Sprintf("Failed to install %s: %s %v", pkg, outStr, err))
 					continue
 				}
 
