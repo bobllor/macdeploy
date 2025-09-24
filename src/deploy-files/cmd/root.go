@@ -21,6 +21,7 @@ type RootData struct {
 	RemoveFiles     bool
 	Verbose         bool
 	NoSend          bool
+	MountDmg        bool
 	ExcludePackages []string
 	IncludePackages []string
 	log             *logger.Log
@@ -119,17 +120,19 @@ var rootCmd = &cobra.Command{
 		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchingFiles), root.config.SearchDirectories)
 
 		if len(searchingFiles) > 0 {
-			dmg := core.NewDmg(root.log, root.script)
+			if root.MountDmg {
+				dmg := core.NewDmg(root.log, root.script)
 
-			dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
-			if err != nil {
-				root.log.Error.Log("Failed to search directory: %v", err)
-			} else {
-				// this requires the use of --include to install properly.
-				volumeMounts := dmg.AttachDmgs(dmgFiles)
-				if len(volumeMounts) > 0 {
-					dmg.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
-					dmg.DetachDmgs(volumeMounts)
+				dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
+				if err != nil {
+					root.log.Error.Log("Failed to search directory: %v", err)
+				} else {
+					// this requires the use of --include to install properly.
+					volumeMounts := dmg.AttachDmgs(dmgFiles)
+					if len(volumeMounts) > 0 {
+						dmg.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+						dmg.DetachDmgs(volumeMounts)
+					}
 				}
 			}
 
@@ -235,15 +238,17 @@ func InitializeRoot() {
 	rootCmd.Flags().BoolVarP(
 		&root.AdminStatus, "admin", "a", false, "Grants admin to the created user")
 	rootCmd.Flags().StringArrayVar(&root.ExcludePackages,
-		"exclude", []string{}, "Exclude a package from installation")
+		"exclude", []string{}, "Exclude a package from installing")
 	rootCmd.Flags().StringArrayVar(&root.IncludePackages,
 		"include", []string{}, "Include a package to install")
 	rootCmd.Flags().BoolVar(
 		&root.RemoveFiles, "remove-files", false, "Remove the deployment files on the device upon successful execution")
 	rootCmd.Flags().BoolVarP(
-		&root.Verbose, "verbose", "v", false, "Displays debug output of the tool")
+		&root.Verbose, "verbose", "v", false, "Displays the debug output to the terminal")
 	rootCmd.Flags().BoolVar(
-		&root.NoSend, "no-send", false, "Do not send the log to the server")
+		&root.NoSend, "no-send", false, "Prevent the log file from being sent to the server")
+	rootCmd.Flags().BoolVar(
+		&root.MountDmg, "mount-dmg", false, "Mount all DMG files found inside the distribution folder")
 }
 
 // accountCreation starts the account making process.
