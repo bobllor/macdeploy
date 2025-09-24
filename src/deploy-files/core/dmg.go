@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/deploy-files/scripts"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -36,13 +37,39 @@ func (d *Dmg) ReadDmgDirectory(dir string) ([]string, error) {
 	return dmgArray[:len(dmgArray)-1], nil
 }
 
-// MountDmgs takes an array of paths and mounts it to the disk via hdiutil.
+// AddDmgPackages copies the contents of the given mounted DMG file into a folder
+// located inside the dist directory. The folder is created it it does not exist.
+//
+// The folder will be the same name as the mounted DMG as displayed in the Volumes directory.
+func (d *Dmg) AddDmgPackages(volumePaths []string, pkgDirectory string) {
+	cmd := "cp -r '%s' '%s'"
+
+	for _, volumePath := range volumePaths {
+		newCmd := fmt.Sprintf(cmd, volumePath, pkgDirectory)
+		d.log.Info.Log("Copying files in path %s", volumePath)
+
+		// no sudo unless you want root to own it (not tested)
+		_, err := exec.Command("bash", "-c", newCmd).Output()
+		if err != nil {
+			d.log.Error.Log("Failed to copy contents of %s: %v", volumePath, err)
+			continue
+		}
+
+		d.log.Info.Log("Successfully copied %s to %s", volumePath, pkgDirectory)
+	}
+
+	// error is ignored here as this is just debugging.
+	distDir, _ := os.ReadDir(pkgDirectory)
+	d.log.Debug.Log("Distribution directory after adding DMG contents: %v", distDir)
+}
+
+// AttachDmgs takes an array of paths and attaches it to the disk via hdiutil.
 //
 // Upon successful completion, an array of paths to the mounted directory is returned.
-func (d *Dmg) MountDmgs(dmgPaths []string) {
+func (d *Dmg) AttachDmgs(dmgPaths []string) []string {
 	cmd := "hdiutil attach '%s'"
 
-	mountDirectories := make([]string, 0)
+	volumePaths := make([]string, 0)
 
 	for _, dmgPath := range dmgPaths {
 		d.log.Debug.Log("DMG path: %s", dmgPath)
@@ -61,35 +88,36 @@ func (d *Dmg) MountDmgs(dmgPaths []string) {
 
 			d.log.Debug.Log("Command output: %s", strings.TrimSpace(string(out)))
 
-			outArr1 := strings.Split(string(out), " ")
-			outArr2 := strings.Split(string(out), "\t")
-			fmt.Println(outArr1[len(outArr1)-1])
-			fmt.Println(outArr2[len(outArr2)-1])
+			outArr := strings.Split(string(out), "\t")
+			volumePath := strings.TrimSpace(outArr[len(outArr)-1])
+
+			volumePaths = append(volumePaths, volumePath)
 		}
 	}
 
-	d.log.Debug.Log("Mounted directories: %v", mountDirectories)
+	d.log.Debug.Log("Mounted DMG volume paths: %v", volumePaths)
+
+	return volumePaths
 }
 
-func (d *Dmg) UnmountDmgs(mountDir string, dmgPaths []string) {
+// DetachDmgs detaches the DMG from the Volumes directory.
+// The paths are obtained from AttachDmgs.
+func (d *Dmg) DetachDmgs(volumePaths []string) {
 	cmd := "hdiutil detach '%s'"
 
-	for _, dmgPath := range dmgPaths {
-		if strings.Contains(dmgPath, ".dmg") {
-			dmgSplit := strings.Split(dmgPath, "/")
-			dmgName := strings.ReplaceAll(dmgSplit[len(dmgSplit)-1], ".dmg", "")
+	for _, volumePath := range volumePaths {
+		d.log.Info.Log("Unmounting %s", volumePath)
+		d.log.Debug.Log("Mount: %s", volumePath)
 
-			dmgMount := fmt.Sprintf("%s/%s", mountDir, dmgName)
+		newCmd := fmt.Sprintf(cmd, volumePath)
+		d.log.Debug.Log("Command: %s", newCmd)
 
-			d.log.Debug.Log("Mount: %s | DMG name: %s | DMG path: %s", dmgMount, dmgName, dmgPath)
-
-			newCmd := fmt.Sprintf(cmd, dmgMount)
-			out, err := exec.Command("bash", "-c", newCmd).Output()
-			if err != nil {
-				d.log.Error.Log("Failed to unmount %s: %v", dmgMount, err)
-			}
-
-			d.log.Debug.Log("Command output: %s", strings.TrimSpace(string(out)))
+		out, err := exec.Command("bash", "-c", newCmd).Output()
+		if err != nil {
+			d.log.Error.Log("Manual interaction needed, failed to unmount %s: %v", volumePath, err)
+			continue
 		}
+
+		d.log.Debug.Log("Command output: %s", strings.TrimSpace(string(out)))
 	}
 }
