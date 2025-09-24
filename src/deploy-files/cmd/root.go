@@ -21,7 +21,7 @@ type RootData struct {
 	RemoveFiles     bool
 	Verbose         bool
 	NoSend          bool
-	MountDmg        bool
+	Mount           bool
 	ExcludePackages []string
 	IncludePackages []string
 	log             *logger.Log
@@ -120,7 +120,7 @@ var rootCmd = &cobra.Command{
 		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchingFiles), root.config.SearchDirectories)
 
 		if len(searchingFiles) > 0 {
-			if root.MountDmg {
+			if root.Mount {
 				dmg := core.NewDmg(root.log, root.script)
 
 				dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
@@ -248,7 +248,7 @@ func InitializeRoot() {
 	rootCmd.Flags().BoolVar(
 		&root.NoSend, "no-send", false, "Prevent the log file from being sent to the server")
 	rootCmd.Flags().BoolVar(
-		&root.MountDmg, "mount-dmg", false, "Mount all DMG files found inside the distribution folder")
+		&root.Mount, "mount", false, "Mount all DMG files found inside the distribution folder")
 }
 
 // accountCreation starts the account making process.
