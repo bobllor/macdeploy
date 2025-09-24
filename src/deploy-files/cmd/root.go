@@ -96,7 +96,7 @@ var rootCmd = &cobra.Command{
 
 		// dependency initializations
 		filevault := core.NewFileVault(&root.config.Admin, root.script, root.log)
-		user := core.NewUser(root.config.Admin, root.log)
+		user := core.NewUser(root.config.Admin, root.script, root.log)
 
 		root.startAccountCreation(user, filevault, root.AdminStatus)
 		err = root.log.WriteFile()
@@ -145,7 +145,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if root.config.Firewall {
-			firewall := core.NewFirewall(root.log)
+			firewall := core.NewFirewall(root.log, root.script)
 
 			root.startFirewall(firewall)
 		}
@@ -288,7 +288,7 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 	packager.AddPackages(root.IncludePackages)
 	packager.RemovePackages(root.ExcludePackages)
 
-	packages, err := packager.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindPackages)
+	packages, err := packager.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindFiles)
 	if err != nil {
 		r.log.Error.Log("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err)
 		return
