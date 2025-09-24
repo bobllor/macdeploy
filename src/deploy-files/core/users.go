@@ -62,9 +62,9 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 	}
 
 	// follows apple's naming convention
-	fullName := utils.FormatFullName(username)
+	accountName := utils.FormatFullName(username)
 
-	initInfoLog := fmt.Sprintf("Creating user %s | Home Directory Name %s", username, fullName)
+	initInfoLog := fmt.Sprintf("Creating user %s | Account Name %s", username, accountName)
 	u.log.Info.Log(initInfoLog)
 
 	admin := "false"
@@ -73,7 +73,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	userExists, err := u.userExists(fullName)
+	userExists, err := u.userExists(accountName)
 	if err != nil {
 		return "", fmt.Errorf("error occurred reading user directory %s: %v", username, err)
 	}
@@ -83,7 +83,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 
 	// CreateUserScript takes 3 arguments.
 	out, err := exec.Command("sudo", "bash", "-c",
-		scripts.CreateUserScript, username, fullName, user.Password, admin).CombinedOutput()
+		scripts.CreateUserScript, username, accountName, user.Password, admin).CombinedOutput()
 	if err != nil {
 		u.log.Debug.Log(fmt.Sprintf("create user script error: %s", string(out)))
 		return "", fmt.Errorf("failed to create user %s: %v", username, err)
@@ -92,7 +92,7 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 	createdLog := fmt.Sprintf("User %s created", username)
 	u.log.Info.Log(createdLog)
 
-	return username, nil
+	return accountName, nil
 }
 
 // DeleteAccount removes the given user from the device.
@@ -112,11 +112,13 @@ func (u *UserMaker) DeleteAccount(username string) error {
 	return nil
 }
 
-// AddPasswordPolicy adds a password policy for the user.
+// AddPasswordPolicy adds a password policy for the user. This can only be
+// ran after adding the Secure Token to the user.
 //
 // If the password policy fails to run then an error returns.
 func (u *UserMaker) AddPasswordPolicy(username string) error {
 	pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1'", username)
+
 	err := exec.Command("bash", "-c", pwPolicyCmd).Run()
 	if err != nil {
 		return fmt.Errorf("failed to create user policy for %s: %v", username, err)
