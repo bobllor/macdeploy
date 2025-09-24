@@ -1,8 +1,11 @@
 package tests
 
 import (
+	"fmt"
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/logger"
+	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -39,6 +42,25 @@ func TestAddPackages(t *testing.T) {
 			baseLenPkgInstall, newLen,
 		)
 	}
+}
+
+func TestRemovePackages(t *testing.T) {
+	packager := getPackager(t)
+	expectedLength := len(append(packagesToAdd, packager.GetPackages()...)) - 1
+
+	packager.AddPackages(packagesToAdd)
+
+	randomSelection := strings.ToLower(packagesToAdd[rand.Intn(len(packagesToAdd))])
+
+	packager.RemovePackages([]string{randomSelection})
+
+	newLen := len(packager.GetPackages())
+
+	if newLen != expectedLength {
+		t.Errorf("failed to remove package, got %d instead of %d", newLen, expectedLength)
+	}
+
+	fmt.Println(packager.GetPackages())
 }
 
 func getLogger(t *testing.T) *logger.Log {
