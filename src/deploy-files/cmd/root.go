@@ -119,6 +119,15 @@ var rootCmd = &cobra.Command{
 		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchingFiles), root.config.SearchDirectories)
 
 		if len(searchingFiles) > 0 {
+			dmg := core.NewDmg(root.log, root.script)
+
+			dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
+			if err != nil {
+				root.log.Error.Log("Failed to search directory: %v", err)
+			}
+
+			dmg.MountDmgs(dmgFiles)
+
 			packager := core.NewPackager(root.config.Packages, searchingFiles, root.log)
 			root.startPackageInstallation(packager)
 		}
