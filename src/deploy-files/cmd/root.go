@@ -225,7 +225,7 @@ func InitializeRoot() {
 	rootCmd.Flags().StringArrayVar(&root.IncludePackages,
 		"include", []string{}, "Include a package to install")
 	rootCmd.Flags().BoolVar(
-		&root.RemoveFiles, "remove-files", false, "Removes the files on the device upon successful execution")
+		&root.RemoveFiles, "remove-file", false, "Remove the files on the device upon successful execution")
 	rootCmd.Flags().BoolVarP(
 		&root.Verbose, "verbose", "v", false, "Displays debug output of the tool")
 }
