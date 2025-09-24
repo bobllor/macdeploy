@@ -26,7 +26,7 @@ type Logger struct {
 
 // NewLog creates a Log struct for logging.
 // This requires the serial tag of the device.
-func NewLog(serialTag string, logDirectory string) *Log {
+func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
 	date := time.Now().Format("2006-01-02T15-04-05")
 
 	logFile := fmt.Sprintf("%s.%s.log", date, serialTag)
@@ -35,13 +35,19 @@ func NewLog(serialTag string, logDirectory string) *Log {
 	buf := bytes.NewBuffer([]byte{})
 	flag := log.Ltime | log.Lmsgprefix
 
+	// debug will always be silent unless verbose is used.
+	verboseDebug := true
+	if verbose {
+		verboseDebug = false
+	}
+
 	log := Log{
 		content:     buf,
 		logFilePath: logFilePath,
 		logFileName: logFile,
 		Debug: Logger{
 			Logger: log.New(buf, "[DEBUG] ", flag),
-			silent: true,
+			silent: verboseDebug,
 		},
 		Info:  Logger{Logger: log.New(buf, "[INFO] ", flag)},
 		Error: Logger{Logger: log.New(buf, "[ERROR] ", flag)},
@@ -55,6 +61,11 @@ func NewLog(serialTag string, logDirectory string) *Log {
 // This is not the full file path.
 func (l *Log) GetLogName() string {
 	return l.logFileName
+}
+
+// GetLogPath returns the full path to the log file.
+func (l *Log) GetLogPath() string {
+	return l.logFilePath
 }
 
 // Write writes the contents to the log file.
