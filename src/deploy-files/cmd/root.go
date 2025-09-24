@@ -124,14 +124,13 @@ var rootCmd = &cobra.Command{
 			dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
 			if err != nil {
 				root.log.Error.Log("Failed to search directory: %v", err)
-			}
-
-			// automates moving pkg files in DMG into the dist directory
-			// this requires the use of --include to install properly.
-			volumeMounts := dmg.AttachDmgs(dmgFiles)
-			if len(volumeMounts) > 0 {
-				dmg.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
-				dmg.DetachDmgs(volumeMounts)
+			} else {
+				// this requires the use of --include to install properly.
+				volumeMounts := dmg.AttachDmgs(dmgFiles)
+				if len(volumeMounts) > 0 {
+					dmg.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+					dmg.DetachDmgs(volumeMounts)
+				}
 			}
 
 			packager := core.NewPackager(root.config.Packages, searchingFiles, root.log)

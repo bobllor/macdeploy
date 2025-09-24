@@ -14,6 +14,7 @@ type Dmg struct {
 	script *scripts.BashScripts
 }
 
+// NewDmg creates a new Dmg struct.
 func NewDmg(log *logger.Log, scripts *scripts.BashScripts) *Dmg {
 	dmg := Dmg{
 		log:    log,
@@ -23,18 +24,23 @@ func NewDmg(log *logger.Log, scripts *scripts.BashScripts) *Dmg {
 	return &dmg
 }
 
+// ReadDmgDirectory reads the distribution directory for files with the .dmg extension,
+// and returns an string array consisting the relative paths to the DMG file.
+//
+// It will return an error if there is an issue reading the directory.
 func (d *Dmg) ReadDmgDirectory(dir string) ([]string, error) {
 	out, err := exec.Command("bash", "-c", d.script.FindFiles, dir, "*.dmg").Output()
 	if err != nil {
 		return nil, err
 	}
 
-	// will return arr[:-1] because an empty string is present at the end of the array
 	dmgArray := strings.Split(string(out), "\n")
+	// will return arr[:len-1] because an empty string is present at the end of the array
+	dmgArray = dmgArray[:len(dmgArray)-1]
 
 	d.log.Debug.Log("DMGs found: %v", dmgArray)
 
-	return dmgArray[:len(dmgArray)-1], nil
+	return dmgArray, nil
 }
 
 // AddDmgPackages copies the contents of the given mounted DMG file into a folder
@@ -59,7 +65,12 @@ func (d *Dmg) AddDmgPackages(volumePaths []string, pkgDirectory string) {
 	}
 
 	// error is ignored here as this is just debugging.
-	distDir, _ := os.ReadDir(pkgDirectory)
+	distDir, err := os.ReadDir(pkgDirectory)
+	if err != nil {
+		d.log.Warn.Log("Failed to read %s: %v", pkgDirectory, err)
+		return
+	}
+
 	d.log.Debug.Log("Distribution directory after adding DMG contents: %v", distDir)
 }
 
