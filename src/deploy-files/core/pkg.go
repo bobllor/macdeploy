@@ -10,13 +10,14 @@ import (
 )
 
 type Packager struct {
-	packagesToInstall map[string][]string
-	searchingFiles    []string
-	log               *logger.Log
+	packagesToInstall    map[string][]string
+	searchDirectoryFiles []string
+	log                  *logger.Log
 }
 
 // NewPackager creates a new Packager for package modifications for macOS.
-func NewPackager(packagesToInstall map[string][]string, searchingFiles []string, logger *logger.Log) *Packager {
+func NewPackager(packagesToInstall map[string][]string,
+	searchDirectoryFiles []string, logger *logger.Log) *Packager {
 	packagesLowered := make(map[string][]string)
 
 	for pkg, appNames := range packagesToInstall {
@@ -26,9 +27,9 @@ func NewPackager(packagesToInstall map[string][]string, searchingFiles []string,
 	}
 
 	packager := Packager{
-		packagesToInstall: packagesLowered,
-		searchingFiles:    searchingFiles,
-		log:               logger,
+		packagesToInstall:    packagesLowered,
+		searchDirectoryFiles: searchDirectoryFiles,
+		log:                  logger,
 	}
 
 	return &packager
@@ -194,7 +195,7 @@ func (p *Packager) isInstalled(installedPkgNames []string, pkgToInstall string) 
 		lowPkgSearchName := strings.ToLower(pkgSearchName)
 		// unfortunately a nested loop is required here due to the array.
 		// on the bright side it does exit out early if it finds a match.
-		for _, installedPkg := range p.searchingFiles {
+		for _, installedPkg := range p.searchDirectoryFiles {
 			lowInstalledPkgName := strings.ToLower(installedPkg)
 
 			// NOTE: this is a fuzzy finder, so the exact names should be expected.

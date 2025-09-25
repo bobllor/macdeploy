@@ -11,6 +11,7 @@ import (
 	"macos-deployment/deploy-files/utils"
 	"macos-deployment/deploy-files/yaml"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -88,6 +89,7 @@ var rootCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		root.log.Info.Log("Starting deployment for %s", root.metadata.SerialTag)
+		root.log.Debug.Log("Architecture: %s", runtime.GOARCH)
 
 		// initializes sudo for automation purposes.
 		err := utils.InitializeSudo(root.config.Admin.Password)
@@ -106,7 +108,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// creating the files found in the search directories, it is flattened.
-		searchingFiles := make([]string, 0)
+		searchDirectoryFiles := make([]string, 0)
 		for _, searchDir := range root.config.SearchDirectories {
 			searchFiles, err := utils.GetSearchFiles(searchDir)
 			if err != nil {
@@ -114,12 +116,12 @@ var rootCmd = &cobra.Command{
 				continue
 			}
 
-			searchingFiles = append(searchingFiles, searchFiles...)
+			searchDirectoryFiles = append(searchDirectoryFiles, searchFiles...)
 		}
 
-		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchingFiles), root.config.SearchDirectories)
+		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchDirectoryFiles), root.config.SearchDirectories)
 
-		if len(searchingFiles) > 0 {
+		if len(searchDirectoryFiles) > 0 {
 			if root.Mount {
 				dmg := core.NewDmg(root.log, root.script)
 
@@ -136,7 +138,7 @@ var rootCmd = &cobra.Command{
 				}
 			}
 
-			packager := core.NewPackager(root.config.Packages, searchingFiles, root.log)
+			packager := core.NewPackager(root.config.Packages, searchDirectoryFiles, root.log)
 			root.startPackageInstallation(packager)
 		}
 		err = root.log.WriteFile()
