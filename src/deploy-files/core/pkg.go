@@ -130,8 +130,8 @@ func (p *Packager) ReadPackagesDirectory(pkgDirectory string, getPackageScript s
 //
 // If a package fails to install, then it will be logged and skipped.
 func (p *Packager) InstallPackages(packagesPath []string) {
-	for pkg, installedPkgNames := range p.packagesToInstall {
-		isInstalled := p.isInstalled(installedPkgNames, pkg)
+	for pkg, installedNames := range p.packagesToInstall {
+		isInstalled := p.IsInstalled(installedNames, pkg)
 
 		if isInstalled {
 			p.log.Warn.Log(fmt.Sprintf("Package %s is already installed", pkg))
@@ -179,31 +179,38 @@ func (p *Packager) GetPackages() []string {
 	return packages
 }
 
+// GetAllPackages gets the packages to be installed and its installed file names array.
+func (p *Packager) GetAllPackages() map[string][]string {
+	return p.packagesToInstall
+}
+
 // isInstalled searches for the names of an installed package in the search directory.
 //
 // If an installed package name is found in the search directory, true is returned indicating
 // the package being installed is already installed.
 // Otherwise, false is returned if no installed arguments are given or it doesn't exist in the search
 // directories.
-func (p *Packager) isInstalled(installedPkgNames []string, pkgToInstall string) bool {
-	for _, pkgSearchName := range installedPkgNames {
+func (p *Packager) IsInstalled(installedNames []string, pkgToInstall string) bool {
+	// installedName is the user given installed file
+	// installedFile is the installed file inside the directory files
+	for _, installedName := range installedNames {
 		// if the given name is blank then install regardless of check.
-		if pkgSearchName == "" {
+		if installedName == "" {
 			return false
 		}
 
-		lowPkgSearchName := strings.ToLower(pkgSearchName)
+		lowInstalledName := strings.ToLower(installedName)
 		// unfortunately a nested loop is required here due to the array.
 		// on the bright side it does exit out early if it finds a match.
-		for _, installedPkg := range p.searchDirectoryFiles {
-			lowInstalledPkgName := strings.ToLower(installedPkg)
+		for _, installedFile := range p.searchDirectoryFiles {
+			lowInstalledFile := strings.ToLower(installedFile)
 
 			// NOTE: this is a fuzzy finder, so the exact names should be expected.
 			// if a generic name is given, there is a good possibility the wrong name will be matched.
 			// compares the files in the search directory, to the user defined package name for installation checks.
-			if strings.Contains(lowInstalledPkgName, lowPkgSearchName) {
+			if strings.Contains(lowInstalledFile, lowInstalledName) {
 				p.log.Info.Log(fmt.Sprintf("Found existing installation for package %s", pkgToInstall))
-				p.log.Debug.Log(fmt.Sprintf("Package: %s | Given package name: %s", pkgToInstall, pkgSearchName))
+				p.log.Debug.Log(fmt.Sprintf("Package: %s | Given package name: %s", pkgToInstall, installedName))
 				return true
 			}
 		}
