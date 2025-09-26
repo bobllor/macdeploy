@@ -127,7 +127,7 @@ func FormatLogOutput(logOutput string) string {
 
 	// if logoutput is empty, then use current directory.
 	if logOutput == "" {
-		return "."
+		return "./"
 	}
 
 	return logOutput
