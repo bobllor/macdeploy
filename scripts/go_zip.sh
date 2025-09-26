@@ -30,11 +30,13 @@ cp "$config" "./src/config/$dest_config"
 
 binary_name="macdeploy"
 env GOOS=darwin GOARCH=arm64 go build -C ./src -o "../dist/$binary_name"
+echo "binary output: dist/$binary_name"
 
-# need another binary for intel based macs
 amd_binary="x86_64-macdeploy"
 env GOOS=darwin GOARCH=amd64 go build -C ./src -o "../dist/$amd_binary"
+echo "binary output: dist/$amd_binary"
 
 zip_name="deploy.zip"
 
+echo "generating zip file"
 zip -ru "$zip_name" "$dist_dir"
