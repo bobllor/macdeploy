@@ -1,0 +1,16 @@
+name: macdeploy-tests
+
+on:
+  pull_request:
+    branches: 
+      - "main"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Installs Go dependencies
+        run: |
+          cd src/tests
+          go build ./...
+          go test ./...
