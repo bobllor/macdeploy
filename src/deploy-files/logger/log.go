@@ -10,13 +10,14 @@ import (
 )
 
 type Log struct {
-	logFilePath string
-	logFileName string
-	content     *bytes.Buffer
-	Debug       Logger
-	Error       Logger
-	Info        Logger
-	Warn        Logger
+	logFilePath  string
+	logFileName  string
+	logDirectory string
+	content      *bytes.Buffer
+	Debug        Logger
+	Error        Logger
+	Info         Logger
+	Warn         Logger
 }
 
 type Logger struct {
@@ -25,7 +26,6 @@ type Logger struct {
 }
 
 // NewLog creates a Log struct for logging.
-// This requires the serial tag of the device.
 func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
 	date := time.Now().Format("2006-01-02T15-04-05")
 
@@ -42,9 +42,10 @@ func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
 	}
 
 	log := Log{
-		content:     buf,
-		logFilePath: logFilePath,
-		logFileName: logFile,
+		content:      buf,
+		logFilePath:  logFilePath,
+		logFileName:  logFile,
+		logDirectory: logDirectory,
 		Debug: Logger{
 			Logger: log.New(buf, "[DEBUG] ", flag),
 			silent: verboseDebug,
@@ -55,6 +56,16 @@ func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
 	}
 
 	return &log
+}
+
+// Write writes the contents to the log path.
+func (l *Log) WriteFile() error {
+	err := os.WriteFile(l.logFilePath, l.content.Bytes(), 0o600)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetLogName returns the log file name ending in .log.
@@ -68,19 +79,14 @@ func (l *Log) GetLogPath() string {
 	return l.logFilePath
 }
 
-// Write writes the contents to the log file.
-func (l *Log) WriteFile() error {
-	err := os.WriteFile(l.logFilePath, l.content.Bytes(), 0o600)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // GetContent returns the buffer data in bytes.
 func (l *Log) GetContent() []byte {
 	return l.content.Bytes()
+}
+
+// GetLogDirectory returns the path of the log directory.
+func (l *Log) GetLogDirectory() string {
+	return l.logDirectory
 }
 
 // Log prints the output to the terminal and logs the output.
@@ -103,13 +109,13 @@ func (l *Logger) Log(msg string, v ...any) {
 func FormatLogOutput(logOutput string) string {
 	// just in case backslash is used for some reason.
 	// honestly maybe this should throw an error in a config validation
-	logOutput = strings.ReplaceAll(logOutput, "\\", "/")
+	logOutput = strings.TrimSpace(strings.ReplaceAll(logOutput, "\\", "/"))
 
 	logDirArr := strings.Split(logOutput, "/")
 	logDirArrLen := len(logDirArr)
 
 	// drops .log or removes any ending slashes.
-	wordIndex := logDirArrLen - 1
+	wordIndex := 0
 	for i := logDirArrLen - 1; i > -1; i-- {
 		if logDirArr[i] != "" && !strings.Contains(logDirArr[i], ".log") {
 			wordIndex = i
@@ -118,6 +124,11 @@ func FormatLogOutput(logOutput string) string {
 	}
 
 	logOutput = strings.Join(logDirArr[:wordIndex+1], "/")
+
+	// if logoutput is empty, then use current directory.
+	if logOutput == "" {
+		return "."
+	}
 
 	return logOutput
 }
