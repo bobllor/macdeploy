@@ -1,10 +1,9 @@
 package tests
 
 import (
-	"fmt"
 	"macos-deployment/deploy-files/core"
-	"macos-deployment/deploy-files/logger"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 )
@@ -20,10 +19,17 @@ var packagesToInstall = map[string][]string{
 	"Test packAGe.PkG": {"test.package"},
 }
 
+var searchDirectoryFiles = []string{
+	"teamviewer", "test.package",
+	"example 1", "example 2",
+}
+
 var baseLenPkgInstall int = len(packagesToInstall)
 
-func TestArrayCase(t *testing.T) {
-	packager := getPackager(t)
+func TestArrayLowerCase(t *testing.T) {
+	logger := GetLogger(t)
+
+	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, logger.Log)
 
 	packager.AddPackages(packagesToAdd)
 
@@ -49,7 +55,8 @@ func TestArrayCase(t *testing.T) {
 }
 
 func TestAddPackages(t *testing.T) {
-	packager := getPackager(t)
+	log := GetLogger(t)
+	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, log.Log)
 
 	packager.AddPackages(packagesToAdd)
 
@@ -65,7 +72,9 @@ func TestAddPackages(t *testing.T) {
 }
 
 func TestRemovePackages(t *testing.T) {
-	packager := getPackager(t)
+	logger := GetLogger(t)
+	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, logger.Log)
+
 	expectedLength := len(append(packagesToAdd, packager.GetPackages()...)) - 1
 
 	packager.AddPackages(packagesToAdd)
@@ -79,21 +88,57 @@ func TestRemovePackages(t *testing.T) {
 	if newLen != expectedLength {
 		t.Errorf("failed to remove package, got %d instead of %d", newLen, expectedLength)
 	}
-
-	fmt.Println(packager.GetPackages())
 }
 
-func getLogger(t *testing.T) *logger.Log {
-	logDir := t.TempDir() + "/log"
-	verbose := false
+func TestInstalledPackages(t *testing.T) {
+	log := GetLogger(t)
+	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, log.Log)
 
-	logger := logger.NewLog("lol123", logDir, verbose)
+	alreadyInstalledCount := 0
 
-	return logger
+	for pkg, installedNames := range packagesToInstall {
+		if packager.IsInstalled(installedNames, strings.ToLower(pkg)) {
+			alreadyInstalledCount += 1
+		}
+	}
+
+	if alreadyInstalledCount != baseLenPkgInstall {
+		t.Error("packages failed to install")
+	}
 }
 
-func getPackager(t *testing.T) *core.Packager {
-	log := getLogger(t)
+func TestInstallPackages(t *testing.T) {
+	log := GetLogger(t)
+	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, log.Log)
 
-	return core.NewPackager(packagesToInstall, []string{}, log)
+	packager.AddPackages(packagesToAdd)
+
+	installedCount := 0
+	expectedLen := len(packagesToAdd)
+
+	for pkg, installedNames := range packager.GetAllPackages() {
+		isInstalled := packager.IsInstalled(installedNames, strings.ToLower(pkg))
+		if !isInstalled {
+			installedCount += 1
+
+			err := os.WriteFile(strings.ReplaceAll(log.MainDirectory+"/"+pkg, ".pkg", ""), []byte{}, 0o644)
+			if err != nil {
+				continue
+			}
+		}
+	}
+
+	if installedCount != expectedLen {
+		t.Errorf("packages failed to install, %d != %d", installedCount, baseLenPkgInstall)
+	}
+
+	files, err := os.ReadDir(log.MainDirectory)
+	// just an extra check, to be honest the statement above is good enough.
+	if err != nil {
+		return
+	}
+
+	if installedCount != len(files) {
+		t.Errorf("packages failed to write, got packages: %v", files)
+	}
 }

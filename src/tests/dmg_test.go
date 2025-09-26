@@ -10,32 +10,30 @@ import (
 var testDmgs = []string{
 	"test.dmg", "another one.dmg",
 }
-
 var baseLen int = len(testDmgs)
 
 func TestReadDmg(t *testing.T) {
-	dir := t.TempDir()
+	log := GetLogger(t)
 
 	for _, dmgFile := range testDmgs {
-		err := os.WriteFile(dir+"/"+dmgFile, []byte{}, 0o744)
+		err := os.WriteFile(log.MainDirectory+"/"+dmgFile, []byte{}, 0o744)
 		// hmm...
 		if err != nil {
 			t.Error(err)
 		}
 	}
 
-	logger := GetLogger(dir + "/logs")
 	scripts := scripts.NewScript()
 
-	dmg := core.NewDmg(logger, scripts)
+	dmg := core.NewDmg(log.Log, scripts)
 
-	dmgFiles, err := dmg.ReadDmgDirectory(dir)
+	dmgFiles, err := dmg.ReadDmgDirectory(log.MainDirectory)
 	if err != nil {
 		t.Errorf("failed to read directory: %v", err)
 	}
 
 	// there is an empty string added to the array
-	newLen := len(dmgFiles) - 1
+	newLen := len(dmgFiles)
 
 	if newLen != baseLen {
 		t.Errorf("got %d, did not match the baseline %d", newLen, baseLen)

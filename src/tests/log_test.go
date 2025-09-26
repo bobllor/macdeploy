@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"macos-deployment/deploy-files/logger"
 	"os"
 	"strings"
@@ -9,28 +8,26 @@ import (
 )
 
 func TestDirFileNames(t *testing.T) {
-	dir := GetDir(t, "cool/path/bro")
-	log := GetLog(t, dir)
+	log := GetLogger(t)
 
-	if !strings.Contains(log.GetLogName(), ".log") {
-		t.Fatalf("log file name failed to generate: %s", log.GetLogName())
+	if !strings.Contains(log.Log.GetLogName(), ".log") {
+		t.Fatalf("log file name failed to generate: %s", log.Log.GetLogName())
 	}
 
-	if !strings.Contains(log.GetLogPath(), dir) {
-		t.Fatalf("generated log path %s does not match base path %s", log.GetLogPath(), dir)
+	if !strings.Contains(log.Log.GetLogPath(), log.MainDirectory) {
+		t.Fatalf("generated log path %s does not match base path %s", log.Log.GetLogPath(), log.MainDirectory)
 	}
 }
 
 func TestMkDir(t *testing.T) {
-	dir := GetDir(t, "some/dir/here")
-	log := GetLog(t, dir)
+	log := GetLogger(t)
 
-	err := logger.MkdirAll(log.GetLogPath(), 0o744)
+	err := logger.MkdirAll(log.Log.GetLogPath(), 0o744)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = os.Stat(dir)
+	_, err = os.Stat(log.MainDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,6 +44,8 @@ func TestFormatDir(t *testing.T) {
 		baseDirName + "\\",
 		tempDir + "\\this\\is\\a\\dir",
 		baseDirName,
+		baseDirName + "/a.log/b.log",
+		baseDirName + "/a.log/b.log/c.log/d.log//",
 	}
 
 	for _, dir := range dirs {
@@ -57,23 +56,20 @@ func TestFormatDir(t *testing.T) {
 		}
 	}
 
-	// this takes advantage of the fact that splitting these adds an empty string to the array
-	// if google changes it then i have to fix this lol
-	singleDirTests := []string{"/", "\\"}
+	singleDirTests := []string{"/", "\\", "///"}
 	for _, dir := range singleDirTests {
 		newDir := logger.FormatLogOutput(dir)
 
-		if newDir != "/" {
+		if newDir != "." {
 			t.Fatalf("formatting directory %s failed: got %s", dir, newDir)
 		}
 	}
 }
 
 func TestWriteLog(t *testing.T) {
-	dir := GetDir(t, "some/dir")
-	log := GetLog(t, dir)
+	log := GetLogger(t)
 
-	err := logger.MkdirAll(dir, 0o744)
+	err := logger.MkdirAll(log.Log.GetLogDirectory(), 0o744)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,17 +79,17 @@ func TestWriteLog(t *testing.T) {
 	info := "A INFO HERE"
 	debug := "A DEBUG HERE"
 
-	log.Error.Log(errorMsg)
-	log.Warn.Log(warn)
-	log.Info.Log(info)
-	log.Debug.Log(debug)
+	log.Log.Error.Log(errorMsg)
+	log.Log.Warn.Log(warn)
+	log.Log.Info.Log(info)
+	log.Log.Debug.Log(debug)
 
-	err = log.WriteFile()
+	err = log.Log.WriteFile()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	contentBytes, err := os.ReadFile(log.GetLogPath())
+	contentBytes, err := os.ReadFile(log.Log.GetLogPath())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,15 +102,4 @@ func TestWriteLog(t *testing.T) {
 			t.Fatalf("%s could not be found in %s", msg, content)
 		}
 	}
-}
-
-func GetLog(t *testing.T, dirPath string) *logger.Log {
-	serialTag := "LOL12345"
-	verbose := false
-
-	return logger.NewLog(serialTag, dirPath, verbose)
-}
-
-func GetDir(t *testing.T, dirName string) string {
-	return fmt.Sprintf("%s/%s", t.TempDir(), dirName)
 }

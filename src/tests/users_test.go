@@ -1,7 +1,10 @@
 package tests
 
 import (
+	"macos-deployment/deploy-files/core"
+	"macos-deployment/deploy-files/scripts"
 	"macos-deployment/deploy-files/utils"
+	"macos-deployment/deploy-files/yaml"
 	"testing"
 )
 
@@ -9,7 +12,7 @@ func TestFormatUsername(t *testing.T) {
 	names := []string{
 		"...john ..-doe",
 		"!@#$%^&*()lebron.   !~`:\"?<>,;'|\\{[]]}james!!++==",
-		"sold!@ier_   //fro   m-tf??<>:\\.\\2",
+		"sold!@ier_   \n\n\t//fro   m-tf??<>:\\.\\2",
 		"12345!@#67%$#8*&^(9[]{}0",
 		"-...-!!/\\",
 		"....a",
@@ -34,5 +37,24 @@ func TestFormatUsername(t *testing.T) {
 			t.Errorf("format failed for name: %s\n", newName)
 		}
 
+	}
+}
+
+func TestUserNoPassword(t *testing.T) {
+	userInfo := yaml.UserInfo{
+		Username: "sample",
+		Password: "",
+	}
+
+	logger := GetLogger(t)
+
+	user := core.NewUser(yaml.UserInfo{
+		Username: "admin",
+		Password: "admin",
+	}, scripts.NewScript(), logger.Log)
+
+	_, err := user.CreateAccount(userInfo, false)
+	if err == nil {
+		t.Error("expected password failure")
 	}
 }
