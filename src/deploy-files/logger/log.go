@@ -107,27 +107,17 @@ func FormatLogOutput(logOutput string) string {
 
 	logDirArr := strings.Split(logOutput, "/")
 	logDirArrLen := len(logDirArr)
-	lastArrElement := logDirArr[len(logDirArr)-1]
 
 	// drops .log or removes any ending slashes.
-	if strings.Contains(lastArrElement, ".log") {
-		return strings.Join(logDirArr[:logDirArrLen-1], "/")
-	} else if lastArrElement == "" {
-		wordIndex := logDirArrLen
-
-		for i := logDirArrLen - 1; i > 0; i-- {
-			if logDirArr[i] != "" {
-				wordIndex = i
-				break
-			}
-		}
-
-		if wordIndex == logDirArrLen {
-			logOutput = strings.Join(logDirArr[:wordIndex], "/")
-		} else {
-			logOutput = strings.Join(logDirArr[:wordIndex+1], "/")
+	wordIndex := logDirArrLen - 1
+	for i := logDirArrLen - 1; i > 0; i-- {
+		if logDirArr[i] != "" && !strings.Contains(logDirArr[i], ".log") {
+			wordIndex = i
+			break
 		}
 	}
+
+	logOutput = strings.Join(logDirArr[:wordIndex+1], "/")
 
 	return logOutput
 }
