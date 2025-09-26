@@ -110,7 +110,7 @@ func FormatLogOutput(logOutput string) string {
 
 	// drops .log or removes any ending slashes.
 	wordIndex := logDirArrLen - 1
-	for i := logDirArrLen - 1; i > 0; i-- {
+	for i := logDirArrLen - 1; i > -1; i-- {
 		if logDirArr[i] != "" && !strings.Contains(logDirArr[i], ".log") {
 			wordIndex = i
 			break
