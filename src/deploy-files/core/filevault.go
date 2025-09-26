@@ -9,10 +9,57 @@ import (
 	"strings"
 )
 
-// EnableFileVault enables FileVault and returns the key generated from the command.
+type FileVault struct {
+	admin  *yaml.UserInfo
+	script *scripts.BashScripts
+	log    *logger.Log
+}
+
+func NewFileVault(admin *yaml.UserInfo, script *scripts.BashScripts, log *logger.Log) *FileVault {
+	fv := FileVault{
+		admin:  admin,
+		script: script,
+		log:    log,
+	}
+
+	return &fv
+}
+
+// Enable enables FileVault and returns the key generated from the command.
 // If it fails then an empty string is returned.
-func EnableFileVault(adminUser string, adminPassword string) string {
-	cmd := fmt.Sprintf("sudo -S fdesetup isactive <<< '%s'", adminPassword)
+func (f *FileVault) Enable(adminUser string, adminPassword string) string {
+	key := ""
+
+	f.log.Info.Log("Starting FileVault process")
+
+	out, err := exec.Command("sudo", "bash", "-c", f.script.EnableFileVault,
+		adminUser, adminPassword).CombinedOutput()
+
+	outText := string(out)
+	logMsg := strings.TrimSpace(fmt.Sprintf("Output: %s", outText))
+	f.log.Debug.Log(logMsg, 7)
+
+	if err != nil {
+		f.log.Warn.Log("Failed to enable FileVault")
+		return ""
+	}
+
+	// output is <name> = '<key>'
+	outArr := strings.Split(outText, "'")
+	// TIL: in Go an empty string is added to the array if the delimiter is at the end!
+	// also println is not the same as fmt.Println...
+	key = outArr[1]
+
+	f.log.Info.Log("Enabled FileVault")
+
+	return key
+}
+
+// Status retrieves the status of FileVault and returns true/false on its status.
+//
+// If the command failed to run then return an error.
+func (f *FileVault) Status() (bool, error) {
+	cmd := fmt.Sprintf("sudo -S fdesetup isactive <<< '%s'", f.admin.Password)
 	// turns out if isactive == false the exit status is 1. ignoring the error here!
 	out, _ := exec.Command("bash", "-c", cmd).Output()
 
@@ -21,60 +68,34 @@ func EnableFileVault(adminUser string, adminPassword string) string {
 
 	// either some fail happened or this is ran on a non-mac OS
 	if fileVaultStatus == "" {
-		fileVaultStatus = "unknown"
+		return false, fmt.Errorf("filevault checking failed: %s", fileVaultStatus)
 	}
 
-	fileVaultMsg := fmt.Sprintf("FileVault status: %s", fileVaultStatus)
-	logger.Log(fileVaultMsg, 6)
+	f.log.Info.Log("FileVault status: %s", fileVaultStatus)
 
-	if fileVaultStatus == "false" {
-		logger.Log("Enabling FileVault", 6)
-
-		out, err := exec.Command("sudo", "bash", "-c", scripts.EnableFileVaultScript,
-			adminUser, adminPassword).CombinedOutput()
-
-		outText := string(out)
-		logMsg := strings.TrimSpace(fmt.Sprintf("Output: %s", outText))
-		logger.Log(logMsg, 7)
-
-		if err != nil {
-			logger.Log("Failed to execute FileVault script", 3)
-			return ""
-		}
-
-		// output is <name> = '<key>'
-		outArr := strings.Split(outText, "'")
-		// TIL: in Go an empty string is added to the array if the delimiter is at the end!
-		// also println is not the same as fmt.Println...
-		key := outArr[1]
-
-		logger.Log("FileVault enabled", 6)
-
-		return key
-	} else if fileVaultStatus == "true" {
-		logger.Log("FileVault is already enabled", 6)
-	} else {
-		logger.Log("FileVault failed to execute", 3)
+	if strings.Contains(fileVaultStatus, "true") {
+		return true, nil
 	}
 
-	return ""
+	return false, nil
 }
 
-// addSecureToken adds the user to the SecureToken list for FileVault.
-// This is required on every new user.
+// AddSecureToken adds the user to the SecureToken list for FileVault.
 //
-// If successful then nil is returned, otherwise an error is thrown and manual interaction is needed.
-func addSecureToken(username string, userPassword string, adminInfo yaml.User) error {
+// If successful then nil is returned, otherwise an error is returned. Do not leave the
+// user on the device, otherwise issues will occur due to FileVault.
+func (f *FileVault) AddSecureToken(username string, userPassword string) error {
 	// turns out i forgot secure token access... that was rough to find out in prod
 	secureTokenCmd := fmt.Sprintf("sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
-		username, userPassword, adminInfo.User_Name, adminInfo.Password)
+		username, userPassword, f.admin.Username, f.admin.Password)
 
 	_, err := exec.Command("bash", "-c", secureTokenCmd).Output()
 	if err != nil {
-		logger.Log(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err), 3)
+		f.log.Error.Log(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err))
 		return fmt.Errorf("failed to enable secure token for user %s: %v", username, err)
 	} else {
-		logger.Log(fmt.Sprintf("Secure token added for %s", username), 6)
+		f.log.Info.Log("Secure token added for %s", username)
 	}
+
 	return nil
 }

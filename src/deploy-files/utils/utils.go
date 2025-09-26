@@ -3,21 +3,20 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"macos-deployment/deploy-files/logger"
 	"os"
 	"os/exec"
 	"strings"
+	"unicode"
 )
 
-// InitSudo starts a sudo session without the need of manual input.
+// InitializeSudo starts a sudo session without the need of manual input.
 // This can be called multiple times to refresh the sudo timer.
-func InitSudo(adminPassword string) error {
+func InitializeSudo(adminPassword string) error {
 	initSudoCmd := fmt.Sprintf("sudo -S echo <<< '%s'", adminPassword)
 	err := exec.Command("bash", "-c", initSudoCmd).Run()
 
 	if err != nil {
 		// not a major issue, just requires manual interaction instead.
-		logger.Log(fmt.Sprintf("Error with sudo: %v", err), 4)
 		return err
 	}
 
@@ -43,55 +42,55 @@ func GetSearchFiles(dirPath string) ([]string, error) {
 	return pathContent, nil
 }
 
-// FormatFullName returns a formatted name: lowercase and replacement of spaces with periods.
+// FormatUsername returns a formatted username: lowercase and made into one word.
 // It will remove all invalid characters.
 //
-// This follows the same rule of macOS' naming convention.
-func FormatFullName(value string) string {
+// This follows the Apple's naming convention for MacBooks and is used for the internal
+// username of the device for the specified user.
+func FormatUsername(value string) string {
 	newName := strings.ToLower(value)
 	newName = strings.TrimSpace(newName)
 
-	var newNameBytes []rune
-	invalidCharacters := map[string]struct{}{
-		"/":  {},
-		";":  {},
-		",":  {},
-		"\\": {},
-		"=":  {},
-		"%":  {},
-		"\n": {},
-	}
+	var newNameRunes []rune
+	// allowed characters: -_.
+	// however, the period (.) cannot be at the beginning of the name
+	invalidString := "`~!@#$%^&*()=+[]{}\\|;:'\",<>/?\n\t"
 
-	spaceFound := true
+	hasAlpha := false
 
-	for _, strBytes := range newName {
-		char := string(strBytes)
-
-		if _, ok := invalidCharacters[char]; ok {
+	for _, charRune := range newName {
+		charStr := string(charRune)
+		if strings.ContainsRune(invalidString, charRune) || charStr == " " {
 			continue
 		}
 
-		// multiple spaces, keep the first occurrence and skip the rest
-		// boundary check is not needed because newName is already trimmed
-		if char == " " {
-			if !spaceFound {
-				spaceFound = true
-			} else {
-				continue
+		if !hasAlpha {
+			if unicode.IsLetter(charRune) {
+				hasAlpha = true
 			}
-		} else if spaceFound {
-			spaceFound = false
 		}
 
-		newNameBytes = append(newNameBytes, strBytes)
+		newNameRunes = append(newNameRunes, charRune)
 	}
 
-	return strings.ReplaceAll(string(newNameBytes), " ", ".")
+	// if the string has no alphabets, then append a to the front and do not
+	// trim the leading dots if they exist.
+	if !hasAlpha {
+		noAlphaRunes := []rune("a")
+		noAlphaRunes = append(noAlphaRunes, newNameRunes...)
+
+		return string(noAlphaRunes)
+	} else {
+		// removing all leading periods
+		newName = strings.TrimLeft(string(newNameRunes), ".")
+	}
+
+	return newName
 }
 
 // GetSerialTag retrieves the serial tag for the device.
 //
-// This only works on macOS devices.
+// An error will return if the serial tag cannot be retrieved.
 func GetSerialTag() (string, error) {
 	cmd := "ioreg -l | grep IOPlatformSerialNumber"
 	out, err := exec.Command("bash", "-c", cmd).Output()
@@ -107,59 +106,26 @@ func GetSerialTag() (string, error) {
 
 // RemoveFiles removes the files based on a given map. It searches for the files in the map
 // of the directory the execution process started in.
-func RemoveFiles[T any](filesToRemove map[string]T) error {
-	currDir, err := os.Getwd()
-	// i am unsure what errors can happen here
-	if err != nil {
-		logger.Log(fmt.Sprintf("Error getting working directory: %v", err), 3)
-		return err
-	}
-
-	if strings.Contains(currDir, Globals.ProjectPath) {
-		errMsg := fmt.Sprintf("project directory is forbidden, clean up aborted: %v, %v", currDir, Globals.ProjectPath)
-		err := errors.New(errMsg)
-		logger.Log(err.Error(), 3)
-
-		return err
-	}
-
-	files, err := os.ReadDir(currDir)
-	if err != nil {
-		logger.Log(fmt.Sprintf("Unable to read directory %v", err), 4)
-		return err
-	}
-
-	// yes this is only for logging.
-	currFileNames := make([]string, 0)
-	for _, file := range files {
-		currFileNames = append(currFileNames, strings.ToLower(file.Name()))
-	}
-	logger.Log(fmt.Sprintf("Files in working directory: %v", currFileNames), 7)
-
+func RemoveFiles[T any](filesToRemove map[string]T, files []os.DirEntry) {
 	for _, file := range files {
 		fileName := strings.ToLower(file.Name())
 
 		if _, ok := filesToRemove[fileName]; ok {
 			if file.IsDir() {
-				// could be unneeded but want to be extra safe
-				if Globals.DistDirName == fileName {
-					err := os.RemoveAll(fileName)
-					if err != nil {
-						logger.Log(fmt.Sprintf("Error removing directory %v", err), 3)
-						continue
-					}
+				err := os.RemoveAll(fileName)
+				if err != nil {
+					fmt.Printf("Error removing directory %v\n", err)
+					continue
 				}
 			} else {
 				err := os.Remove(fileName)
 				if err != nil {
-					logger.Log(fmt.Sprintf("Error removing file %v", err), 3)
+					fmt.Printf("Error removing file %v\n", err)
 					continue
 				}
 			}
 
-			logger.Log(fmt.Sprintf("Removed file %s", fileName), 6)
+			fmt.Printf("Removed file %s\n", fileName)
 		}
 	}
-
-	return nil
 }

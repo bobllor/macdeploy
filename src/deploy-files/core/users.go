@@ -14,16 +14,33 @@ import (
 	"strings"
 )
 
+type UserMaker struct {
+	adminInfo yaml.UserInfo
+	log       *logger.Log
+	script    *scripts.BashScripts
+}
+
+// NewUser creates a new UserMaker to handle user creation.
+func NewUser(adminInfo yaml.UserInfo, scripts *scripts.BashScripts, logger *logger.Log) *UserMaker {
+	user := UserMaker{
+		adminInfo: adminInfo,
+		log:       logger,
+		script:    scripts,
+	}
+
+	return &user
+}
+
 // CreateAccount creates the user account on the device.
-// It will return nil upon success, if there are any errors then an error is returned.
 //
-// SecureToken is enabled for every user and if enabled, the user will require a password reset upon login.
-func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) error {
+// It will return the internal username of the macOS account upon success.
+// If there are any errors then an error is returned.
+func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, error) {
 	// username will be used for both entries needed.
-	username := user.User_Name
+	username := user.Username
 
 	if user.Password == "" {
-		return errors.New("empty password given for user, config file must be checked")
+		return "", errors.New("empty password given for user, config file must be checked")
 	}
 
 	if username == "" {
@@ -39,80 +56,92 @@ func CreateAccount(user yaml.User, adminInfo yaml.User, isAdmin bool) error {
 		input = input[:len(input)-1]
 
 		if input == "" {
-			logger.Log("User creation skipped", 6)
-			return errors.New("user creation skipped")
+			u.log.Info.Log("User creation skipped")
+			return "", errors.New("user creation skipped")
 		}
 
 		username = input
 	}
 
-	// IMPORTANT: this is the actual internal name of the user!
-	// because mac is stupid and named it fullname for some reason!
-	fullName := utils.FormatFullName(username)
+	// follows apple's naming convention
+	accountName := utils.FormatUsername(username)
 
-	initLog := fmt.Sprintf("Creating user %s | Home Directory Name %s", username, fullName)
-	logger.Log(initLog, 6)
+	initInfoLog := fmt.Sprintf("Creating user %s | Account Name %s", username, accountName)
+	u.log.Info.Log(initInfoLog)
 
 	admin := "false"
-	if isAdmin && !user.Ignore_Admin {
+	if isAdmin && !user.IgnoreAdmin {
+		u.log.Info.Log("Admin enabled for user %s", username)
 		admin = strconv.FormatBool(isAdmin)
 	}
 
-	userExists, err := userExists(fullName)
+	userExists, err := u.userExists(accountName)
 	if err != nil {
-		return fmt.Errorf("error occurred reading user directory %s: %v", username, err)
+		return "", fmt.Errorf("error occurred reading user directory %s: %v", username, err)
 	}
 	if userExists {
-		return fmt.Errorf("user %s already exists in the system", username)
+		return "", fmt.Errorf("user %s already exists in the system", username)
 	}
 
 	// CreateUserScript takes 3 arguments.
 	out, err := exec.Command("sudo", "bash", "-c",
-		scripts.CreateUserScript, username, fullName, user.Password, admin).CombinedOutput()
+		u.script.CreateUser, username, accountName, user.Password, admin).CombinedOutput()
 	if err != nil {
-		logger.Log(fmt.Sprintf("user creation failed info: %s", string(out)), 7)
-		return fmt.Errorf("failed to create user %s: %v", username, err)
+		u.log.Debug.Log(fmt.Sprintf("create user script error: %s", string(out)))
+		return "", fmt.Errorf("failed to create user %s: %v", username, err)
 	}
 
-	// turns out i forgot secure token access... that was rough to find out in prod
-	// always make securetoken, even if filevault is not enabled.
-	err = addSecureToken(username, user.Password, adminInfo)
+	createdLog := fmt.Sprintf("User %s created", username)
+	u.log.Info.Log(createdLog)
+
+	return accountName, nil
+}
+
+// DeleteAccount removes the given user from the device.
+func (u *UserMaker) DeleteAccount(username string) error {
+	cmd := fmt.Sprintf(
+		"sudo sysadminctl -deleteUser '%s' -adminUser '%s' -adminPassword '%s'",
+		username,
+		u.adminInfo.Username,
+		u.adminInfo.Password)
+	_, err := exec.Command("sudo", "bash", "-c", cmd).Output()
 	if err != nil {
 		return err
 	}
 
-	// msg used for logging purposes.
-	createdUserString := ""
-	if isAdmin && !user.Ignore_Admin {
-		createdUserString = "with admin"
-	}
-	createdLog := fmt.Sprintf("User %s created %s", username, createdUserString)
-	logger.Log(createdLog, 6)
-
-	if user.Change_Password {
-		pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1'", fullName)
-
-		err = exec.Command("bash", "-c", pwPolicyCmd).Run()
-		if err != nil {
-			return fmt.Errorf("failed to create user policy for %s: %v", username, err)
-		} else {
-			logger.Log(fmt.Sprintf("Added new password policy for %s", username), 6)
-		}
-	}
+	u.log.Info.Log(fmt.Sprintf("Removed user %s", username))
 
 	return nil
 }
 
-func userExists(username string) (bool, error) {
+// AddPasswordPolicy adds a password policy for the user. This can only be
+// ran after adding the Secure Token to the user.
+//
+// If the password policy fails to run then an error returns.
+func (u *UserMaker) AddPasswordPolicy(username string) error {
+	pwPolicyCmd := fmt.Sprintf("sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1'", username)
+
+	err := exec.Command("bash", "-c", pwPolicyCmd).Run()
+	if err != nil {
+		return fmt.Errorf("failed to create user policy for %s: %v", username, err)
+	}
+
+	u.log.Info.Log(fmt.Sprintf("Added new password policy for %s", username))
+
+	return nil
+}
+
+// userExists checks the Users directory for the given username.
+func (u *UserMaker) userExists(username string) (bool, error) {
 	usersPath := "/Users"
 
 	dirs, err := os.ReadDir(usersPath)
 	if err != nil {
-		logger.Log(fmt.Sprintf("Error reading directory: %s", err.Error()), 3)
+		u.log.Error.Log(fmt.Sprintf("Error reading directory: %v", err))
 		return false, err
 	}
 
-	logger.Log(fmt.Sprintf("User directory content: %v", dirs), 7)
+	u.log.Debug.Log(fmt.Sprintf("User directory content: %v", dirs))
 
 	for _, dir := range dirs {
 		dirName := strings.ToLower(dir.Name())
@@ -124,22 +153,4 @@ func userExists(username string) (bool, error) {
 	}
 
 	return false, nil
-}
-
-// moveToDesktop moves a given file to the user's desktop.
-func moveToDesktop(fileName string, user string) error {
-	_, err := os.Stat(fileName)
-	if err != nil {
-		return err
-	}
-
-	moveCmd := fmt.Sprintf("sudo cp %s /Users/%s/desktop", fileName, user)
-	err = exec.Command("bash", "-c", moveCmd).Run()
-	if err != nil {
-		return err
-	}
-
-	logger.Log(fmt.Sprintf("Moved %s to %s", fileName, user), 6)
-
-	return nil
 }

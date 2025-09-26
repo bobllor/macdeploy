@@ -1,61 +1,144 @@
 package logger
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
-var LogFile string
-var LogFilePath string
-
-var WarningLevels map[int]string = map[int]string{
-	0: "EMERGENCY",
-	1: "ALERT",
-	2: "CRITICAL",
-	3: "ERROR",
-	4: "WARNING",
-	5: "NOTIFICATION",
-	6: "INFO",
-	7: "DEBUG",
+type Log struct {
+	logFilePath  string
+	logFileName  string
+	logDirectory string
+	content      *bytes.Buffer
+	Debug        Logger
+	Error        Logger
+	Info         Logger
+	Warn         Logger
 }
 
-func NewLog(serialTag string) {
+type Logger struct {
+	silent bool
+	*log.Logger
+}
+
+// NewLog creates a Log struct for logging.
+func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
 	date := time.Now().Format("2006-01-02T15-04-05")
 
-	LogFile = fmt.Sprintf("%s.%s.log", date, serialTag)
-	LogFilePath = fmt.Sprintf("/tmp/%s", LogFile)
+	logFile := fmt.Sprintf("%s.%s.log", date, serialTag)
+	logFilePath := fmt.Sprintf("%s/%s", logDirectory, logFile)
+
+	buf := bytes.NewBuffer([]byte{})
+	flag := log.Ltime | log.Lmsgprefix
+
+	// debug will always be silent unless verbose is used.
+	verboseDebug := true
+	if verbose {
+		verboseDebug = false
+	}
+
+	log := Log{
+		content:      buf,
+		logFilePath:  logFilePath,
+		logFileName:  logFile,
+		logDirectory: logDirectory,
+		Debug: Logger{
+			Logger: log.New(buf, "[DEBUG] ", flag),
+			silent: verboseDebug,
+		},
+		Info:  Logger{Logger: log.New(buf, "[INFO] ", flag)},
+		Error: Logger{Logger: log.New(buf, "[ERROR] ", flag)},
+		Warn:  Logger{Logger: log.New(buf, "[WARNING] ", flag)},
+	}
+
+	return &log
 }
 
-// Log creates and writes to the log file.
-//
-// There are 7 levels:
-//   - 0: EMERGENCY
-//   - 1: ALERT
-//   - 2: CRITICAL
-//   - 3: ERROR
-//   - 4: WARNING
-//   - 5: NOTIFICATION
-//   - 6: INFO
-//   - 7: DEBUG
-func Log(msg string, level int) {
-	file, err := os.OpenFile(LogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+// Write writes the contents to the log path.
+func (l *Log) WriteFile() error {
+	err := os.WriteFile(l.logFilePath, l.content.Bytes(), 0o600)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	defer file.Close()
+	return nil
+}
 
-	log.SetOutput(file)
-	log.SetFlags(log.Ltime | log.Lmsgprefix)
+// GetLogName returns the log file name ending in .log.
+// This is not the full file path.
+func (l *Log) GetLogName() string {
+	return l.logFileName
+}
 
-	prefix := fmt.Sprintf("[%s] ", WarningLevels[level])
-	log.SetPrefix(prefix)
+// GetLogPath returns the full path to the log file.
+func (l *Log) GetLogPath() string {
+	return l.logFilePath
+}
 
-	// lazy way to display info to the user.
-	if level != 7 {
+// GetContent returns the buffer data in bytes.
+func (l *Log) GetContent() []byte {
+	return l.content.Bytes()
+}
+
+// GetLogDirectory returns the path of the log directory.
+func (l *Log) GetLogDirectory() string {
+	return l.logDirectory
+}
+
+// Log prints the output to the terminal and logs the output.
+func (l *Logger) Log(msg string, v ...any) {
+	if len(v) > 0 {
+		msg = fmt.Sprintf(msg, v...)
+	}
+	l.Logger.Println(msg)
+
+	if !l.silent {
+		msg = fmt.Sprintf("%s%s", l.Prefix(), msg)
 		fmt.Println(msg)
 	}
-	log.Println(msg)
+}
+
+// FormatLogOutput formats the output path of the log, based on if it ends with a
+// slash (/), if it ends in a *.log, or neither (directory).
+//
+// Any outputs ending in *.log will drop the *.log.
+func FormatLogOutput(logOutput string) string {
+	// just in case backslash is used for some reason.
+	// honestly maybe this should throw an error in a config validation
+	logOutput = strings.TrimSpace(strings.ReplaceAll(logOutput, "\\", "/"))
+
+	logDirArr := strings.Split(logOutput, "/")
+	logDirArrLen := len(logDirArr)
+
+	// drops .log or removes any ending slashes.
+	wordIndex := 0
+	for i := logDirArrLen - 1; i > -1; i-- {
+		if logDirArr[i] != "" && !strings.Contains(logDirArr[i], ".log") {
+			wordIndex = i
+			break
+		}
+	}
+
+	logOutput = strings.Join(logDirArr[:wordIndex+1], "/")
+
+	// if logoutput is empty, then use current directory.
+	if logOutput == "" {
+		return "./"
+	}
+
+	return logOutput
+}
+
+// MkdirAll utilizes MkdirAll to create the all directories for the log file.
+func MkdirAll(logDir string, perm os.FileMode) error {
+	err := os.MkdirAll(logDir, perm)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
