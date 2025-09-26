@@ -60,7 +60,7 @@ func TestFormatDir(t *testing.T) {
 	for _, dir := range singleDirTests {
 		newDir := logger.FormatLogOutput(dir)
 
-		if newDir != "." {
+		if newDir != "./" {
 			t.Fatalf("formatting directory %s failed: got %s", dir, newDir)
 		}
 	}
