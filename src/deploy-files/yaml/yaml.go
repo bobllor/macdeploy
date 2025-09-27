@@ -50,9 +50,9 @@ func NewConfig(data []byte) (*Config, error) {
 // This uses a command execution with whoami.
 //
 // It returns an error if the command fails to run.
-func (c *Config) SetAdminUsername() error {
+func (u *UserInfo) SetUsername() error {
 	// prevents accidental runs
-	if c.Admin.Username != "" {
+	if u.Username != "" {
 		return nil
 	}
 
@@ -62,7 +62,7 @@ func (c *Config) SetAdminUsername() error {
 	}
 
 	user := strings.TrimSpace(string(out))
-	c.Admin.Username = user
+	u.Username = user
 
 	return nil
 }
@@ -72,9 +72,9 @@ func (c *Config) SetAdminUsername() error {
 //
 // It returns an error if the maximum attempt is reached or if an error occurs.
 // By default the maximum attempts is 3.
-func (c *Config) SetAdminPassword() error {
-	fmt.Print("Enter the admin password: ")
-	pwOne, err := c.readPassword()
+func (u *UserInfo) SetPassword() error {
+	fmt.Print("Enter the password: ")
+	pwOne, err := u.readPassword()
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,8 @@ func (c *Config) SetAdminPassword() error {
 	attempts := 0
 
 	for attempts < maxAttempts {
-		fmt.Print("Enter the admin password again: ")
-		pwTwo, err := c.readPassword()
+		fmt.Print("Enter the password again: ")
+		pwTwo, err := u.readPassword()
 		if err != nil {
 			return err
 		}
@@ -104,13 +104,13 @@ func (c *Config) SetAdminPassword() error {
 		return fmt.Errorf("%d incorrect password attempts", attempts)
 	}
 
-	c.Admin.Password = pwOne
+	u.Password = pwOne
 
 	return nil
 }
 
-// readPassword reads the password from STDIN securely.
-func (c *Config) readPassword() (string, error) {
+// readPassword reads the input from STDIN securely.
+func (u *UserInfo) readPassword() (string, error) {
 	stdin := int(syscall.Stdin)
 
 	oldState, err := term.GetState(stdin)
