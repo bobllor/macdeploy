@@ -73,7 +73,7 @@ func (u *UserInfo) SetUsername() error {
 // It returns an error if the maximum attempt is reached or if an error occurs.
 // By default the maximum attempts is 3.
 func (u *UserInfo) SetPassword() error {
-	fmt.Print("Enter the password: ")
+	fmt.Print("Enter password: ")
 	pwOne, err := u.readPassword()
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (u *UserInfo) SetPassword() error {
 	attempts := 0
 
 	for attempts < maxAttempts {
-		fmt.Print("Enter the password again: ")
+		fmt.Print("Confirm password: ")
 		pwTwo, err := u.readPassword()
 		if err != nil {
 			return err
