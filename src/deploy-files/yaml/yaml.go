@@ -46,7 +46,7 @@ func NewConfig(data []byte) (*Config, error) {
 	return &config, nil
 }
 
-// SetAdminUsername is used to set the admin username if one was not given.
+// SetUsername is used to set the username if one was not given.
 // This uses a command execution with whoami.
 //
 // It returns an error if the command fails to run.
@@ -67,8 +67,8 @@ func (u *UserInfo) SetUsername() error {
 	return nil
 }
 
-// SetAdminPassword is used to set the admin password if one was not given.
-// It prompts a hidden input for the admin password.
+// SetPassword is used to set the password of the user if one was not given.
+// It prompts a hidden input for the user password.
 //
 // It returns an error if the maximum attempt is reached or if an error occurs.
 // By default the maximum attempts is 3.
