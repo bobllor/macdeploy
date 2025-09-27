@@ -5,11 +5,11 @@ on:
     branches: 
       - "main"
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Installs Go dependencies
+      - name: Build and test Go
         run: |
           cd src/tests
           go build ./...
