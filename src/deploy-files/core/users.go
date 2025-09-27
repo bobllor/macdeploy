@@ -35,7 +35,7 @@ func NewUser(adminInfo yaml.UserInfo, scripts *scripts.BashScripts, logger *logg
 //
 // It will return the internal username of the macOS account upon success.
 // If there are any errors then an error is returned.
-func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, error) {
+func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, error) {
 	// username will be used for both entries needed.
 	username := user.Username
 
