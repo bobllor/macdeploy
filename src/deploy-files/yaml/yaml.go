@@ -1,9 +1,15 @@
 package yaml
 
 import (
-	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/signal"
+	"strings"
+	"syscall"
 
 	"github.com/goccy/go-yaml"
+	"golang.org/x/term"
 )
 
 type Config struct {
@@ -36,31 +42,83 @@ func NewConfig(data []byte) (*Config, error) {
 		return nil, err
 	}
 
-	err = config.validateYAML()
-	if err != nil {
-		return nil, err
-	}
-
 	return &config, nil
 }
 
-// ValidateYAML checks for missing required values in the YAML config.
-//
-// The only required value is the Admin.
-func (u *Config) validateYAML() error {
-	newError := func(msg string) error {
-		return errors.New(msg)
-	}
-
-	if u.Admin.Username == "" {
-		err := newError("missing admin username, it cannot be empty")
+// SetAdminUsername is used to set the admin username if one was not given.
+// This uses a command execution with whoami.
+func (c *Config) SetAdminUsername() error {
+	out, err := exec.Command("whoami").Output()
+	if err != nil {
 		return err
 	}
 
-	if u.Admin.Password == "" {
-		err := newError("missing admin password, it cannot be empty")
-		return err
-	}
+	user := strings.TrimSpace(string(out))
+	c.Admin.Username = user
 
 	return nil
+}
+
+// SetAdminPassword is used to set the admin password if one was not given.
+func (c *Config) SetAdminPassword() error {
+	fmt.Print("Enter the admin password: ")
+	pwOne, err := c.readPassword()
+	if err != nil {
+		return err
+	}
+
+	attempts := 0
+
+	for attempts < 3 {
+		fmt.Print("Enter the admin password again: ")
+		pwTwo, err := c.readPassword()
+		if err != nil {
+			return err
+		}
+
+		if pwTwo == pwOne {
+			break
+		}
+
+		fmt.Println("Sorry, try again")
+		attempts += 1
+	}
+
+	if attempts >= 3 {
+		return fmt.Errorf("%d incorrect password attempts", attempts)
+	}
+
+	c.Admin.Password = pwOne
+
+	return nil
+}
+
+// readPassword reads the password from STDIN securely.
+func (c *Config) readPassword() (string, error) {
+	stdin := int(syscall.Stdin)
+
+	oldState, err := term.GetState(stdin)
+	if err != nil {
+		return "", err
+	}
+	defer term.Restore(stdin, oldState)
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		for _ = range ch {
+			term.Restore(stdin, oldState)
+			os.Exit(1)
+		}
+	}()
+
+	pwBytes, err := term.ReadPassword(stdin)
+	if err != nil {
+		return "", err
+	}
+
+	// formatting, yes...
+	fmt.Println()
+
+	return strings.TrimSpace(string(pwBytes)), nil
 }
