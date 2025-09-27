@@ -58,6 +58,22 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// checking if admin info was given or not
+		if config.Admin.Username == "" {
+			err = config.SetAdminUsername()
+			if err != nil {
+				fmt.Printf("Failed to get username of admin: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		if config.Admin.Password == "" {
+			err = config.SetAdminPassword()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
+
 		// by default we will put in the home directory if none is given
 		logDirectory := config.LogOutput
 		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, ".macdeploy")

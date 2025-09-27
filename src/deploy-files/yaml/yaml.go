@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -47,7 +48,14 @@ func NewConfig(data []byte) (*Config, error) {
 
 // SetAdminUsername is used to set the admin username if one was not given.
 // This uses a command execution with whoami.
+//
+// It returns an error if the command fails to run.
 func (c *Config) SetAdminUsername() error {
+	// prevents accidental runs
+	if c.Admin.Username != "" {
+		return nil
+	}
+
 	out, err := exec.Command("whoami").Output()
 	if err != nil {
 		return err
@@ -60,16 +68,24 @@ func (c *Config) SetAdminUsername() error {
 }
 
 // SetAdminPassword is used to set the admin password if one was not given.
+// It prompts a hidden input for the admin password.
+//
+// It returns an error if the maximum attempt is reached or if an error occurs.
+// By default the maximum attempts is 3.
 func (c *Config) SetAdminPassword() error {
 	fmt.Print("Enter the admin password: ")
 	pwOne, err := c.readPassword()
 	if err != nil {
 		return err
 	}
+	if pwOne == "" {
+		return errors.New("cannot have empty password")
+	}
 
+	maxAttempts := 3
 	attempts := 0
 
-	for attempts < 3 {
+	for attempts < maxAttempts {
 		fmt.Print("Enter the admin password again: ")
 		pwTwo, err := c.readPassword()
 		if err != nil {
@@ -84,7 +100,7 @@ func (c *Config) SetAdminPassword() error {
 		attempts += 1
 	}
 
-	if attempts >= 3 {
+	if attempts >= maxAttempts {
 		return fmt.Errorf("%d incorrect password attempts", attempts)
 	}
 

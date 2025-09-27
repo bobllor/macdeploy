@@ -58,3 +58,13 @@ func TestUserNoPassword(t *testing.T) {
 		t.Error("expected password failure")
 	}
 }
+
+func TestAdminNoPassword(t *testing.T) {
+	config := &yaml.Config{}
+
+	// expects to fail due to the input terminal requirement
+	err := config.SetAdminPassword()
+	if err == nil {
+		t.Fatal(err)
+	}
+}
