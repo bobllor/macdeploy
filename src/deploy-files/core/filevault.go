@@ -87,16 +87,33 @@ func (f *FileVault) Status() (bool, error) {
 // user on the device, otherwise issues will occur due to FileVault.
 func (f *FileVault) AddSecureToken(username string, userPassword string) error {
 	// turns out i forgot secure token access... that was rough to find out in prod
-	secureTokenCmd := fmt.Sprintf("sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
+	secureTokenCmd := fmt.Sprintf(
+		"sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
 		username, userPassword, f.admin.Username, f.admin.Password)
 
-	_, err := exec.Command("bash", "-c", secureTokenCmd).Output()
+	f.log.Debug.Log("Ran secure token command for user %s", username)
+
+	// VERY IMPORTANT:
+	// sysadminctl outputs to tty and it always returns 0.
+	// this means it is not possible to determine if the command fails.
+	// the user's password, user's username, and the admin username are not the point of failure.
+	// the point of failure is the admin password, because this can either be wrong from the config
+	// or the terminal input was wrong.
+	err := f.admin.ResetSudo()
 	if err != nil {
-		f.log.Error.Log(fmt.Sprintf("Error enabling token for user, manual interaction needed: %v", err))
-		return fmt.Errorf("failed to enable secure token for user %s: %v", username, err)
-	} else {
-		f.log.Info.Log("Secure token added for %s", username)
+		f.log.Error.Log("Failed to run sudo reset command: %v", err)
+		return err
 	}
+
+	err = f.admin.InitializeSudo()
+	if err != nil {
+		f.log.Error.Log("Error enabling token for user, manual interaction needed: %v", err)
+		f.log.Error.Log("Admin password is likely incorrect")
+		return err
+	}
+
+	_ = exec.Command("bash", "-c", secureTokenCmd).Run()
+	f.log.Info.Log("Secure token added for %s", username)
 
 	return nil
 }
