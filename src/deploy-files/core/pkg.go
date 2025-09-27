@@ -138,6 +138,9 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 			continue
 		}
 
+		// used for logging at the end
+		successfulInstall := false
+
 		pkgLowered := strings.ToLower(pkg)
 		// paths relative to the directory that ran the binary, but the contents
 		// are required to be in the same directory as the binary.
@@ -163,7 +166,13 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 					outMsg = fmt.Sprintf("%s %s", outMsg, pkg)
 				}
 				p.log.Info.Log(outMsg)
+
+				successfulInstall = true
 			}
+		}
+
+		if !successfulInstall {
+			p.log.Warn.Log("Unable to find package %s", pkg)
 		}
 	}
 }
