@@ -75,6 +75,13 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
+		// initializes sudo for automation purposes.
+		err = config.Admin.InitializeSudo()
+		if err != nil {
+			fmt.Printf("Failed to initialize sudo access: %v\n", err)
+			os.Exit(1)
+		}
+
 		// by default we will put in the home directory if none is given
 		logDirectory := config.LogOutput
 		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, ".macdeploy")
@@ -110,7 +117,7 @@ var rootCmd = &cobra.Command{
 		root.log.Debug.Log("Architecture: %s", runtime.GOARCH)
 
 		// initializes sudo for automation purposes.
-		err := utils.InitializeSudo(root.config.Admin.Password)
+		err := root.config.Admin.InitializeSudo()
 		if err != nil {
 			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
 		}
@@ -282,7 +289,7 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 	for key := range r.config.Accounts {
 		currAccount := r.config.Accounts[key]
 
-		accountName, err := user.CreateAccount(currAccount, adminStatus)
+		accountName, err := user.CreateAccount(&currAccount, adminStatus)
 		if err != nil {
 			// if user creation is skipped then dont log the error
 			if !strings.Contains(err.Error(), "skipped") {
