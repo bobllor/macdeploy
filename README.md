@@ -273,7 +273,7 @@ It can be omitted for security purposes.
   and numbers between 2-15 means the user cannot reuse the last N passwords. If more than 15 is given, it will reduce
   back down to 15.
   - `alpha` (boolean): Requires the password to have at least one letter.
-  - `numeric` (boolean): Requires te password to have at least one number.
+  - `numeric` (boolean): Requires the password to have at least one number.
   - `min_characters` (number): Minimum characters for the password.
   - `max_characters` (number): Maxmimum characters for the password. 
   - `change_on_login` (boolean): Prevents the user from logging in without changing their password. This is required
