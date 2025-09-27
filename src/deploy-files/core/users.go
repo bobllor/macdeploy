@@ -39,10 +39,6 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 	// username will be used for both entries needed.
 	username := user.Username
 
-	if user.Password == "" {
-		return "", errors.New("empty password given for user, config file must be checked")
-	}
-
 	if username == "" {
 		reader := bufio.NewReader(os.Stdin)
 
@@ -61,6 +57,18 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 		}
 
 		username = input
+	}
+
+	if user.Password == "" {
+		u.log.Warn.Log("No user password was given for %s", username)
+
+		fmt.Printf("Enter password for %s: ", username)
+		err := user.SetPassword()
+		if err != nil {
+			return "", err
+		}
+
+		u.log.Info.Log("Updated user password, previously was empty")
 	}
 
 	// follows apple's naming convention
