@@ -17,6 +17,6 @@ admin:
   username: ADMIN
   password: "PASSWORD"
 server_host: "https://127.0.0.1:5000"
-log_output: "/tmp"
+log_output: "/some/path/here"
 filevault: true
 firewall: true
