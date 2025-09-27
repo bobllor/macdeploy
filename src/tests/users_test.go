@@ -53,8 +53,18 @@ func TestUserNoPassword(t *testing.T) {
 		Password: "admin",
 	}, scripts.NewScript(), logger.Log)
 
-	_, err := user.CreateAccount(userInfo, false)
+	_, err := user.CreateAccount(&userInfo, false)
 	if err == nil {
 		t.Error("expected password failure")
+	}
+}
+
+func TestAdminNoPassword(t *testing.T) {
+	config := &yaml.Config{}
+
+	// expects to fail due to the input terminal requirement
+	err := config.Admin.SetPassword()
+	if err == nil {
+		t.Fatal(err)
 	}
 }

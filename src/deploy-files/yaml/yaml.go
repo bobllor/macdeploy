@@ -2,8 +2,15 @@ package yaml
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/signal"
+	"strings"
+	"syscall"
 
 	"github.com/goccy/go-yaml"
+	"golang.org/x/term"
 )
 
 type Config struct {
@@ -36,29 +43,119 @@ func NewConfig(data []byte) (*Config, error) {
 		return nil, err
 	}
 
-	err = config.validateYAML()
-	if err != nil {
-		return nil, err
-	}
-
 	return &config, nil
 }
 
-// ValidateYAML checks for missing required values in the YAML config.
+// SetUsername is used to set the username if one was not given.
+// This uses a command execution with whoami.
 //
-// The only required value is the Admin.
-func (u *Config) validateYAML() error {
-	newError := func(msg string) error {
-		return errors.New(msg)
+// It returns an error if the command fails to run.
+func (u *UserInfo) SetUsername() error {
+	// prevents accidental runs
+	if u.Username != "" {
+		return nil
 	}
 
-	if u.Admin.Username == "" {
-		err := newError("missing admin username, it cannot be empty")
+	out, err := exec.Command("whoami").Output()
+	if err != nil {
 		return err
 	}
 
-	if u.Admin.Password == "" {
-		err := newError("missing admin password, it cannot be empty")
+	user := strings.TrimSpace(string(out))
+	u.Username = user
+
+	return nil
+}
+
+// SetPassword is used to set the password of the user if one was not given.
+// It prompts a hidden input for the user password.
+//
+// It returns an error if the maximum attempt is reached or if an error occurs.
+// By default the maximum attempts is 3.
+func (u *UserInfo) SetPassword() error {
+	fmt.Print("Enter password: ")
+	pwOne, err := u.readPassword()
+	if err != nil {
+		return err
+	}
+	if pwOne == "" {
+		return errors.New("cannot have empty password")
+	}
+
+	maxAttempts := 3
+	attempts := 0
+
+	for attempts < maxAttempts {
+		fmt.Print("Confirm password: ")
+		pwTwo, err := u.readPassword()
+		if err != nil {
+			return err
+		}
+
+		if pwTwo == pwOne {
+			break
+		}
+
+		fmt.Println("Sorry, try again")
+		attempts += 1
+	}
+
+	if attempts >= maxAttempts {
+		return fmt.Errorf("%d incorrect password attempts", attempts)
+	}
+
+	u.Password = pwOne
+
+	return nil
+}
+
+// readPassword reads the input from STDIN securely.
+func (u *UserInfo) readPassword() (string, error) {
+	stdin := int(syscall.Stdin)
+
+	oldState, err := term.GetState(stdin)
+	if err != nil {
+		return "", err
+	}
+	defer term.Restore(stdin, oldState)
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		for _ = range ch {
+			term.Restore(stdin, oldState)
+			os.Exit(1)
+		}
+	}()
+
+	pwBytes, err := term.ReadPassword(stdin)
+	if err != nil {
+		return "", err
+	}
+
+	// formatting, yes...
+	fmt.Println()
+
+	return strings.TrimSpace(string(pwBytes)), nil
+}
+
+// InitializeSudo starts a sudo session without the need of manual input.
+// This can be called multiple times to refresh the sudo timer.
+func (u *UserInfo) InitializeSudo() error {
+	initSudoCmd := fmt.Sprintf("sudo -S echo <<< '%s'", u.Password)
+	err := exec.Command("bash", "-c", initSudoCmd).Run()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ResetSudo removes the sudo timestamp, resetting the permissions.
+func (u *UserInfo) ResetSudo() error {
+	err := exec.Command("bash", "-c", "sudo -K").Run()
+	if err != nil {
 		return err
 	}
 

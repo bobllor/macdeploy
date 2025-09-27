@@ -35,13 +35,9 @@ func NewUser(adminInfo yaml.UserInfo, scripts *scripts.BashScripts, logger *logg
 //
 // It will return the internal username of the macOS account upon success.
 // If there are any errors then an error is returned.
-func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, error) {
+func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, error) {
 	// username will be used for both entries needed.
 	username := user.Username
-
-	if user.Password == "" {
-		return "", errors.New("empty password given for user, config file must be checked")
-	}
 
 	if username == "" {
 		reader := bufio.NewReader(os.Stdin)
@@ -61,6 +57,17 @@ func (u *UserMaker) CreateAccount(user yaml.UserInfo, isAdmin bool) (string, err
 		}
 
 		username = input
+	}
+
+	if user.Password == "" {
+		u.log.Warn.Log("No user password was given for %s", username)
+
+		err := user.SetPassword()
+		if err != nil {
+			return "", err
+		}
+
+		u.log.Info.Log("Updated user password, previously was empty")
 	}
 
 	// follows apple's naming convention
