@@ -47,5 +47,7 @@ func (f *Firewall) Status() (bool, error) {
 
 	statusText := strings.ToLower(string(out))
 
-	return strings.Contains(statusText, "enabled"), nil
+	status := strings.Contains(statusText, "enabled")
+
+	return status, nil
 }

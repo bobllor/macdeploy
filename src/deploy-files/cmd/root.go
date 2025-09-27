@@ -58,6 +58,30 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// checking if admin info was given or not
+		if config.Admin.Username == "" {
+			err = config.Admin.SetUsername()
+			if err != nil {
+				fmt.Printf("Failed to get username of admin: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		if config.Admin.Password == "" {
+			fmt.Println("No admin password given")
+			err = config.Admin.SetPassword()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
+
+		// initializes sudo for automation purposes.
+		err = config.Admin.InitializeSudo()
+		if err != nil {
+			fmt.Printf("Failed to initialize sudo with given password: %v\n", err)
+			os.Exit(1)
+		}
+
 		// by default we will put in the home directory if none is given
 		logDirectory := config.LogOutput
 		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, ".macdeploy")
@@ -80,7 +104,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		log := logger.NewLog(serialTag, logDirectory, root.Verbose)
-		log.Info.Log("Log directory: %s", logDirectory)
+		log.Debug.Log("Log directory: %s", logDirectory)
+		log.Debug.Log("Admin username: %s", config.Admin.Username)
 
 		root.log = log
 		root.config = config
@@ -92,7 +117,7 @@ var rootCmd = &cobra.Command{
 		root.log.Debug.Log("Architecture: %s", runtime.GOARCH)
 
 		// initializes sudo for automation purposes.
-		err := utils.InitializeSudo(root.config.Admin.Password)
+		err := root.config.Admin.InitializeSudo()
 		if err != nil {
 			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
 		}
@@ -264,12 +289,12 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 	for key := range r.config.Accounts {
 		currAccount := r.config.Accounts[key]
 
-		accountName, err := user.CreateAccount(currAccount, adminStatus)
+		accountName, err := user.CreateAccount(&currAccount, adminStatus)
 		if err != nil {
 			// if user creation is skipped then dont log the error
 			if !strings.Contains(err.Error(), "skipped") {
 				logMsg := fmt.Sprintf("Error making user: %v", err)
-				root.log.Error.Log(logMsg)
+				r.log.Error.Log(logMsg)
 			}
 
 			continue
@@ -306,8 +331,8 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 	}
 
 	// removing packages take precedent.
-	packager.AddPackages(root.IncludePackages)
-	packager.RemovePackages(root.ExcludePackages)
+	packager.AddPackages(r.IncludePackages)
+	packager.RemovePackages(r.ExcludePackages)
 
 	packages, err := packager.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindFiles)
 	if err != nil {
@@ -348,16 +373,18 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 	fwStatus, err := firewall.Status()
 	if err != nil {
 		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %v", err))
-		root.log.Error.Printf(firewallErrMsg, 3)
+		r.log.Error.Printf(firewallErrMsg, 3)
 	}
 
-	root.log.Debug.Printf("Firewall status: %t", fwStatus)
+	r.log.Debug.Printf("Firewall status: %t", fwStatus)
 
-	if !fwStatus && err == nil {
+	if !fwStatus {
 		err = firewall.Enable()
 		if err != nil {
-			root.log.Error.Log("%v", err)
+			r.log.Error.Log("%v", err)
 		}
+	} else {
+		r.log.Info.Log("Firewall is already enabled")
 	}
 }
 
