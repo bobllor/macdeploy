@@ -78,7 +78,7 @@ var rootCmd = &cobra.Command{
 		// initializes sudo for automation purposes.
 		err = config.Admin.InitializeSudo()
 		if err != nil {
-			fmt.Printf("Failed to initialize sudo access: %v\n", err)
+			fmt.Printf("Failed to initialize sudo with given password: %v\n", err)
 			os.Exit(1)
 		}
 
