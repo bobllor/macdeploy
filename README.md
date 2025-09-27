@@ -277,7 +277,7 @@ It can be omitted for security purposes.
   - `min_characters` (number): Minimum characters for the password.
   - `max_characters` (number): Maxmimum characters for the password. 
   - `change_on_login` (boolean): Prevents the user from logging in without changing their password. This is required
-  in order to apply the other passwords.
+  in order to apply the other password policies.
 
 `search_directories`: Array of paths that are used for `installed_file_name` to search for applications.
 
