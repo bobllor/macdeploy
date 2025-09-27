@@ -71,9 +71,10 @@ func (f *FileVault) Status() (bool, error) {
 		return false, fmt.Errorf("filevault checking failed: %s", fileVaultStatus)
 	}
 
-	f.log.Info.Log("FileVault status: %s", fileVaultStatus)
+	f.log.Debug.Log("FileVault status: %s", fileVaultStatus)
 
 	if strings.Contains(fileVaultStatus, "true") {
+		f.log.Info.Log("Filevault is already enabled")
 		return true, nil
 	}
 
