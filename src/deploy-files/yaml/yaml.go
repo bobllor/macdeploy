@@ -138,3 +138,26 @@ func (u *UserInfo) readPassword() (string, error) {
 
 	return strings.TrimSpace(string(pwBytes)), nil
 }
+
+// InitializeSudo starts a sudo session without the need of manual input.
+// This can be called multiple times to refresh the sudo timer.
+func (u *UserInfo) InitializeSudo() error {
+	initSudoCmd := fmt.Sprintf("sudo -S echo <<< '%s'", u.Password)
+	err := exec.Command("bash", "-c", initSudoCmd).Run()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ResetSudo removes the sudo timestamp, resetting the permissions.
+func (u *UserInfo) ResetSudo() error {
+	err := exec.Command("bash", "-c", "sudo -K").Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -9,20 +9,6 @@ import (
 	"unicode"
 )
 
-// InitializeSudo starts a sudo session without the need of manual input.
-// This can be called multiple times to refresh the sudo timer.
-func InitializeSudo(adminPassword string) error {
-	initSudoCmd := fmt.Sprintf("sudo -S echo <<< '%s'", adminPassword)
-	err := exec.Command("bash", "-c", initSudoCmd).Run()
-
-	if err != nil {
-		// not a major issue, just requires manual interaction instead.
-		return err
-	}
-
-	return nil
-}
-
 // GetPathMap searches the contents of a directory and returns a map of the files.
 // The keys in the map are all lowercase.
 func GetSearchFiles(dirPath string) ([]string, error) {
