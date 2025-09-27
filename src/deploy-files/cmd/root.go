@@ -60,14 +60,15 @@ var rootCmd = &cobra.Command{
 
 		// checking if admin info was given or not
 		if config.Admin.Username == "" {
-			err = config.SetAdminUsername()
+			err = config.Admin.SetUsername()
 			if err != nil {
 				fmt.Printf("Failed to get username of admin: %v\n", err)
 				os.Exit(1)
 			}
 		}
 		if config.Admin.Password == "" {
-			err = config.SetAdminPassword()
+			fmt.Println("No admin password given")
+			err = config.Admin.SetPassword()
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -96,7 +97,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		log := logger.NewLog(serialTag, logDirectory, root.Verbose)
-		log.Info.Log("Log directory: %s", logDirectory)
+		log.Debug.Log("Log directory: %s", logDirectory)
+		log.Debug.Log("Admin username: %s", config.Admin.Username)
 
 		root.log = log
 		root.config = config
@@ -285,7 +287,7 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 			// if user creation is skipped then dont log the error
 			if !strings.Contains(err.Error(), "skipped") {
 				logMsg := fmt.Sprintf("Error making user: %v", err)
-				root.log.Error.Log(logMsg)
+				r.log.Error.Log(logMsg)
 			}
 
 			continue
@@ -322,8 +324,8 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 	}
 
 	// removing packages take precedent.
-	packager.AddPackages(root.IncludePackages)
-	packager.RemovePackages(root.ExcludePackages)
+	packager.AddPackages(r.IncludePackages)
+	packager.RemovePackages(r.ExcludePackages)
 
 	packages, err := packager.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindFiles)
 	if err != nil {
@@ -364,16 +366,18 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 	fwStatus, err := firewall.Status()
 	if err != nil {
 		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %v", err))
-		root.log.Error.Printf(firewallErrMsg, 3)
+		r.log.Error.Printf(firewallErrMsg, 3)
 	}
 
-	root.log.Debug.Printf("Firewall status: %t", fwStatus)
+	r.log.Debug.Printf("Firewall status: %t", fwStatus)
 
-	if !fwStatus && err == nil {
+	if !fwStatus {
 		err = firewall.Enable()
 		if err != nil {
-			root.log.Error.Log("%v", err)
+			r.log.Error.Log("%v", err)
 		}
+	} else {
+		r.log.Info.Log("Firewall is already enabled")
 	}
 }
 
