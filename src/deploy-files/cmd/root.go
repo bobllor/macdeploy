@@ -477,5 +477,12 @@ func (r *RootData) applyPasswordPolicy(policyString string, username string) {
 		return
 	}
 
-	root.log.Info.Log("Successfully applied policy: %s", out)
+	if !r.config.Policy.ChangeOnLogin {
+		r.log.Warn.Log(`Successfully applied policy, but "change_on_login" in the YAML was not set to true`)
+		r.log.Warn.Log(
+			`Run the command sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1' for the policies to apply`,
+			username)
+	} else {
+		r.log.Info.Log("Successfully applied policy: %s", out)
+	}
 }
