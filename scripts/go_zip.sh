@@ -4,7 +4,7 @@
 # Used if a new binary is required for an update, for example a change in the YAML config.
 
 # getting the latest changed yaml config in the server.
-configs=$(ls -t | grep -Ei "config\.(yaml|yml)$")
+configs=$(ls -t | grep -Ei "^config\.(yaml|yml)$")
 config=""
 
 while read line; do
