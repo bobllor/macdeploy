@@ -18,17 +18,18 @@ type Config struct {
 	Packages          map[string][]string `yaml:"packages"`
 	SearchDirectories []string            `yaml:"search_directories"`
 	Admin             UserInfo
-	ServerHost        string `yaml:"server_host"`
+	Policy            Policies `yaml:"policies"`
+	ServerHost        string   `yaml:"server_host"`
 	FileVault         bool
 	Firewall          bool
 	LogOutput         string `yaml:"log_output"`
 }
 
 type UserInfo struct {
-	Username       string `yaml:"username"`
-	Password       string `yaml:"password"`
-	IgnoreAdmin    bool   `yaml:"ignore_admin"`
-	ChangePassword bool   `yaml:"change_password"`
+	Username    string `yaml:"username"`
+	Password    string `yaml:"password"`
+	IgnoreAdmin bool   `yaml:"ignore_admin"`
+	ApplyPolicy bool   `yaml:"apply_policy"`
 }
 
 // NewConfig returns a struct containing data read from the YAML file. The file is read

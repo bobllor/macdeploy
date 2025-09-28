@@ -25,6 +25,7 @@ type RootData struct {
 	Mount           bool
 	ExcludePackages []string
 	IncludePackages []string
+	PlistPath       string
 	log             *logger.Log
 	config          *yaml.Config
 	script          *scripts.BashScripts
@@ -127,6 +128,13 @@ var rootCmd = &cobra.Command{
 		user := core.NewUser(root.config.Admin, root.script, root.log)
 
 		root.startAccountCreation(user, filevault, root.AdminStatus)
+		// apply policies to the admin account
+		if root.config.Admin.ApplyPolicy {
+			policyString := root.config.Policy.BuildCommand()
+
+			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
+		}
+
 		err = root.log.WriteFile()
 		if err != nil {
 			fmt.Printf("Failed to write to log file: %v\n", err)
@@ -262,12 +270,15 @@ func Execute() {
 
 // InitializeRoot initializes the flags for rootCmd.
 func InitializeRoot() {
-	rootCmd.Flags().BoolVarP(
-		&root.AdminStatus, "admin", "a", false, "Grants admin to the created user")
 	rootCmd.Flags().StringArrayVar(&root.ExcludePackages,
 		"exclude", []string{}, "Exclude a package from installing")
 	rootCmd.Flags().StringArrayVar(&root.IncludePackages,
 		"include", []string{}, "Include a package to install")
+	rootCmd.Flags().StringVar(
+		&root.PlistPath, "plist", "", "Apply password policies with a plist path")
+
+	rootCmd.Flags().BoolVarP(
+		&root.AdminStatus, "admin", "a", false, "Grants admin to the created user")
 	rootCmd.Flags().BoolVar(
 		&root.RemoveFiles, "remove-files", false, "Remove the deployment files on the device upon successful execution")
 	rootCmd.Flags().BoolVarP(
@@ -284,6 +295,7 @@ func InitializeRoot() {
 func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.FileVault, adminStatus bool) {
 	if len(r.config.Accounts) < 1 {
 		r.log.Warn.Log("No account information given in YAML file")
+		return
 	}
 
 	for key := range r.config.Accounts {
@@ -313,11 +325,10 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 			}
 		}
 
-		if currAccount.ChangePassword {
-			err = user.AddPasswordPolicy(accountName)
-			if err != nil {
-				r.log.Warn.Log("Failed to add password policy to user %s: %v", accountName, err)
-			}
+		if currAccount.ApplyPolicy {
+			policyString := r.config.Policy.BuildCommand()
+
+			root.applyPasswordPolicy(policyString, accountName)
 		}
 	}
 }
@@ -447,4 +458,31 @@ func (r *RootData) startCleanup(filesToRemove map[string]struct{}) {
 	}
 
 	utils.RemoveFiles(filesToRemove, files)
+}
+
+// applyPasswordPolicy applies the policies on the given user account.
+func (r *RootData) applyPasswordPolicy(policyString string, username string) {
+	out := ""
+	var err error
+	if r.PlistPath == "" {
+		r.log.Debug.Log("Policy string: %s | User: %s", policyString, username)
+		out, err = root.config.Policy.SetPolicy(policyString, username)
+	} else {
+		r.log.Debug.Log("plist path: %s | User: %s", r.PlistPath, username)
+		out, err = root.config.Policy.SetPolicyPlist(r.PlistPath, username)
+	}
+	if err != nil {
+		r.log.Warn.Log("Failed to add policy to user %s: %v", username, err)
+
+		return
+	}
+
+	if !r.config.Policy.ChangeOnLogin {
+		r.log.Warn.Log(`Successfully applied policy, but "change_on_login" in the YAML was not set to true`)
+		r.log.Warn.Log(
+			`Run the command sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1' for the policies to apply`,
+			username)
+	} else {
+		r.log.Info.Log("Successfully applied policy: %s", out)
+	}
 }
