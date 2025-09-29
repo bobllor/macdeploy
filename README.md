@@ -28,10 +28,6 @@ needed. It features:
 ***DISCLAIMER***: The HTTPS file server was built with the intention to be running on a *secure, private network*.
 There is no additional security implemented to handle a public facing server.
 
-### Planned Updates
-
-- [ ❌ ] Add additional password policies.
-
 ### Powered By
 
 [![Go](https://img.shields.io/badge/Go-%2300ADD8.svg?&logo=go&logoColor=white)](https://go.dev/)
@@ -152,6 +148,7 @@ Some processes will still require manual interactions.
 | `--verbose`, `-v` | Output debug logging to the terminal. | `./dist/macdeploy -v` |
 | `--no-send` | Prevents the log from being sent to the server. | `./dist/macdeploy --no-send` |
 | `--apply-policy` | Applies password policy to the created user. | `./dist/macdeploy --apply-policy` |
+| `--plist` | Apply password policies using a plist path. | `./dist/macdeploy --plist "/tmp/password-plist.plist` |
 | `--exclude <file>` | Excludes a package from installation. | `./dist/macdeploy --exclude "Chrome"` |
 | `--include "<file/installed_file_1/installed_file_2>"` | Include a package to install. | `./dist/macdeploy --include "zoomUSInstaller/zoom.us"` |
 
@@ -242,20 +239,21 @@ A sample config can be found in the repository or by looking at the top of this 
 *This is not the admin account*.
     - `username` (string): The username of the user, this value *must be unique*. If omitted, an input prompt for a
     username will be displayed.
-    - `password` (string): The password of the user used to login. If omitted, then a password prompt will appear for 
-    input.
+    - `password` (string): The password of the user used to login. Can be omitted, then a password 
+    prompt will appear for input.
     - `apply_policy` (boolean): Apply password policies to the user from the given values.
     - `ignore_admin` (boolean): Ignores creating the user as admin if the *admin flag* is used. 
     This is only used for default accounts in the YAML config.
 
-`admin`: A user info map for the main admin/first account of the device, used to automate majority of the workflow.
+`admin`: A user info map for the main root account of the device, used to automate majority of the workflow.
 It can be omitted for security purposes. 
-  - `username` (string): The username of the admin account. Can be omitted, but it must be the same as the *internal 
-  username* of the MacBook during creation. 
+  - `username` (string): The username of the admin, it must match the same internal username
+  during the initial account creation. Can be omitted.
   For example, if the display name is `Admin User` the *internal username* is `adminuser`.
-  - `password` (string): The password of the admin account. If omitted, then a prompt for the password is displayed. If 
+  - `password` (string): The password of the admin. If omitted, then a prompt for the password is displayed. If 
   the password fails to validate then the program will not continue.
-  - `apply_policy` (boolean): Apply password policies to the user from the given values.
+  - `apply_policy` (boolean): Apply password policies to the admin. Must be `true` if the admin account requires
+  policies applied.
 
 `packages`: Package file names that are being installed from the `pkg-files` directory on the client device.
   - `package_name` (string): The package file. The `dist` folder will be read to find any files ending in `.pkg`. 
@@ -272,21 +270,21 @@ It can be omitted for security purposes.
   being the default. 0 means the current password can be reused, 1 means the current password cannot be reused,
   and numbers between 2-15 means the user cannot reuse the last N passwords. If more than 15 is given, it will reduce
   back down to 15.
-  - `alpha` (boolean): Requires the password to have at least one letter.
-  - `numeric` (boolean): Requires the password to have at least one number.
+  - `require_alpha` (boolean): Requires the password to have at least one letter.
+  - `require_numeric` (boolean): Requires the password to have at least one number.
   - `min_characters` (number): Minimum characters for the password.
   - `max_characters` (number): Maxmimum characters for the password. 
-  - `change_on_login` (boolean): Prevents the user from logging in without changing their password. This is required
-  in order to apply the other password policies.
+  - `change_on_login` (boolean): Prevents the user from logging in without changing their password. This is
+  **required** in order to apply the password policies.
 
-`search_directories`: Array of paths that are used for `installed_file_name` to search for applications.
+`search_directories` (string array): Array of paths that are used for `installed_file_name` to search for applications.
 
-`server_host`: The URL of the server, used for client-server communication in HTTPS. 
+`server_host` (string): The URL of the server, used for client-server communication in HTTPS. 
 By default it is the private IP of the server on port 5000. Any CURL requests must use `--insecure`.
 
-`filevault`: Enable or disable FileVault activation in the deployment.
+`filevault` (boolean): Enable or disable FileVault activation in the deployment.
 
-`firewall`: Enable or disable Firewall activation in the deployment.
+`firewall` (boolean): Enable or disable Firewall activation in the deployment.
 
 ## Limitations and Security
 
@@ -294,17 +292,17 @@ By default it is the private IP of the server on port 5000. Any CURL requests mu
 
 **Do not run this** publicly, which will cause the endpoints to be accessible to everyone.
 
-The deployment process is expected to be ran ***on a private network***, and therefore its security is at a level where it 
-protects the bare minimum. 
+The deployment process is expected to be ran ***on a private network***, and therefore its security is at a level where 
+it protects the bare minimum. 
 
 The endpoints do not have proper safeguards in place, although only the updating ZIP endpoint has basic authentication.
 Exposing these endpoints can cause unintended consequences.
 
 ### curl
 
-The `curl` command uses the `--insecure` option to bypass the verify check (used in the Go code too).
-Although this is not recommended, it is used in this case due to the nature of device deployment- 
-or in other words the devices are fully wiped prior to deployment.
+The `curl` command uses the `--insecure` option to bypass the verification check.
+It is used in this case due to the nature of device deployment, or in other words the devices are fully 
+wiped prior to deployment.
 
 ## License
 
@@ -316,3 +314,4 @@ Special thanks to these resources:
 
 - [Cobra CLI](https://github.com/spf13/cobra)
 - [Go YAML](https://github.com/goccy/go-yaml)
+- [MD Badges](https://github.com/inttter/md-badges)

@@ -154,26 +154,43 @@ var rootCmd = &cobra.Command{
 
 		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchDirectoryFiles), root.config.SearchDirectories)
 
-		if len(searchDirectoryFiles) > 0 {
-			if root.Mount {
-				dmg := core.NewDmg(root.log, root.script)
+		if len(searchDirectoryFiles) < 1 {
+			root.log.Warn.Log("No files found with search directories, all packages will be installed with no checks")
+		}
 
-				dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
-				if err != nil {
-					root.log.Error.Log("Failed to search directory: %v", err)
-				} else {
-					// this requires the use of --include to install properly.
-					volumeMounts := dmg.AttachDmgs(dmgFiles)
-					if len(volumeMounts) > 0 {
-						dmg.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
-						dmg.DetachDmgs(volumeMounts)
-					}
+		// used to have len(searchDirectoryFiles) > 0 here, but it doesn't matter just install the files anyways.
+		if root.Mount {
+			dmg := core.NewDmg(root.log, root.script)
+
+			dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
+			if err != nil {
+				root.log.Error.Log("Failed to search directory: %v", err)
+			} else {
+				// this requires the use of --include to install properly.
+				volumeMounts := dmg.AttachDmgs(dmgFiles)
+				if len(volumeMounts) > 0 {
+					dmg.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+					dmg.DetachDmgs(volumeMounts)
 				}
 			}
-
-			packager := core.NewPackager(root.config.Packages, searchDirectoryFiles, root.log)
-			root.startPackageInstallation(packager)
 		}
+
+		packager := core.NewPackager(root.config.Packages, searchDirectoryFiles, root.log)
+		root.startPackageInstallation(packager)
+
+		if len(root.config.Scripts) > 0 {
+			root.log.Debug.Log("Script execution initiated")
+
+			scriptHandler := core.NewScriptHandler(root.log, root.script)
+
+			scriptFiles, err := scriptHandler.GetFilePaths("*.sh", root.metadata.DistDirectory)
+			if err != nil {
+				root.log.Error.Log("Failed to search files for %s: %v", root.metadata.DistDirectory, err)
+			} else {
+				scriptHandler.ExecuteScripts(root.config.Scripts, scriptFiles)
+			}
+		}
+
 		err = root.log.WriteFile()
 		if err != nil {
 			fmt.Printf("Failed to write to log file: %v\n", err)

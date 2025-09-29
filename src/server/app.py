@@ -87,6 +87,7 @@ def add_log():
 
     # NOTE: if the log file is large this could be an issue. maybe look into this in the future? 
     # for now it isn't an issue and probably will not be unless it scales to a large amount...
+    # FIXME: proper exception handling here, it's 3 AM bro...
     threading.Thread(target=process.add_log, args=(content,)).start()
 
     return jsonify({"status": "success", "content": "Added logs to the server"}), 200
