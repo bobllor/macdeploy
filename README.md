@@ -28,10 +28,6 @@ needed. It features:
 ***DISCLAIMER***: The HTTPS file server was built with the intention to be running on a *secure, private network*.
 There is no additional security implemented to handle a public facing server.
 
-### Planned Updates
-
-- [ ❌ ] Add additional password policies.
-
 ### Powered By
 
 [![Go](https://img.shields.io/badge/Go-%2300ADD8.svg?&logo=go&logoColor=white)](https://go.dev/)

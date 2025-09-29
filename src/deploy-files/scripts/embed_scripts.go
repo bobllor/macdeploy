@@ -23,7 +23,7 @@ type BashScripts struct {
 	CreateUser      string
 	EnableFileVault string
 	EnableFirewall  string
-	FindFiles       string
+	FindFiles       string // Takes two arguments: search_dir, ext_type
 }
 
 // NewScript generates an embedded struct for scripts created in Bash.
