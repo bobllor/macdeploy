@@ -2,6 +2,8 @@ name: macdeploy-tests
 
 on:
   pull_request:
+    paths:
+      - "*.go"
     paths-ignore:
       - "*.md"
     branches: 
