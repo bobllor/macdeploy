@@ -3,6 +3,7 @@ from .vars import Vars
 from .system_types import LogInfo
 from .utils import unlink_children
 from logger import logger
+from datetime import date
 import re
 
 class Process:
@@ -68,12 +69,20 @@ class Process:
         This is not an actual log generated in Python but rather 
         is the log generated from the client.
         '''
-        log_path: Path = Path(Vars.LOGS_PATH.value) / log_info["logFileName"]
-        log_path.touch()
+        # used for formatting logs into the correct dates for organization
+        date_logs_name: str = date.today().strftime("%Y-%m-%d") + "-logs"
+
+        log_path: Path = Path(Vars.LOGS_PATH.value) / date_logs_name
+        log_file_path: Path = log_path / log_info["logFileName"]
+
+        if not log_path.exists():
+            log_path.mkdir(parents=True)
+
+        log_file_path.touch()
 
         logger.info(f"Added log {log_info['logFileName']}")
 
-        with open(log_path, "w") as file:
+        with open(log_file_path, "w") as file:
             file.write(log_info["body"])
   
     def _create_entry(self, path: Path) -> None:
