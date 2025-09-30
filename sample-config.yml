@@ -1,22 +1,33 @@
 accounts:
-  default:
-    username: defaultuser0
+  help:
+    username: "TEST.USERNAME"
     password: "PASSWORD"
     ignore_admin: true
   client:
-    password: "PASSWORD"
-    change_password: true
+    apply_policy: true
 packages:
-  chrome:
-    - Chrome
-  zoom:
-    - zoom.us
+  package_1.pkg:
+    - "installed file name.app"
+  package 2:
+    - "installed name"
 search_directories:
-  - /Applications 
+  - "/Applications" 
+  - "/Library/Application Support" 
+scripts:
+  - "example script 1.sh"
+  - "example script 2.sh"
+policies:
+  reuse_password: 1
+  require_alpha: true
+  requrie_numeric: false
+  min_chararacters: 5
+  max_characters: 15
+  change_on_login: true # REQUIRED true for policies to be applied
 admin:
-  username: ADMIN
-  password: "PASSWORD"
+  username: "ADMIN_USERNAME"
+  password: "ADMIN_PASSWORD"
+  apply_policy: true # applies the policies above on the admin account
 server_host: "https://127.0.0.1:5000"
-log_output: "/some/path/here"
+log_output: "path/to/log"
 filevault: true
 firewall: true

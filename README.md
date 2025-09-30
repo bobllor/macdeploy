@@ -193,31 +193,38 @@ The server logs are located in the subdirectory `server-logs`.
 ```yaml
 # sample config
 accounts:
-  account_one:
-    username: "EXAMPLE.NAME"
+  default_account_one:
+    username: "TEST.USERNAME"
     password: "PASSWORD"
     ignore_admin: true
-  account_two:
-    password: "PASSWORD"
-    change_password: true
-admin:
-  username: "USERNAME"
-  password: "PASSWORD"
+  default_account_two:
+    apply_policy: true
 packages:
-  pkg_one_name:
-    - "pkg_one_app_name_one"
-    - "pkg_one_app_name_two"
-  pkg_two_name:
-    - "pkg_two_app_name_one"
-  pkg_three_name:
-    -
+  package_1.pkg:
+    - "installed file name.app"
+  package 2:
+    - "fuzzy installed app"
 search_directories:
-  - "/search_dir_one" 
-  - "/search_dir_two" 
-server_host: "https://127.0.0.1:5000" # REQUIRED
-log: "/path/to/log"
-filevault: false
-firewall: false
+  - "/Applications" 
+  - "/Library/Application Support" 
+scripts:
+  - "example script 1.sh"
+  - "example script 2.sh"
+policies:
+  reuse_password: 1
+  require_alpha: true
+  requrie_numeric: false
+  min_chararacters: 5
+  max_characters: 15
+  change_on_login: true # REQUIRED true for policies to be applied
+admin:
+  username: "ADMIN_USERNAME"
+  password: "ADMIN_PASSWORD"
+  apply_policy: true # applies the policies above on the admin account
+server_host: "https://127.0.0.1:5000"
+log_output: "path/to/log"
+filevault: true
+firewall: true
 ```
 
 The YAML configuration file is used for configuration of the binary.
@@ -264,6 +271,10 @@ It can be omitted for security purposes.
     It is *not case sensitive*, and should match the file name in the given search directory. 
     For example, `Microsoft Word.app` can be found by `"microsoft word"` or `"Word.app"`.
     Can be omitted in the config but must pass an empty value `-` or `- ""`.
+
+`scripts`: Array of script names that are to be executed upon the device. These files must be stored inside the
+*distribution folder*. Files ending in the extension `.sh` are searched and executed if the file names are found
+in this array. Ensure that the file has *executable permissions* or it will cause an error.
   
 `policies`: A map of password policies applied to chosen accounts in the config.
   - `reuse_password` (number): Determines if the user can reuse a password. The number ranges from 0 to 15, with 1
