@@ -6,8 +6,8 @@ class Vars(Enum):
     
     # file names
     ZIP_FILE_NAME = "deploy.zip"
-    ARM_BINARY_NAME = "deploy-arm.bin"
-    X86_BINARY_NAME = "deploy-x86_64.bin"
+    ARM_BINARY_NAME = "macdeploy"
+    X86_BINARY_NAME = "x86_64-macdeploy"
 
     # directory names
     _FILEVAULT_DIR_NAME = "filevault-keys"

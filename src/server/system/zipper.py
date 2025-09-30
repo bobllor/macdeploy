@@ -39,10 +39,7 @@ class Zip:
             dist_dir: Path, default Path(Vars.DIST_PATH.value)
                 The string path to the directory of the dist directory, containing all the files for distribution.
         '''
-        curr_path: str = os.getcwd()
         dist_path_str: str = str(dist_path)
-
-        logger.debug(f"{__file__.split('/')[-1]} ran in {curr_path}")
 
         if not dist_path.exists():
             dist_path.mkdir()
@@ -77,7 +74,7 @@ class Zip:
         '''
         zip_file_obj: zipfile.ZipFile = zipfile.ZipFile(self.zip_path, "a")
         logger.warning("ZIP file does not exist")
-        logger.debug("Searching in path %s", str(dist_path))
+        logger.debug("Searching in path %s, working directory: %s", str(dist_path), os.getcwd())
 
         zip_contents: list[str] = []
 
@@ -93,7 +90,7 @@ class Zip:
                     zip_file_obj.write(path_of_pkg)
                     zip_contents.append(path_of_pkg.name)
                 else:
-                    logger.error("Issue searching path %s", str(path_of_pkg))
+                    logger.error("Issue searching path %s in pwd: %s", str(path_of_pkg), os.getcwd())
                 
         zip_file_obj.close()
 
