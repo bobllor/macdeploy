@@ -4,20 +4,23 @@ import (
 	"errors"
 	"fmt"
 	"macos-deployment/deploy-files/logger"
+	"macos-deployment/deploy-files/scripts"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 )
 
-type Packager struct {
+type Installer struct {
 	packagesToInstall    map[string][]string
 	searchDirectoryFiles []string
 	log                  *logger.Log
+	script               *scripts.BashScripts
 }
 
-// NewPackager creates a new Packager for package modifications for macOS.
-func NewPackager(packagesToInstall map[string][]string,
-	searchDirectoryFiles []string, logger *logger.Log) *Packager {
+// NewInstaller creates a new Installer for package and app installations for macOS.
+func NewInstaller(packagesToInstall map[string][]string,
+	searchDirectoryFiles []string, logger *logger.Log, scripts *scripts.BashScripts) *Installer {
 	packagesLowered := make(map[string][]string)
 
 	for pkg, appNames := range packagesToInstall {
@@ -26,10 +29,11 @@ func NewPackager(packagesToInstall map[string][]string,
 		packagesLowered[lowPkg] = appNames
 	}
 
-	packager := Packager{
+	packager := Installer{
 		packagesToInstall:    packagesLowered,
 		searchDirectoryFiles: searchDirectoryFiles,
 		log:                  logger,
+		script:               scripts,
 	}
 
 	return &packager
@@ -39,7 +43,7 @@ func NewPackager(packagesToInstall map[string][]string,
 // If Rosetta is already installed or the CPU is non-arm64, then nil will be returned.
 //
 // If the installation of Rosetta fails then an error will be returned.
-func (p *Packager) InstallRosetta() error {
+func (p *Installer) InstallRosetta() error {
 	if runtime.GOARCH == "amd64" {
 		p.log.Info.Log("Skipping Rosetta installation, architecture: %s", runtime.GOARCH)
 		return nil
@@ -67,12 +71,12 @@ func (p *Packager) InstallRosetta() error {
 
 // AddPKG adds new packages to the list of packages to install by adding packages
 // included in the --include flag. All package names are lowered.
-func (p *Packager) AddPackages(packagesToAdd []string) {
+func (i *Installer) AddPackages(packagesToAdd []string) {
 	for _, includedPkg := range packagesToAdd {
 		// used to extract the package and its installed files from the flag argument.
 		includeArgArr := strings.Split(includedPkg, "/")
 
-		p.toLowerArray(&includeArgArr)
+		i.toLowerArray(&includeArgArr)
 
 		pkg := includeArgArr[0]
 
@@ -82,16 +86,16 @@ func (p *Packager) AddPackages(packagesToAdd []string) {
 			pkgInstalledArr = includeArgArr[1:]
 		}
 
-		p.packagesToInstall[pkg] = pkgInstalledArr
-		p.log.Info.Log("Added %s to the installation list", pkg)
+		i.packagesToInstall[pkg] = pkgInstalledArr
+		i.log.Info.Log("Added %s to the installation list", pkg)
 	}
 
-	p.log.Debug.Log("Packages: %v", p.packagesToInstall)
+	i.log.Debug.Log("Packages: %v", i.packagesToInstall)
 }
 
 // RemovePackages removes packages from the list of packages to install by removing the packages
 // given in the --exclude flag.
-func (p *Packager) RemovePackages(packagesToRemove []string) {
+func (p *Installer) RemovePackages(packagesToRemove []string) {
 	for _, excludedPkg := range packagesToRemove {
 		excludedPkgLow := strings.ToLower(excludedPkg)
 		_, ok := p.packagesToInstall[excludedPkgLow]
@@ -109,7 +113,7 @@ func (p *Packager) RemovePackages(packagesToRemove []string) {
 //
 // If the directory does not exist or if there is an issue reading the directory, then an error
 // is returned.
-func (p *Packager) ReadPackagesDirectory(pkgDirectory string, getPackageScript string) ([]string, error) {
+func (p *Installer) ReadPackagesDirectory(pkgDirectory string, getPackageScript string) ([]string, error) {
 	p.log.Debug.Log(fmt.Sprintf("Package folder: %s", pkgDirectory))
 
 	out, err := exec.Command("bash", "-c", getPackageScript, pkgDirectory, "*.pkg").Output()
@@ -129,12 +133,12 @@ func (p *Packager) ReadPackagesDirectory(pkgDirectory string, getPackageScript s
 // The argument takes an array of relative paths read from the project package directory.
 //
 // If a package fails to install, then it will be logged and skipped.
-func (p *Packager) InstallPackages(packagesPath []string) {
-	for pkg, installedNames := range p.packagesToInstall {
-		isInstalled := p.IsInstalled(installedNames, pkg)
+func (i *Installer) InstallPackages(packagesPath []string) {
+	for pkg, installedNames := range i.packagesToInstall {
+		isInstalled := i.IsInstalled(installedNames, pkg)
 
 		if isInstalled {
-			p.log.Warn.Log(fmt.Sprintf("Package %s is already installed", pkg))
+			i.log.Warn.Log(fmt.Sprintf("Package %s is already installed", pkg))
 			continue
 		}
 
@@ -148,15 +152,15 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 		for _, file := range packagesPath {
 			relativePkgLow := strings.ToLower(file)
 			if strings.Contains(relativePkgLow, pkgLowered) {
-				p.log.Info.Log("Installing package %s", pkg)
+				i.log.Info.Log("Installing package %s", pkg)
 
 				cmd := fmt.Sprintf(`installer -pkg "%s" -target /`, file)
-				p.log.Debug.Log("Package: %s | Package path: %s | Command: %s", pkg, file, cmd)
+				i.log.Debug.Log("Package: %s | Package path: %s | Command: %s", pkg, file, cmd)
 
 				out, err := exec.Command("sudo", "bash", "-c", cmd).Output()
 				if err != nil {
 					outStr := strings.TrimSpace(string(out))
-					p.log.Warn.Log(fmt.Sprintf("Failed to install %s: %s %v", pkg, outStr, err))
+					i.log.Warn.Log(fmt.Sprintf("Failed to install %s: %s %v", pkg, outStr, err))
 					failedInstall = true
 					break
 				}
@@ -167,7 +171,7 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 				} else {
 					outMsg = fmt.Sprintf("%s %s", outMsg, pkg)
 				}
-				p.log.Info.Log(outMsg)
+				i.log.Info.Log(outMsg)
 
 				successfulInstall = true
 				break
@@ -175,16 +179,16 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 		}
 
 		if !successfulInstall && !failedInstall {
-			p.log.Warn.Log("Unable to find package %s", pkg)
+			i.log.Warn.Log("Unable to find package %s", pkg)
 		}
 	}
 }
 
 // GetPackages returns the packages that are being installed.
-func (p *Packager) GetPackages() []string {
-	packages := make([]string, 0, len(p.packagesToInstall))
+func (i *Installer) GetPackages() []string {
+	packages := make([]string, 0, len(i.packagesToInstall))
 
-	for pkg := range p.packagesToInstall {
+	for pkg := range i.packagesToInstall {
 		packages = append(packages, pkg)
 	}
 
@@ -192,8 +196,126 @@ func (p *Packager) GetPackages() []string {
 }
 
 // GetAllPackages gets the packages to be installed and its installed file names array.
-func (p *Packager) GetAllPackages() map[string][]string {
-	return p.packagesToInstall
+func (i *Installer) GetAllPackages() map[string][]string {
+	return i.packagesToInstall
+}
+
+// ReadDmgDirectory reads the distribution directory for files with the .dmg extension,
+// and returns an string array consisting the relative paths to the DMG file.
+//
+// It will return an error if there is an issue reading the directory.
+func (i *Installer) ReadDmgDirectory(dir string) ([]string, error) {
+	out, err := exec.Command("bash", "-c", i.script.FindFiles, dir, "*.dmg").Output()
+	if err != nil {
+		return nil, err
+	}
+
+	dmgArray := strings.Split(string(out), "\n")
+	// will return arr[:len-1] because an empty string is present at the end of the array
+	dmgArray = dmgArray[:len(dmgArray)-1]
+
+	i.log.Debug.Log("DMGs found: %v", dmgArray)
+
+	return dmgArray, nil
+}
+
+// AddDmgPackages copies the contents of the given mounted DMG file into a folder
+// of the same name located inside the dist directory. The folder is created it it does not exist.
+//
+// The folder will be the same name as the mounted DMG as displayed in the Volumes directory.
+func (i *Installer) AddDmgPackages(volumePaths []string, pkgDirectory string) {
+	cmd := "cp -r '%s' '%s'"
+
+	for _, volumePath := range volumePaths {
+		newCmd := fmt.Sprintf(cmd, volumePath, pkgDirectory)
+		i.log.Info.Log("Copying files in path %s", volumePath)
+
+		// no sudo unless you want root to own it (not tested)
+		_, err := exec.Command("bash", "-c", newCmd).Output()
+		if err != nil {
+			i.log.Error.Log("Failed to copy contents of %s: %v", volumePath, err)
+			continue
+		}
+
+		i.log.Info.Log("Successfully copied %s to %s", volumePath, pkgDirectory)
+	}
+
+	// error is ignored here as this is just debugging.
+	distDir, err := os.ReadDir(pkgDirectory)
+	if err != nil {
+		i.log.Warn.Log("Failed to read %s: %v", pkgDirectory, err)
+		return
+	}
+
+	i.log.Debug.Log("Distribution directory after adding DMG contents: %v", distDir)
+}
+
+// AttachDmgs takes an array of paths and attaches it to the disk via hdiutil.
+//
+// Upon successful completion, an array of paths to the mounted directory is returnei.
+func (i *Installer) AttachDmgs(dmgPaths []string) []string {
+	cmd := "hdiutil attach '%s'"
+
+	volumePaths := make([]string, 0)
+
+	for _, dmgPath := range dmgPaths {
+		i.log.Debug.Log("DMG path: %s", dmgPath)
+
+		if strings.Contains(dmgPath, ".dmg") {
+			newCmd := fmt.Sprintf(cmd, dmgPath)
+
+			i.log.Info.Log("Mounting %s", dmgPath)
+			i.log.Debug.Log("Command: %s", newCmd)
+
+			out, err := exec.Command("bash", "-c", newCmd).Output()
+			if err != nil {
+				i.log.Error.Log("failed to mount %s: %v", dmgPath, err)
+				continue
+			}
+
+			i.log.Debug.Log("Command output: %s", strings.TrimSpace(string(out)))
+
+			outArr := strings.Split(string(out), "\t")
+			volumePath := strings.TrimSpace(outArr[len(outArr)-1])
+
+			volumePaths = append(volumePaths, volumePath)
+		}
+	}
+
+	i.log.Debug.Log("Mounted DMG volume paths: %v", volumePaths)
+
+	return volumePaths
+}
+
+// DetachDmgs detaches the DMG from the Volumes directory.
+// The paths are obtained from AttachDmgs.
+func (i *Installer) DetachDmgs(volumePaths []string) {
+	cmd := "hdiutil detach '%s'"
+
+	for _, volumePath := range volumePaths {
+		i.log.Info.Log("Unmounting %s", volumePath)
+		i.log.Debug.Log("Mount: %s", volumePath)
+
+		newCmd := fmt.Sprintf(cmd, volumePath)
+		i.log.Debug.Log("Command: %s", newCmd)
+
+		out, err := exec.Command("bash", "-c", newCmd).Output()
+		if err != nil {
+			i.log.Error.Log("Manual interaction needed, failed to unmount %s: %v", volumePath, err)
+			continue
+		}
+
+		i.log.Debug.Log("Command output: %s", strings.TrimSpace(string(out)))
+	}
+}
+
+// AddApp copies any files ending in the .app extension to the Applications directory.
+//
+// An error is returned if the disttribution directory is failed to be read from.
+// Otherwise it will always return nil, any errors in the file moving is logged and skipped.
+func (i *Installer) AddApp(distDirectory string) error {
+
+	return nil
 }
 
 // isInstalled searches for the names of an installed package in the search directory.
@@ -202,7 +324,7 @@ func (p *Packager) GetAllPackages() map[string][]string {
 // the package being installed is already installed.
 // Otherwise, false is returned if no installed arguments are given or it doesn't exist in the search
 // directories.
-func (p *Packager) IsInstalled(installedNames []string, pkgToInstall string) bool {
+func (p *Installer) IsInstalled(installedNames []string, pkgToInstall string) bool {
 	// installedName is the user given installed file
 	// installedFile is the installed file inside the directory files
 	for _, installedName := range installedNames {
@@ -235,7 +357,7 @@ func (p *Packager) IsInstalled(installedNames []string, pkgToInstall string) boo
 // the pointer to the given array.
 //
 // Used to remove the case sensitivity of package matching.
-func (p *Packager) toLowerArray(arr *[]string) {
+func (i *Installer) toLowerArray(arr *[]string) {
 	for i, str := range *arr {
 		(*arr)[i] = strings.ToLower(str)
 	}

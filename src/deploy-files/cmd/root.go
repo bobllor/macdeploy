@@ -158,25 +158,23 @@ var rootCmd = &cobra.Command{
 			root.log.Warn.Log("No files found with search directories, all packages will be installed with no checks")
 		}
 
+		installer := core.NewInstaller(root.config.Packages, searchDirectoryFiles, root.log, root.script)
 		// used to have len(searchDirectoryFiles) > 0 here, but it doesn't matter just install the files anyways.
 		if root.Mount {
-			dmg := core.NewDmg(root.log, root.script)
-
-			dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
+			dmgFiles, err := installer.ReadDmgDirectory(root.metadata.DistDirectory)
 			if err != nil {
 				root.log.Error.Log("Failed to search directory: %v", err)
 			} else {
 				// this requires the use of --include to install properly.
-				volumeMounts := dmg.AttachDmgs(dmgFiles)
+				volumeMounts := installer.AttachDmgs(dmgFiles)
 				if len(volumeMounts) > 0 {
-					dmg.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
-					dmg.DetachDmgs(volumeMounts)
+					installer.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+					installer.DetachDmgs(volumeMounts)
 				}
 			}
 		}
 
-		packager := core.NewPackager(root.config.Packages, searchDirectoryFiles, root.log)
-		root.startPackageInstallation(packager)
+		root.startPackageInstallation(installer)
 
 		if len(root.config.Scripts) > 0 {
 			root.log.Debug.Log("Script execution initiated")
@@ -351,18 +349,18 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 }
 
 // startPackageInstallation begins the package installation process.
-func (r *RootData) startPackageInstallation(packager *core.Packager) {
-	err := packager.InstallRosetta()
+func (r *RootData) startPackageInstallation(installer *core.Installer) {
+	err := installer.InstallRosetta()
 	if err != nil {
 		r.log.Error.Printf("Failed to install Rosetta: %v", err)
 		return
 	}
 
 	// removing packages take precedent.
-	packager.AddPackages(r.IncludePackages)
-	packager.RemovePackages(r.ExcludePackages)
+	installer.AddPackages(r.IncludePackages)
+	installer.RemovePackages(r.ExcludePackages)
 
-	packages, err := packager.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindFiles)
+	packages, err := installer.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindFiles)
 	if err != nil {
 		r.log.Error.Log("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err)
 		return
@@ -373,7 +371,7 @@ func (r *RootData) startPackageInstallation(packager *core.Packager) {
 		return
 	}
 
-	packager.InstallPackages(packages)
+	installer.InstallPackages(packages)
 }
 
 // startFileVault begins the FileVault process and returns the generated key.

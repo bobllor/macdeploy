@@ -26,12 +26,17 @@ var searchDirectoryFiles = []string{
 
 var baseLenPkgInstall int = len(packagesToInstall)
 
+var testDmgs = []string{
+	"test.dmg", "another one.dmg",
+}
+var baseLenDmg int = len(testDmgs)
+
 func TestArrayLowerCase(t *testing.T) {
 	logger := GetLogger(t)
 
-	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, logger.Log)
+	installer := core.NewInstaller(packagesToInstall, searchDirectoryFiles, logger.Log, script)
 
-	packager.AddPackages(packagesToAdd)
+	installer.AddPackages(packagesToAdd)
 
 	loweredPackages := make(map[string]struct{}, 0)
 
@@ -47,7 +52,7 @@ func TestArrayLowerCase(t *testing.T) {
 	}
 
 	// should already be lowered here during the constructor and add packages.
-	for _, pkg := range packager.GetPackages() {
+	for _, pkg := range installer.GetPackages() {
 		if _, ok := loweredPackages[pkg]; !ok {
 			t.Errorf("value %s does not exist", pkg)
 		}
@@ -56,11 +61,11 @@ func TestArrayLowerCase(t *testing.T) {
 
 func TestAddPackages(t *testing.T) {
 	log := GetLogger(t)
-	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, log.Log)
+	installer := core.NewInstaller(packagesToInstall, searchDirectoryFiles, log.Log, script)
 
-	packager.AddPackages(packagesToAdd)
+	installer.AddPackages(packagesToAdd)
 
-	packages := packager.GetPackages()
+	packages := installer.GetPackages()
 	newLen := len(packages)
 
 	if newLen != baseLenPkgInstall+len(packagesToAdd) {
@@ -73,17 +78,17 @@ func TestAddPackages(t *testing.T) {
 
 func TestRemovePackages(t *testing.T) {
 	logger := GetLogger(t)
-	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, logger.Log)
+	installer := core.NewInstaller(packagesToInstall, searchDirectoryFiles, logger.Log, script)
 
-	expectedLength := len(append(packagesToAdd, packager.GetPackages()...)) - 1
+	expectedLength := len(append(packagesToAdd, installer.GetPackages()...)) - 1
 
-	packager.AddPackages(packagesToAdd)
+	installer.AddPackages(packagesToAdd)
 
 	randomSelection := strings.ToLower(packagesToAdd[rand.Intn(len(packagesToAdd))])
 
-	packager.RemovePackages([]string{randomSelection})
+	installer.RemovePackages([]string{randomSelection})
 
-	newLen := len(packager.GetPackages())
+	newLen := len(installer.GetPackages())
 
 	if newLen != expectedLength {
 		t.Errorf("failed to remove package, got %d instead of %d", newLen, expectedLength)
@@ -92,12 +97,12 @@ func TestRemovePackages(t *testing.T) {
 
 func TestInstalledPackages(t *testing.T) {
 	log := GetLogger(t)
-	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, log.Log)
+	installer := core.NewInstaller(packagesToInstall, searchDirectoryFiles, log.Log, script)
 
 	alreadyInstalledCount := 0
 
 	for pkg, installedNames := range packagesToInstall {
-		if packager.IsInstalled(installedNames, strings.ToLower(pkg)) {
+		if installer.IsInstalled(installedNames, strings.ToLower(pkg)) {
 			alreadyInstalledCount += 1
 		}
 	}
@@ -109,15 +114,15 @@ func TestInstalledPackages(t *testing.T) {
 
 func TestInstallPackages(t *testing.T) {
 	log := GetLogger(t)
-	packager := core.NewPackager(packagesToInstall, searchDirectoryFiles, log.Log)
+	installer := core.NewInstaller(packagesToInstall, searchDirectoryFiles, log.Log, script)
 
-	packager.AddPackages(packagesToAdd)
+	installer.AddPackages(packagesToAdd)
 
 	installedCount := 0
 	expectedLen := len(packagesToAdd)
 
-	for pkg, installedNames := range packager.GetAllPackages() {
-		isInstalled := packager.IsInstalled(installedNames, strings.ToLower(pkg))
+	for pkg, installedNames := range installer.GetAllPackages() {
+		isInstalled := installer.IsInstalled(installedNames, strings.ToLower(pkg))
 		if !isInstalled {
 			installedCount += 1
 
@@ -140,5 +145,31 @@ func TestInstallPackages(t *testing.T) {
 
 	if installedCount != len(files) {
 		t.Errorf("packages failed to write, got packages: %v", files)
+	}
+}
+
+func TestReadDmg(t *testing.T) {
+	log := GetLogger(t)
+
+	for _, dmgFile := range testDmgs {
+		err := os.WriteFile(log.MainDirectory+"/"+dmgFile, []byte{}, 0o744)
+		// hmm...
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	dmg := core.NewInstaller(packagesToInstall, searchDirectoryFiles, log.Log, script)
+
+	dmgFiles, err := dmg.ReadDmgDirectory(log.MainDirectory)
+	if err != nil {
+		t.Errorf("failed to read directory: %v", err)
+	}
+
+	// there is an empty string added to the array
+	newLen := len(dmgFiles)
+
+	if newLen != baseLenDmg {
+		t.Errorf("got %d, did not match the baseline %d", newLen, baseLenDmg)
 	}
 }
