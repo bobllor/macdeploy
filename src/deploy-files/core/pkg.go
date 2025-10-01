@@ -140,6 +140,7 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 
 		// used for logging at the end
 		successfulInstall := false
+		failedInstall := false
 
 		pkgLowered := strings.ToLower(pkg)
 		// paths relative to the directory that ran the binary, but the contents
@@ -156,7 +157,8 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 				if err != nil {
 					outStr := strings.TrimSpace(string(out))
 					p.log.Warn.Log(fmt.Sprintf("Failed to install %s: %s %v", pkg, outStr, err))
-					continue
+					failedInstall = true
+					break
 				}
 
 				outMsg := "Successfully installed"
@@ -168,10 +170,11 @@ func (p *Packager) InstallPackages(packagesPath []string) {
 				p.log.Info.Log(outMsg)
 
 				successfulInstall = true
+				break
 			}
 		}
 
-		if !successfulInstall {
+		if !successfulInstall && !failedInstall {
 			p.log.Warn.Log("Unable to find package %s", pkg)
 		}
 	}

@@ -78,7 +78,8 @@ func (s *ScriptHandler) ExecuteScripts(executingScripts []string, scriptPaths []
 			}
 		}
 
-		if !success || !fail {
+		// only log if a script attempt never occurred, this is only for failing to find the script
+		if !success && !fail {
 			s.log.Warn.Log("Unable to find %s", execScriptName)
 		}
 	}
