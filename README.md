@@ -57,7 +57,7 @@ There is no additional security implemented to handle a public facing server.
 ### Prerequisites
 
 The server must **run on a macOS or Linux** operating system.
-Windows is not supported (WSL is fine).
+Windows is not supported, but WSL works.
 
 Below are the tools and software required on the server before starting the deployment process.
 - `Go`
