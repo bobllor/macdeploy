@@ -143,7 +143,7 @@ var rootCmd = &cobra.Command{
 		// creating the files found in the search directories, it is flattened.
 		searchDirectoryFiles := make([]string, 0)
 		for _, searchDir := range root.config.SearchDirectories {
-			searchFiles, err := utils.GetSearchFiles(searchDir)
+			searchFiles, err := utils.GetFiles(searchDir)
 			if err != nil {
 				root.log.Warn.Log("Path %s does not exist, skipping path", searchDir)
 				continue
@@ -158,34 +158,42 @@ var rootCmd = &cobra.Command{
 			root.log.Warn.Log("No files found with search directories, all packages will be installed with no checks")
 		}
 
-		installer := core.NewInstaller(root.config.Packages, searchDirectoryFiles, root.log, root.script)
+		handler := core.NewFileHandler(root.config.Packages, root.log)
 		// used to have len(searchDirectoryFiles) > 0 here, but it doesn't matter just install the files anyways.
 		if root.Mount {
-			dmgFiles, err := installer.ReadDmgDirectory(root.metadata.DistDirectory)
+			root.log.Info.Log("Searching for DMG files")
+			dmgFiles, err := handler.ReadDir(root.metadata.DistDirectory, ".dmg")
 			if err != nil {
 				root.log.Error.Log("Failed to search directory: %v", err)
 			} else {
 				// this requires the use of --include to install properly.
-				volumeMounts := installer.AttachDmgs(dmgFiles)
+				volumeMounts := handler.AttachDmgs(dmgFiles)
 				if len(volumeMounts) > 0 {
-					installer.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
-					installer.DetachDmgs(volumeMounts)
+					handler.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+					handler.DetachDmgs(volumeMounts)
 				}
 			}
 		}
 
-		root.startPackageInstallation(installer)
+		root.startPackageInstallation(handler, searchDirectoryFiles)
+
+		appFiles, err := handler.ReadDir(root.metadata.DistDirectory, ".app")
+		if err != nil {
+			root.log.Error.Log("Failed to search directory: %v", err)
+		}
+		if len(appFiles) > 0 {
+			applicationDir := "/Applications"
+			handler.CopyFiles(appFiles, applicationDir)
+		}
 
 		if len(root.config.Scripts) > 0 {
-			root.log.Debug.Log("Script execution initiated")
-
-			scriptHandler := core.NewScriptHandler(root.log, root.script)
-
-			scriptFiles, err := scriptHandler.GetFilePaths("*.sh", root.metadata.DistDirectory)
+			root.log.Info.Log("Searching for Bash scripts")
+			// FIXME: don't know why i am using handler.here.
+			scriptFiles, err := handler.ReadDir(root.metadata.DistDirectory, ".sh")
 			if err != nil {
 				root.log.Error.Log("Failed to search files for %s: %v", root.metadata.DistDirectory, err)
 			} else {
-				scriptHandler.ExecuteScripts(root.config.Scripts, scriptFiles)
+				handler.ExecuteScripts(root.config.Scripts, scriptFiles)
 			}
 		}
 
@@ -349,18 +357,19 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 }
 
 // startPackageInstallation begins the package installation process.
-func (r *RootData) startPackageInstallation(installer *core.Installer) {
-	err := installer.InstallRosetta()
+func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDirectoryFiles []string) {
+	err := handler.InstallRosetta()
 	if err != nil {
 		r.log.Error.Printf("Failed to install Rosetta: %v", err)
 		return
 	}
 
 	// removing packages take precedent.
-	installer.AddPackages(r.IncludePackages)
-	installer.RemovePackages(r.ExcludePackages)
+	handler.AddPackages(r.IncludePackages)
+	handler.RemovePackages(r.ExcludePackages)
 
-	packages, err := installer.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindFiles)
+	r.log.Info.Log("Searching for packages")
+	packages, err := handler.ReadDir(r.metadata.DistDirectory, ".pkg")
 	if err != nil {
 		r.log.Error.Log("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err)
 		return
@@ -371,7 +380,7 @@ func (r *RootData) startPackageInstallation(installer *core.Installer) {
 		return
 	}
 
-	installer.InstallPackages(packages)
+	handler.InstallPackages(packages, searchDirectoryFiles)
 }
 
 // startFileVault begins the FileVault process and returns the generated key.
