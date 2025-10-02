@@ -14,8 +14,8 @@ func TestDirFileNames(t *testing.T) {
 		t.Fatalf("log file name failed to generate: %s", log.Log.GetLogName())
 	}
 
-	if !strings.Contains(log.Log.GetLogPath(), log.MainDirectory) {
-		t.Fatalf("generated log path %s does not match base path %s", log.Log.GetLogPath(), log.MainDirectory)
+	if !strings.Contains(log.Log.GetLogPath(), log.ProjectDirectory) {
+		t.Fatalf("generated log path %s does not match base path %s", log.Log.GetLogPath(), log.ProjectDirectory)
 	}
 }
 
@@ -27,7 +27,7 @@ func TestMkDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = os.Stat(log.MainDirectory)
+	_, err = os.Stat(log.ProjectDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

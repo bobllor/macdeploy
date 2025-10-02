@@ -31,7 +31,7 @@ policies:
   min_characters: 5
   max_characters: 15
 server_host: "https://192.168.1.154:5000"
-log_output: "hello/there"
+log_output: "sample/logs"
 filevault: true
 firewall: true
 `
