@@ -9,14 +9,15 @@ import (
 	"unicode"
 )
 
-// GetPathMap searches the contents of a directory and returns a map of the files.
-// The keys in the map are all lowercase.
-func GetSearchFiles(dirPath string) ([]string, error) {
+// GetFiles reads the directory and returns a map of the files.
+// The keys in the map are all in lowercase.
+// This does not traverse recursively.
+func GetFiles(dirPath string) ([]string, error) {
 	pathContent := make([]string, 0)
 
-	dirEntries, dirErr := os.ReadDir(dirPath)
-	if dirErr != nil {
-		return nil, dirErr
+	dirEntries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, file := range dirEntries {
