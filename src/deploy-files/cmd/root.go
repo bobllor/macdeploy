@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	embedhandler "macos-deployment/config"
@@ -12,6 +13,7 @@ import (
 	"macos-deployment/deploy-files/yaml"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -30,6 +32,25 @@ type RootData struct {
 	config          *yaml.Config
 	script          *scripts.BashScripts
 	metadata        *utils.Metadata
+	errors          errorFlags
+	data            varData
+	dep             dependencies
+}
+
+type errorFlags struct {
+	ServerFailed  bool // Indicates if sending the files to the server has filed.
+	ScriptsFailed bool // Indicates if searching for script files (.sh) has failed.
+}
+
+type dependencies struct {
+	filehandler *core.FileHandler
+	usermaker   *core.UserMaker
+	filevault   *core.FileVault
+	firewall    *core.Firewall
+}
+
+type varData struct {
+	scriptFiles []string
 }
 
 var root RootData
@@ -56,7 +77,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			// TODO: make this a better error message (incorrect keys, required keys missing, etc)
 			fmt.Printf("Error parsing YAML configuration, %v\n", err)
-			os.Exit(1)
+			return
 		}
 
 		// checking if admin info was given or not
@@ -72,13 +93,13 @@ var rootCmd = &cobra.Command{
 			err = config.Admin.SetPassword()
 			if err != nil {
 				fmt.Println(err)
-				os.Exit(1)
 			}
 		}
 
 		// initializes sudo for automation purposes.
 		err = config.Admin.InitializeSudo()
 		if err != nil {
+			// this cannot be skipped.
 			fmt.Printf("Failed to initialize sudo with given password: %v\n", err)
 			os.Exit(1)
 		}
@@ -92,7 +113,7 @@ var rootCmd = &cobra.Command{
 			logDirectory = logger.FormatLogOutput(logDirectory)
 		}
 
-		err = logger.MkdirAll(logDirectory, 0o744)
+		err = logger.MkdirAll(logDirectory, 0o644)
 		if err != nil {
 			fmt.Printf("Unable to make logging directory: %v\n", err)
 			fmt.Printf("Changing log output to home directory: %s\n", defaultLogDir)
@@ -108,10 +129,39 @@ var rootCmd = &cobra.Command{
 		log.Debug.Log("Log directory: %s", logDirectory)
 		log.Debug.Log("Admin username: %s", config.Admin.Username)
 
+		// dependency initializations
+		filevault := core.NewFileVault(config.Admin, scripts, log)
+		user := core.NewUser(config.Admin, scripts, log)
+		handler := core.NewFileHandler(config.Packages, log)
+		firewall := core.NewFirewall(log, scripts)
+
 		root.log = log
 		root.config = config
 		root.script = scripts
 		root.metadata = metadata
+
+		root.dep.usermaker = user
+		root.dep.filehandler = handler
+		root.dep.firewall = firewall
+		root.dep.filevault = filevault
+
+		// initialized for permanent lifecycle during pre, install, and post stages
+		scriptFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".sh")
+		if err != nil {
+			root.log.Error.Log("Failed to find script files: %v", err)
+			fmt.Println("Scripts will not be ran during the deployment")
+
+			root.errors.ScriptsFailed = true
+		}
+		root.log.Debug.Log("Found script files: %v", scriptFiles)
+
+		root.data.scriptFiles = scriptFiles
+
+		// pre script execution
+		if len(root.config.Scripts.Pre) > 0 && !root.errors.ScriptsFailed {
+			root.log.Debug.Log("Pre-install script files: %v", root.config.Scripts.Pre)
+			root.dep.filehandler.ExecuteScripts(root.config.Scripts.Pre, root.data.scriptFiles)
+		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		root.log.Info.Log("Starting deployment for %s", root.metadata.SerialTag)
@@ -123,11 +173,7 @@ var rootCmd = &cobra.Command{
 			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
 		}
 
-		// dependency initializations
-		filevault := core.NewFileVault(&root.config.Admin, root.script, root.log)
-		user := core.NewUser(root.config.Admin, root.script, root.log)
-
-		root.startAccountCreation(user, filevault, root.AdminStatus)
+		root.startAccountCreation(root.dep.usermaker, root.dep.filevault, root.AdminStatus)
 		// apply policies to the admin account
 		if root.config.Admin.ApplyPolicy {
 			policyString := root.config.Policy.BuildCommand()
@@ -158,43 +204,38 @@ var rootCmd = &cobra.Command{
 			root.log.Warn.Log("No files found with search directories, all packages will be installed with no checks")
 		}
 
-		handler := core.NewFileHandler(root.config.Packages, root.log)
 		// used to have len(searchDirectoryFiles) > 0 here, but it doesn't matter just install the files anyways.
 		if root.Mount {
 			root.log.Info.Log("Searching for DMG files")
-			dmgFiles, err := handler.ReadDir(root.metadata.DistDirectory, ".dmg")
+			dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".dmg")
 			if err != nil {
 				root.log.Error.Log("Failed to search directory: %v", err)
 			} else {
 				// this requires the use of --include to install properly.
-				volumeMounts := handler.AttachDmgs(dmgFiles)
+				volumeMounts := root.dep.filehandler.AttachDmgs(dmgFiles)
 				if len(volumeMounts) > 0 {
-					handler.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
-					handler.DetachDmgs(volumeMounts)
+					root.dep.filehandler.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+					root.dep.filehandler.DetachDmgs(volumeMounts)
 				}
 			}
 		}
 
-		root.startPackageInstallation(handler, searchDirectoryFiles)
+		root.startPackageInstallation(root.dep.filehandler, searchDirectoryFiles)
 
-		appFiles, err := handler.ReadDir(root.metadata.DistDirectory, ".app")
+		appFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".app")
 		if err != nil {
 			root.log.Error.Log("Failed to search directory: %v", err)
 		}
 		if len(appFiles) > 0 {
 			applicationDir := "/Applications"
-			handler.CopyFiles(appFiles, applicationDir)
+			root.dep.filehandler.CopyFiles(appFiles, applicationDir)
 		}
 
-		if len(root.config.Scripts) > 0 {
-			root.log.Info.Log("Searching for Bash scripts")
-			// FIXME: don't know why i am using handler.here.
-			scriptFiles, err := handler.ReadDir(root.metadata.DistDirectory, ".sh")
-			if err != nil {
-				root.log.Error.Log("Failed to search files for %s: %v", root.metadata.DistDirectory, err)
-			} else {
-				handler.ExecuteScripts(root.config.Scripts, scriptFiles)
-			}
+		// inter (during) script execution
+		if len(root.config.Scripts.Inter) > 0 && !root.errors.ScriptsFailed {
+			root.log.Debug.Log("Install script files: %v", root.config.Scripts.Inter)
+
+			root.dep.filehandler.ExecuteScripts(root.config.Scripts.Inter, root.data.scriptFiles)
 		}
 
 		err = root.log.WriteFile()
@@ -203,13 +244,12 @@ var rootCmd = &cobra.Command{
 		}
 
 		// payload for sending to the server
-		logPayload := requests.NewLogPayload(root.log.GetLogName())
 		// initialized with an empty key, Key gets updated below.
 		// used for sending the log over to the server.
+		logPayload := requests.NewLogPayload(root.log.GetLogName())
 		filevaultPayload := requests.NewFileVaultPayload("")
-
 		if root.config.FileVault {
-			fvKey := root.startFileVault(filevault)
+			fvKey := root.startFileVault(root.dep.filevault)
 
 			filevaultPayload.Key = fvKey
 			filevaultPayload.SetBody(root.metadata.SerialTag)
@@ -220,9 +260,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if root.config.Firewall {
-			firewall := core.NewFirewall(root.log, root.script)
-
-			root.startFirewall(firewall)
+			root.startFirewall(root.dep.firewall)
 		}
 
 		// if a filevault key is present, always send regardless of flag usage
@@ -235,18 +273,6 @@ var rootCmd = &cobra.Command{
 			}
 
 			request := requests.NewRequest(root.log)
-
-			logPayload.Body = string(root.log.GetContent())
-			err = root.startRequest(logPayload, request, "/api/log")
-			if err != nil {
-				root.log.Error.Log("Failed to send to data to server: %v", err)
-
-				if filevaultPayload.Key != "" {
-					root.log.Error.Log("The log file must be saved in order not to lose the generated FileVault key")
-				}
-
-				os.Exit(1)
-			}
 
 			if filevaultPayload.Key != "" {
 				root.log.Info.Log("Sending FileVault key to the server")
@@ -261,15 +287,77 @@ var rootCmd = &cobra.Command{
 						fmt.Printf("Failed to write to log file: %v\n", err)
 					}
 
-					os.Exit(1)
+					root.errors.ServerFailed = true
+
+					return
 				}
 			}
+
+			logPayload.Body = string(root.log.GetContent())
+			err = root.startRequest(logPayload, request, "/api/log")
+			if err != nil {
+				root.log.Error.Log("Failed to send to data to server: %v", err)
+
+				if filevaultPayload.Key != "" {
+					root.log.Error.Log("The log file must be saved in order not to lose the generated FileVault key")
+				}
+
+				root.errors.ServerFailed = true
+
+				return
+			}
+
 		} else if filevaultPayload.Key == "" && root.NoSend {
 			root.log.Info.Log("No FileVault key generated")
-			root.log.Info.Log("Skipping sending logs to server, flag --no-send: %v", root.NoSend)
+			root.log.Debug.Log("Skipping sending logs to server, flag --no-send: %v", root.NoSend)
+		}
+	},
+	PostRun: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Completed deployment for %s\n", root.metadata.SerialTag)
+		fmt.Printf("Log output: %s\n", root.log.GetLogPath())
+
+		// post scripts execution
+		if len(root.config.Scripts.Post) > 0 && !root.errors.ScriptsFailed {
+			root.log.Debug.Log("Install script files: %v", root.config.Scripts.Post)
+
+			root.dep.filehandler.ExecuteScripts(root.config.Scripts.Post, root.data.scriptFiles)
 		}
 
 		if root.RemoveFiles {
+			if root.errors.ServerFailed {
+				choice := ""
+				validChoices := "yn"
+
+				validation := func(choice string, validChoices string) bool {
+					choice = strings.ToLower(choice)
+					validChoices = strings.ToLower(validChoices)
+
+					validArr := strings.Split(validChoices, "")
+
+					return slices.Contains(validArr, choice)
+				}
+
+				reader := bufio.NewReader(os.Stdin)
+
+				fmt.Println("The logs have failed to send to the server.")
+				fmt.Println("You can re-run the binary to try again.")
+				for !validation(choice, validChoices) {
+					fmt.Print("Remove all deployment files? [y/N]: ")
+					choice, _ = reader.ReadString('\n')
+
+					choice = strings.ToLower(choice)
+					choice = strings.TrimSpace(choice)
+
+					if choice == "n" || choice == "" {
+						return
+					} else if choice == "y" {
+						break
+					} else {
+						fmt.Printf("invalid response [%s]\n", choice)
+					}
+				}
+			}
+
 			filesToRemove := map[string]struct{}{
 				root.metadata.DistDirectory: {},
 				root.metadata.ZipFile:       {},
@@ -277,10 +365,6 @@ var rootCmd = &cobra.Command{
 
 			root.startCleanup(filesToRemove)
 		}
-	},
-	PostRun: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Completed deployment for %s\n", root.metadata.SerialTag)
-		fmt.Printf("Log output: %s\n", root.log.GetLogPath())
 	},
 }
 
