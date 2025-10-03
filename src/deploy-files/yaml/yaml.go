@@ -17,7 +17,7 @@ type Config struct {
 	Accounts          map[string]UserInfo `yaml:"accounts"`
 	Packages          map[string][]string `yaml:"packages"`
 	SearchDirectories []string            `yaml:"search_directories"`
-	Scripts           []string            `yaml:"scripts"`
+	Scripts           ScriptTypes         `yaml:"scripts"`
 	Admin             UserInfo
 	Policy            Policies `yaml:"policies"`
 	ServerHost        string   `yaml:"server_host"`
@@ -31,6 +31,12 @@ type UserInfo struct {
 	Password    string `yaml:"password"`
 	IgnoreAdmin bool   `yaml:"ignore_admin"`
 	ApplyPolicy bool   `yaml:"apply_policy"`
+}
+
+type ScriptTypes struct {
+	Pre   []string `yaml:"pre"`
+	Inter []string `yaml:"inter"`
+	Post  []string `yaml:"post"`
 }
 
 // NewConfig returns a struct containing data read from the YAML file. The file is read
