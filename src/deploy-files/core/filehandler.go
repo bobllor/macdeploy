@@ -276,7 +276,8 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 }
 
 // ExecuteScripts runs shell scripts on the device.
-// It requires an array of strings of the script path, and an array of strings of the script names to execute.
+// An array of strings of the script names to execute, and an array of script paths
+// from the distribution directory.
 //
 // The executing scripts are defined from the config or through the flag.
 // Any errors that occurs will be skipped and logged.
@@ -285,6 +286,10 @@ func (f *FileHandler) ExecuteScripts(executingScripts []string, scriptPaths []st
 		execNameLow := strings.ToLower(execScriptName)
 		success := false
 		fail := false
+
+		if execNameLow == "" {
+			continue
+		}
 
 		for _, scriptPath := range scriptPaths {
 			scriptPathLow := strings.ToLower(scriptPath)

@@ -10,12 +10,12 @@ import (
 )
 
 type FileVault struct {
-	admin  *yaml.UserInfo
+	admin  yaml.UserInfo
 	script *scripts.BashScripts
 	log    *logger.Log
 }
 
-func NewFileVault(admin *yaml.UserInfo, script *scripts.BashScripts, log *logger.Log) *FileVault {
+func NewFileVault(admin yaml.UserInfo, script *scripts.BashScripts, log *logger.Log) *FileVault {
 	fv := FileVault{
 		admin:  admin,
 		script: script,
