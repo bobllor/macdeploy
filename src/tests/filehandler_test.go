@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"macos-deployment/deploy-files/core"
 	"math/rand"
 	"os"
@@ -26,11 +27,6 @@ var searchDirectoryFiles = []string{
 }
 
 var baseLenPkgInstall int = len(packagesToInstall)
-
-var testDmgs = []string{
-	"test.dmg", "another one.dmg",
-}
-var baseLenDmg int = len(testDmgs)
 
 func TestArrayLowerCase(t *testing.T) {
 	logger := GetLogger(t)
@@ -152,6 +148,11 @@ func TestInstallPackages(t *testing.T) {
 func TestReadDmg(t *testing.T) {
 	log := GetLogger(t)
 
+	testDmgs := []string{
+		"test.dmg", "another one.dmg",
+	}
+	baseLenDmg := len(testDmgs)
+
 	for _, dmgFile := range testDmgs {
 		err := os.WriteFile(log.ProjectDirectory+"/"+dmgFile, []byte{}, 0o744)
 		// hmm...
@@ -183,14 +184,14 @@ func TestCopyApp(t *testing.T) {
 	appDirectory := "Applications"
 
 	appBundleContentDir := "contents"
-	directories := []string{appBundle, appBundle + "/" + appBundleContentDir}
+	directories := []string{appBundle + "/" + appBundleContentDir}
 
 	for _, dir := range directories {
 		err := log.Mkdir(dir)
 		CheckError(err, t)
 	}
 
-	err := log.WriteFile(appBundle+"/"+"file.ini", []byte("text goes here"))
+	err := log.MkFile(appBundle+"/"+"file.ini", []byte("text goes here"), filePerms.Base)
 	CheckError(err, t)
 
 	files, err := handler.ReadDir(log.ProjectDirectory, ".app")
@@ -234,7 +235,7 @@ func TestCopyFile(t *testing.T) {
 	textContent := "some text here"
 
 	for i, fileName := range fileNames {
-		err := log.WriteFile(newTestDir+"/"+fileName, []byte(textContent+strconv.Itoa(i)))
+		err := log.MkFile(newTestDir+"/"+fileName, []byte(textContent+strconv.Itoa(i)), filePerms.Base)
 		CheckError(err, t)
 	}
 
@@ -253,6 +254,92 @@ func TestCopyFile(t *testing.T) {
 
 		if !strings.Contains(string(outBytes), textContent) {
 			t.Fatalf("got content %s expected %s", string(outBytes), textContent)
+		}
+	}
+}
+
+func TestScriptCache(t *testing.T) {
+	log := GetLogger(t)
+	handler := core.NewFileHandler(packagesToInstall, log.Log)
+
+	fakeScriptPaths := []string{
+		"file1.sh", "file2.sh",
+	}
+
+	for _, path := range fakeScriptPaths {
+		err := log.MkFile(path, []byte{}, filePerms.Base)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	executingScripts := []string{
+		"file1.sh", "example 2.sh",
+	}
+
+	scriptPaths, err := handler.ReadDir(log.ProjectDirectory, ".sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, execScript := range executingScripts {
+		// err is expected here as the file does not have any permissions.
+		_, err := handler.ExecuteScript(execScript, scriptPaths)
+		if err == nil {
+			t.Fatal(err)
+		}
+	}
+
+	cache := handler.GetScriptCache()
+	if len(cache) != len(fakeScriptPaths) {
+		t.Fatalf("got %d from cache expected %d", len(cache), len(fakeScriptPaths))
+	}
+
+	indx := rand.Intn(len(fakeScriptPaths))
+
+	if _, ok := cache[strings.ToLower(fakeScriptPaths[indx])]; !ok {
+		t.Fatalf("could not find %s in cache", fakeScriptPaths[indx])
+	}
+}
+
+func TestExecuteScript(t *testing.T) {
+	log := GetLogger(t)
+	handler := core.NewFileHandler(packagesToInstall, log.Log)
+
+	baseScriptNames := []string{
+		"file1.sh",
+	}
+
+	msg := "A test message here"
+	cmd := fmt.Sprintf(`echo "%s"`, msg)
+
+	env := "#/usr/bin/env bash"
+	scriptContent := fmt.Sprintf("%s\n%s", env, cmd)
+
+	for _, path := range baseScriptNames {
+		err := log.MkFile(path, []byte(scriptContent), filePerms.Executable)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	executingScripts := []string{
+		"file1.sh",
+	}
+
+	scriptPaths, err := handler.ReadDir(log.ProjectDirectory, ".sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, execScript := range executingScripts {
+		out, err := handler.ExecuteScript(execScript, scriptPaths)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if out != msg {
+			t.Fatalf("got %s expected %s", out, msg)
 		}
 	}
 }
