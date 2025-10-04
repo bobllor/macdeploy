@@ -222,7 +222,7 @@ admin:
   password: "ADMIN_PASSWORD"
   apply_policy: true # applies the policies above on the admin account
 server_host: "https://127.0.0.1:5000"
-log_output: "path/to/log"
+log_output: "/path/to/log"
 filevault: true
 firewall: true
 ```

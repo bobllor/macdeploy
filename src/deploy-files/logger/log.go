@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type Log struct {
@@ -104,33 +105,89 @@ func (l *Logger) Log(msg string, v ...any) {
 
 // FormatLogOutput formats the output path of the log, based on if it ends with a
 // slash (/), if it ends in a *.log, or neither (directory).
+// If ~ is used then it will expand out to the home directory.
 //
-// Any outputs ending in *.log will drop the *.log.
-func FormatLogOutput(logOutput string) string {
-	// just in case backslash is used for some reason.
+// Any path ending in .log will only use the parent.
+func FormatLogPath(logPath string) string {
+	home := os.Getenv("HOME")
+	defaultPath := home + "/logs"
+	// just in case backslash is used for some reason. windows is not supported.
 	// honestly maybe this should throw an error in a config validation
-	logOutput = strings.TrimSpace(strings.ReplaceAll(logOutput, "\\", "/"))
+	logPath = strings.TrimSpace(strings.ReplaceAll(logPath, "\\", "/"))
+	logPath = formatSpecialLogPath(logPath)
 
-	logDirArr := strings.Split(logOutput, "/")
-	logDirArrLen := len(logDirArr)
+	logDirArr := strings.Split(logPath, "/")
 
-	// drops .log or removes any ending slashes.
+	newLogArr := make([]string, 0)
+	// ensures that the leading slash, if it exists, does not get dropped.
+	if logDirArr[0] == "" {
+		newLogArr = append(newLogArr, "")
+	}
+	// drops any spaces from the array, handles any amounts of slashes ( // )
+	for _, element := range logDirArr {
+		if element != "" {
+			newLogArr = append(newLogArr, element)
+		}
+	}
+
+	// drops .log if it exists at the end of the path
+	// NOTE: maybe parse log formatting?
 	wordIndex := 0
-	for i := logDirArrLen - 1; i > -1; i-- {
-		if logDirArr[i] != "" && !strings.Contains(logDirArr[i], ".log") {
+	for i := len(newLogArr) - 1; i > -1; i-- {
+		if !strings.Contains(newLogArr[i], ".log") {
 			wordIndex = i
 			break
 		}
 	}
 
-	logOutput = strings.Join(logDirArr[:wordIndex+1], "/")
-
-	// if logoutput is empty, then use current directory.
-	if logOutput == "" {
-		return "./"
+	if logPath == "/" {
+		fmt.Printf("Root directory / is not allowed, changing log directory to %s\n", defaultPath)
 	}
 
-	return logOutput
+	// default back to home + logs if it fails.
+	if len(newLogArr) <= 1 && newLogArr[0] == "" {
+		return defaultPath
+	}
+
+	logPath = strings.Join(newLogArr[:wordIndex+1], "/")
+
+	// home expansion for tilde, only on the first occurrence.
+	tildePos := strings.Index(logPath, "~")
+	if tildePos != -1 {
+		// only expand if it precedes a slash or if nothing precedes it
+		if tildePos+1 < len(logPath) {
+			nextChar, _ := utf8.DecodeRune([]byte{logPath[tildePos+1]})
+
+			if string(nextChar) == "/" {
+				logPath = strings.Replace(logPath, "~", home, 1)
+			}
+		} else {
+			if tildePos-1 < 0 {
+				logPath = strings.Replace(logPath, "~", home, 1)
+			}
+		}
+	}
+
+	newFirstChar := string(logPath[0])
+	if newFirstChar != "/" {
+		logPath = "./" + logPath
+	}
+
+	return logPath
+}
+
+// formatSpecialLogPath formats specific log paths given: ".", and "./".
+func formatSpecialLogPath(logPath string) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return os.Getenv("HOME")
+	}
+
+	if logPath == "." || logPath == "./" {
+		return wd
+	}
+
+	return logPath
 }
 
 // MkdirAll utilizes MkdirAll to create the all directories for the log file.
