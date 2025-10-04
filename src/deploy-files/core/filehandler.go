@@ -8,6 +8,7 @@ import (
 	"macos-deployment/deploy-files/logger"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -15,6 +16,7 @@ import (
 type FileHandler struct {
 	packagesToInstall map[string][]string
 	log               *logger.Log
+	scriptsPathCache  map[string]string // Cache for script paths, k:v <file name>:<file path>. The key is lowercase.
 }
 
 // NewFileHandler creates a new Installer for package and app installations for macOS.
@@ -30,6 +32,7 @@ func NewFileHandler(packagesToInstall map[string][]string, logger *logger.Log) *
 	handler := FileHandler{
 		packagesToInstall: packagesLowered,
 		log:               logger,
+		scriptsPathCache:  make(map[string]string),
 	}
 
 	return &handler
@@ -130,7 +133,7 @@ func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]str
 		return nil, err
 	}
 
-	f.log.Debug.Log("Files: %v", files)
+	f.log.Debug.Log("%s Files: %v", searchPattern, files)
 
 	return files, nil
 }
@@ -276,50 +279,71 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 }
 
 // ExecuteScripts runs shell scripts on the device.
-// An array of strings of the script names to execute, and an array of script paths
-// from the distribution directory.
+// This requires the script file name and an array of paths containing shell scripts.
 //
-// The executing scripts are defined from the config or through the flag.
-// Any errors that occurs will be skipped and logged.
-func (f *FileHandler) ExecuteScripts(executingScripts []string, scriptPaths []string) {
-	for _, execScriptName := range executingScripts {
-		execNameLow := strings.ToLower(execScriptName)
-		success := false
-		fail := false
+// It returns a string and an error, depending on the exit status of the script.
+// If the script did not get executed, an error is returned.
+func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (string, error) {
+	f.log.Info.Log("Starting %s execution", scriptName)
+	ogName := scriptName
+	scriptName = strings.TrimSpace(strings.ToLower(scriptName))
 
-		if execNameLow == "" {
-			continue
+	// cache is built inside the loop
+	if _, ok := f.scriptsPathCache[scriptName]; ok {
+		f.log.Info.Log("Found %s in cache", ogName)
+
+		scriptPath := f.scriptsPathCache[scriptName]
+		outMsg, err := f.execute(scriptPath)
+		outMsg = strings.TrimSpace(outMsg)
+		if err != nil {
+			return outMsg, err
 		}
 
-		for _, scriptPath := range scriptPaths {
-			scriptPathLow := strings.ToLower(scriptPath)
+		return outMsg, nil
+	}
 
-			if strings.Contains(scriptPathLow, execNameLow) {
-				f.log.Info.Log("Running %s", execScriptName)
+	for _, scriptPath := range scriptPaths {
+		scriptPathLow := strings.ToLower(scriptPath)
 
-				// NOTE: if the user exits non-zero on their script, this will fail.
-				// will need to write that in the README.
-				out, err := exec.Command("bash", "-c", scriptPath).Output()
-				outMsg := strings.TrimSpace(string(out))
-				if err != nil {
-					// err already prints out "exit status".
-					f.log.Error.Log("%v, output: %s", err, outMsg)
-					fail = true
-					break
-				}
+		if strings.Contains(scriptPathLow, scriptName) {
+			f.log.Info.Log("Executing %s", ogName)
 
-				f.log.Info.Log("Output: %s", outMsg)
-
-				success = true
-				break
+			outMsg, err := f.execute(scriptPath)
+			outMsg = strings.TrimSpace(outMsg)
+			if err != nil {
+				return outMsg, err
 			}
-		}
 
-		// only log if a script attempt never occurred, this is only for failing to find the script
-		if !success && !fail {
-			f.log.Warn.Log("Unable to find %s", execScriptName)
+			return outMsg, nil
+		} else {
+			// only the path's case should be left alone for execution
+			filename := strings.ToLower(filepath.Base(scriptPath))
+
+			f.scriptsPathCache[filename] = scriptPath
+			f.log.Debug.Log("Added %s to cache", filename)
 		}
 	}
+
+	return "", errors.New("failed to find script")
+}
+
+// execute executes the given script path.
+//
+// It returns the output of the script and an error, if one occurred.
+func (f *FileHandler) execute(scriptPath string) (string, error) {
+	// NOTE: if the user exits non-zero on their script, this will fail.
+	out, err := exec.Command("bash", "-c", scriptPath).Output()
+	outMsg := strings.TrimSpace(string(out))
+	if err != nil {
+		return outMsg, err
+	}
+
+	return outMsg, nil
+}
+
+// GetScriptCache returns the map of the script cache.
+func (f *FileHandler) GetScriptCache() map[string]string {
+	return f.scriptsPathCache
 }
 
 // DetachDmgs detaches the DMG from the Volumes directory.
