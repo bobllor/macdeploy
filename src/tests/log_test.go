@@ -3,6 +3,7 @@ package tests
 import (
 	"macos-deployment/deploy-files/logger"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -41,27 +42,64 @@ func TestFormatDir(t *testing.T) {
 		baseDirName + "////",
 		baseDirName + "/",
 		baseDirName + "/a-name.log",
-		baseDirName + "\\",
+		baseDirName + "\\/////",
 		tempDir + "\\this\\is\\a\\dir",
-		baseDirName,
 		baseDirName + "/a.log/b.log",
 		baseDirName + "/a.log/b.log/c.log/d.log//",
 	}
 
 	for _, dir := range dirs {
-		newDir := logger.FormatLogOutput(dir)
+		newDir := logger.FormatLogPath(dir)
 
 		if newDir != baseDirName {
 			t.Fatalf("formatting directory %s failed: got %s", dir, newDir)
 		}
 	}
+}
 
-	singleDirTests := []string{"/", "\\", "///"}
-	for _, dir := range singleDirTests {
-		newDir := logger.FormatLogOutput(dir)
+func TestLogHomeExansionFormat(t *testing.T) {
+	baseline := []string{
+		"./~test", os.Getenv("HOME"),
+		os.Getenv("HOME") + "/~", "/~",
+		"./~~",
+	}
 
-		if newDir != "./" {
-			t.Fatalf("formatting directory %s failed: got %s", dir, newDir)
+	logPaths := []string{
+		"~test", "~",
+		"/~", "~~",
+		"////~", "~/~//",
+	}
+
+	for _, path := range logPaths {
+		newPath := logger.FormatLogPath(path)
+
+		if !slices.Contains(baseline, newPath) {
+			t.Fatalf("path: %s, got %s, failed to meet baseline output", path, newPath)
+		}
+	}
+}
+
+func TestLogSpecialFormat(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	baseline := []string{
+		os.Getenv("HOME") + "/logs",
+		wd, "./...",
+	}
+
+	logPaths := []string{
+		".", "/", "./", "",
+		"///", "\\////", "...",
+	}
+
+	for _, path := range logPaths {
+		newPath := logger.FormatLogPath(path)
+
+		if !slices.Contains(baseline, newPath) {
+			t.Fatalf("path: %s, got %s, failed to meet baseline output", path, newPath)
 		}
 	}
 }
