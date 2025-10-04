@@ -23,7 +23,7 @@ type Config struct {
 	ServerHost        string   `yaml:"server_host"`
 	FileVault         bool
 	Firewall          bool
-	LogOutput         string `yaml:"log_output"`
+	Log               string `yaml:"log"`
 }
 
 type UserInfo struct {
