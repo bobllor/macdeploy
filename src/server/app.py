@@ -19,9 +19,9 @@ secret_token: str = secrets.token_hex(TOKEN_BITS)
 token_file_path: str = f"{Vars.SERVER_PATH.value}/.token"
 utils.write_to_file(token_file_path, secret_token)
 
+# change the working directory to the project root folder
 curr_path: str = os.getcwd()
 logger.debug(f"{__file__.split('/')[-1]} ran in {curr_path}")
-
 if curr_path != Vars.ROOT_PATH.value:
     os.chdir(Vars.ROOT_PATH.value)
 
