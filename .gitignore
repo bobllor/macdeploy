@@ -13,7 +13,7 @@
 dist
 logs
 pkg-files
-filevault-keys
+keys
 
 # python stuff
 __pycache__/
