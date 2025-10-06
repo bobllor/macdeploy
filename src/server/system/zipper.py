@@ -1,7 +1,7 @@
 from .vars import Vars
 from pathlib import Path
 from .utils import get_dir_list
-from logger import logger
+from logger import Log
 from typing import TypedDict
 import subprocess, zipfile, os, pdb
 
@@ -10,7 +10,7 @@ class PathArgs(TypedDict):
     binary_file: str
 
 class Zip:
-    def __init__(self, zip_path: Path, *, path_args: PathArgs = {}):
+    def __init__(self, zip_path: Path, log: Log, *, path_args: PathArgs = {}):
         '''Create and update ZIP files.
         
         Parameters
@@ -21,8 +21,13 @@ class Zip:
             path_args: PathArgs, default {}
                 Dictionary arguments replacing paths in the class. This should not be
                 used except during testing.
+            
+            log: Log
+                The logger Log of the program.
+
         '''
         self.zip_path: Path = zip_path
+        self.log: Log = log
 
         self.arm_binary: str = path_args.get("arm_binary", Vars.ARM_BINARY_NAME.value)
         self.x86_binary: str = path_args.get("x86_binary", Vars.X86_BINARY_NAME.value)
@@ -47,7 +52,7 @@ class Zip:
         binary_names: list[str] = [self.arm_binary, self.x86_binary]
         for binary in binary_names:
             if not (dist_path / binary).exists():
-                logger.critical("Binary %s not found in %s", binary, dist_path_str)
+                self.log.critical("Binary %s not found in %s", binary, dist_path_str)
                 return False, f"Binary not found on server"
 
         try:
@@ -58,7 +63,7 @@ class Zip:
         except Exception as e:
             # i have no idea what exceptions can happen here.
             # leaving a all-purpose catch, will change over time.
-            logger.critical(f"Failed ZIP process {e}")
+            self.log.critical(f"Failed ZIP process {e}")
 
             return False, "An unexpected error occurred on the server"
 
@@ -73,8 +78,8 @@ class Zip:
                 The Path object of the dist folder.
         '''
         zip_file_obj: zipfile.ZipFile = zipfile.ZipFile(self.zip_path, "a")
-        logger.warning("ZIP file does not exist")
-        logger.debug("Searching in path %s, working directory: %s", str(dist_path), os.getcwd())
+        self.log.warning("ZIP file does not exist")
+        self.log.debug("Searching in path %s, working directory: %s", str(dist_path), os.getcwd())
 
         zip_contents: list[str] = []
 
@@ -90,12 +95,12 @@ class Zip:
                     zip_file_obj.write(path_of_pkg)
                     zip_contents.append(path_of_pkg.name)
                 else:
-                    logger.error("Issue searching path %s in pwd: %s", str(path_of_pkg), os.getcwd())
+                    self.log.error("Issue searching path %s in pwd: %s", str(path_of_pkg), os.getcwd())
                 
         zip_file_obj.close()
 
-        logger.info("Created ZIP file at %s", str(self.zip_path.absolute()))
-        logger.debug(f"New ZIP contents: {zip_contents}")
+        self.log.info("Created ZIP file at %s", str(self.zip_path.absolute()))
+        self.log.debug(f"New ZIP contents: {zip_contents}")
 
         return "Created ZIP file"
 
@@ -116,7 +121,7 @@ class Zip:
             if not file.is_dir():
                 zip_pkg_files.add(file.filename.lower())
 
-        logger.debug(f"Zip file contents: {zip_pkg_files}")
+        self.log.debug(f"Zip file contents: {zip_pkg_files}")
 
         # checks for missing packages in the zip file, and updates them with the
         # packages in the deployment files.    
@@ -135,14 +140,14 @@ class Zip:
         # missing_pkgs turned out to be useless. keeping it just for logging though.
         # update any missing packages. this will be done subprocess because i am lazy.
         if len(missing_pkgs) > 0:
-            logger.info(f"Missing packages in ZIP file: {missing_pkgs}") 
+            self.log.info(f"Missing packages in ZIP file: {missing_pkgs}") 
 
             # relative path is needed to skip the full path creation
             # of the zip command while maintaining its folder structure.
             update_cmd: list[str] = f'zip -ru {str(self.zip_path)} {dist_path.name}'.split()
             self._execute(update_cmd)
 
-            logger.info(f"Updated ZIP file with files {missing_pkgs}")
+            self.log.info(f"Updated ZIP file with files {missing_pkgs}")
 
         return "Updated ZIP file"
 
@@ -151,7 +156,7 @@ class Zip:
         
         This is blocking by default, run with threading if non-blocking is required.
         '''
-        logger.debug(f"Running command {' '.join(cmd)}")
+        self.log.debug(f"Running command {' '.join(cmd)}")
         try:
             output: subprocess.CompletedProcess = subprocess.run(cmd, capture_output=True)
 
@@ -159,8 +164,8 @@ class Zip:
             stderr: str = output.stderr.decode().strip()
 
             if stdout != "":
-                logger.info(stdout)
+                self.log.info(stdout)
             if stderr != "":
-                logger.info(stderr)
+                self.log.info(stderr)
         except Exception as e:
-            logger.critical(e)
+            self.log.critical(e)

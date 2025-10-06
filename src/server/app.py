@@ -2,7 +2,7 @@ from flask import Flask, send_file, request, jsonify
 from system.process import Process
 from system.vars import Vars
 from pathlib import Path
-from logger import logger
+from logger import Log, INFO
 from concurrent.futures import ThreadPoolExecutor, Future
 from system.zipper import Zip
 import system.system_types as types
@@ -11,7 +11,8 @@ import threading
 import secrets, os
 
 app: Flask = Flask(__name__)
-process: Process = Process()
+logger: Log = Log(__name__, levels={"stream_level": INFO})
+process: Process = Process(log_dir=Vars.SERVER_LOG_PATH.value, log=logger)
 
 TOKEN_BITS: int = 32
 secret_token: str = secrets.token_hex(TOKEN_BITS)
@@ -114,13 +115,13 @@ def update_zip():
 
     zip_path: Path = Path(Vars.ROOT_PATH.value) / Vars.ZIP_FILE_NAME.value
 
-    zipper: Zip = Zip(zip_path)
+    zipper: Zip = Zip(zip_path, logger)
     zip_status, zip_msg = zipper.start_zip()
 
     if not zip_status:
         return jsonify(utils.generate_response("error", content=zip_msg)), 500
 
-    logger.info("ZIP updated access, token: %s", h_token)
+    logger.info("ZIP updated access, token refreshed")
 
     secret_token = secrets.token_hex(TOKEN_BITS)
     utils.write_to_file(token_file_path, secret_token)
