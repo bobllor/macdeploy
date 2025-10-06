@@ -7,7 +7,7 @@ from system.vars import Vars
 
 # this value will be the same as soon as the server is launched.
 # this keeps all logs in one day on the same day.
-DEFAULT_FILENAME: datetime = datetime.now().strftime("server-%Y-%m-%dT%H-%M-%S.log")
+DEFAULT_FILENAME: datetime = datetime.now().strftime("server-%Y-%m-%d.log")
 DEFAULT_DATEFMT: Literal["%Y-%m-%d %H:%M:%S"] = "%Y-%m-%d %H:%M:%S"
 
 class LogLevelOptions(TypedDict):
