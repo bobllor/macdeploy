@@ -12,7 +12,7 @@ services:
       - macdeploy-server:/macdeploy/src
       - ./logs:/macdeploy/logs
       - ./keys:/macdeploy/keys
-      - ./deploy.zip:/macdeploy/deploy.zip
+      - ./build:/macdeploy/build
       - ./dist:/macdeploy/dist
     stop_grace_period: .5s
     tty: true
