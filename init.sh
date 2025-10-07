@@ -6,5 +6,6 @@
 mkdir logs
 mkdir dist
 mkdir keys
+mkdir build
 
 bash scripts/go_zip.sh
