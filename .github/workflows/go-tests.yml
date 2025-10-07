@@ -1,21 +1,23 @@
-name: macdeploy-tests
+name: go-deployment-test
 
 on:
   push: 
+    paths:
+      - '**.go'
   pull_request:
+    paths:
+      - '**.go'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-go@v5
         with:
           go-version: '^1.24'
           check-latest: true
           cache: true
-
       - name: Build and test Go
         run: |
           cd src/tests

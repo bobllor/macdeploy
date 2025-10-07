@@ -13,7 +13,7 @@
 dist
 logs
 pkg-files
-filevault-keys
+keys
 
 # python stuff
 __pycache__/
@@ -32,3 +32,4 @@ __pycache__/
 !config-sample.yaml
 !compose.yml
 config.*[yY][mM][lL]
+config.*[yY][aA][mM][lL]

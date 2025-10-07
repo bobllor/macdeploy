@@ -10,7 +10,7 @@ class Vars(Enum):
     X86_BINARY_NAME = "x86_64-macdeploy"
 
     # directory names
-    _FILEVAULT_DIR_NAME = "filevault-keys"
+    _FILEVAULT_DIR_NAME = "keys"
     _PKG_DIR_NAME = "pkg-files"
     _SERVER_DIR_NAME = "server"
     _LOGS_DIR_NAME = "logs"

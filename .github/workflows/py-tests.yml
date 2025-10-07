@@ -1,0 +1,24 @@
+name: python-fs-test
+
+on:
+  push: 
+    paths:
+      - '**.py'
+  pull_request:
+    paths:
+      - '**.py'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          py-version: '3.13.x'
+      - name: Requirements
+        run: pip install -r requirements.txt
+      - name: Test Python
+        run: |
+          cd src/server
+          pytest -s
