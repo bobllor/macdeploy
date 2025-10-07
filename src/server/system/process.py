@@ -75,12 +75,10 @@ class Process:
         # used for formatting logs into the correct dates for organization
         date_logs_name: str = date.today().strftime("%Y-%m-%d") + "-logs"
 
-        log_file_path: Path = self.log_dir / log_info["logFileName"]
+        log_file_path: Path = self.log_dir / date_logs_name / log_info["logFileName"]
 
-        if not self.log_dir.exists():
-            self.log_dir.mkdir(parents=True)
-
-        log_file_path.touch()
+        if not log_file_path.parent.exists():
+            log_file_path.mkdir(parents=True, exist_ok=True)
 
         self.log.info(f"Added log {log_info['logFileName']}")
 

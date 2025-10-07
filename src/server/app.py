@@ -14,7 +14,7 @@ import secrets, os
 
 app: Flask = Flask(__name__)
 logger: Log = Log(__name__, levels={"stream_level": INFO})
-process: Process = Process(log_dir=Vars.SERVER_LOG_PATH.value, log=logger)
+process: Process = Process(log_dir=Path(Vars.LOGS_PATH.value), log=logger)
 
 TOKEN_BITS: int = 32
 secret_token: str = secrets.token_hex(TOKEN_BITS)
@@ -24,7 +24,6 @@ utils.write_to_file(token_file_path, secret_token)
 
 # change the working directory to the project root folder
 curr_path: str = os.getcwd()
-logger.debug(f"{__file__.split('/')[-1]} ran in {curr_path}")
 if curr_path != Vars.ROOT_PATH.value:
     os.chdir(Vars.ROOT_PATH.value)
 
@@ -39,7 +38,7 @@ def get_client_files():
     The API is strictly used for serving the file. A scheduler to zip the files
     is required to ensure a zip file exists and is updated.
     '''
-    zip_file_path: str = f"{Vars.ROOT_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
+    zip_file_path: str = f"{Vars.ZIP_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
 
     # second check after init during runtime. 
     zip_path_obj: Path = Path(Vars.DIST_PATH.value)
@@ -121,7 +120,7 @@ def update_zip():
         logger.info("Unauthorized access: %s", h_token)
         return jsonify(utils.generate_response(status="error", content="Unauthorized access")), 401
 
-    zip_path: Path = Path(Vars.ROOT_PATH.value) / Vars.ZIP_FILE_NAME.value
+    zip_path: Path = Path(Vars.ZIP_PATH.value) / Vars.ZIP_FILE_NAME.value
 
     zipper: Zip = Zip(zip_path, logger)
     zip_response: dict[str, Any] = zipper.start_zip()
