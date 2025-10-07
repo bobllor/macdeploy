@@ -13,19 +13,20 @@ RUN apt-get update && apt-get install -y openssl
 
 ARG PROJECT_DIR=/macos-deployment
 WORKDIR ${PROJECT_DIR}
+EXPOSE ${PORT}
 
+USER ${USER}
 COPY requirements.txt ${HOME}
 COPY src/server ${PROJECT_DIR}/src/server
 
 RUN pip install -r ${HOME}/requirements.txt
-
-EXPOSE ${PORT}
-
 RUN mkdir -p ${HOME}/ca
 
 RUN openssl req -x509 -newkey rsa:4096 -keyout ${HOME}/ca/key.pem \
     -out ${HOME}/ca/cert.pem -sha256 -days 3650 -nodes -subj "/CN=localhost"
 
-CMD /bin/bash -c "gunicorn --workers=6 \ 
+USER ${ROOT}
+
+CMD /bin/bash -c "python3 -m gunicorn --workers=6 \ 
 --bind=0.0.0.0:5000 --keyfile $HOME/ca/key.pem \
 --certfile $HOME/ca/cert.pem src.server.app:app"
