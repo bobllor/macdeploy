@@ -75,7 +75,7 @@ class Process:
         # used for formatting logs into the correct dates for organization
         date_logs_name: str = date.today().strftime("%Y-%m-%d") + "-logs"
 
-        log_file_path: Path = self.log_dir / date_logs_name / log_info["logFileName"]
+        log_file_path: Path = (self.log_dir / date_logs_name) / log_info["logFileName"]
 
         if not log_file_path.parent.exists():
             self.log_dir.mkdir(parents=True)

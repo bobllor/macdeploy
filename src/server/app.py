@@ -84,7 +84,6 @@ def add_filevault_key():
 def add_log():
     '''Adds the logs from the client device to the server.'''
     content: types.LogInfo = request.get_json()
-
     logger.debug(f"POST: {content}")
 
     if not all([key in content for key in ["body", "logFileName"]]):
