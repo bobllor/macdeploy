@@ -80,8 +80,6 @@ class Process:
         if not log_file_path.parent.exists():
             self.log_dir.mkdir(parents=True, exist_ok=True)
 
-        log_file_path.touch()
-
         self.log.info(f"Added log {log_info['logFileName']}")
 
         with open(log_file_path, "w") as file:
