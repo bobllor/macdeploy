@@ -21,7 +21,8 @@ class Vars(Enum):
 
     PKG_PATH = f"{ROOT_PATH}/dist/{_PKG_DIR_NAME}"
     SERVER_PATH = f"{ROOT_PATH}/src/{_SERVER_DIR_NAME}"
-    DIST_PATH = f"{ROOT_PATH}/dist" # zip file, binary, and pkg-files are located in here
+    DIST_PATH = f"{ROOT_PATH}/dist" # binary and pkg-files are located in here
+    ZIP_PATH = f"{ROOT_PATH}/build" # zip is located in build
 
     LOGS_PATH = f"{ROOT_PATH}/{_LOGS_DIR_NAME}"
     SERVER_LOG_PATH = f"{LOGS_PATH}/{_SERVER_LOG_NAME}"

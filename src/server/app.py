@@ -38,7 +38,7 @@ def get_client_files():
     The API is strictly used for serving the file. A scheduler to zip the files
     is required to ensure a zip file exists and is updated.
     '''
-    zip_file_path: str = f"{Vars.ROOT_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
+    zip_file_path: str = f"{Vars.ZIP_PATH.value}/{Vars.ZIP_FILE_NAME.value}"
 
     # second check after init during runtime. 
     zip_path_obj: Path = Path(Vars.DIST_PATH.value)
@@ -84,7 +84,6 @@ def add_filevault_key():
 def add_log():
     '''Adds the logs from the client device to the server.'''
     content: types.LogInfo = request.get_json()
-    logger.debug(f"POST: {content}")
 
     if not all([key in content for key in ["body", "logFileName"]]):
         logger.warning(f"Invalid POST: {content}")
@@ -121,7 +120,7 @@ def update_zip():
         logger.info("Unauthorized access: %s", h_token)
         return jsonify(utils.generate_response(status="error", content="Unauthorized access")), 401
 
-    zip_path: Path = Path(Vars.ROOT_PATH.value) / Vars.ZIP_FILE_NAME.value
+    zip_path: Path = Path(Vars.ZIP_PATH.value) / Vars.ZIP_FILE_NAME.value
 
     zipper: Zip = Zip(zip_path, logger)
     zip_response: dict[str, Any] = zipper.start_zip()
