@@ -14,7 +14,7 @@ import secrets, os
 
 app: Flask = Flask(__name__)
 logger: Log = Log(__name__, levels={"stream_level": INFO})
-process: Process = Process(log_dir=Vars.SERVER_LOG_PATH.value, log=logger)
+process: Process = Process(log_dir=Path(Vars.SERVER_LOG_PATH.value), log=logger)
 
 TOKEN_BITS: int = 32
 secret_token: str = secrets.token_hex(TOKEN_BITS)
