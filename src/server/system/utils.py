@@ -2,21 +2,52 @@ from pathlib import Path
 from flask import make_response, Response
 from .vars import Vars
 
-def get_dir_list(path: Path, data: list[str] = None, *, replace_home: bool = False) -> list[str]:
-    '''Get the contents of a given directory Path in the form of a list of strings.'''
+def get_dir_list(path: Path | str, data: list[str] = None, 
+    *, replace_root: bool = False, include_arg_path: bool = False) -> list[str]:
+    '''Get the contents of a given directory Path in the form of a list of strings.
+    The list contains all files and directories, but it *does not include the argument path directory*.
+    
+    Parameters
+    ----------
+        path: Path | str
+            The directory being searched in, it can be a Path or a path string.
+        
+        data: list[str], default None
+            List of paths, if a list is given then that list will get extended with the files.
+            Otherwise, it is default None and returns a new list.
+        
+        replace_root: bool, default False
+            Replaces the project root path from the absolute path of the paths.
+        
+        include_arg_path: bool, default False
+            Includes the given path argument with the list of paths on the return value.
+    '''
     data = [] if not data else data 
+    if include_arg_path:
+        file: str = str(path)
+        if replace_root: file = file.replace(Vars.ROOT_PATH.value + "/", "")
+        data.append(file)
+
+    if isinstance(path, str):
+        path = Path(path)
 
     for child in path.iterdir():
+        file: str = str(child)
         if not child.is_dir():
             file: str = str(child)
 
-            if replace_home:
+            if replace_root:
                 # removing the home path and the trailing slash
                 file = file.replace(str(Vars.ROOT_PATH.value) + "/", "")
 
             data.append(file)
         else:
-            temp_list: list[str] = get_dir_list(child, replace_home=replace_home)
+            if replace_root:
+                # removing the home path and the trailing slash
+                file = file.replace(str(Vars.ROOT_PATH.value) + "/", "")
+
+            data.append(file)
+            temp_list: list[str] = get_dir_list(child, replace_root=replace_root)
             data.extend(temp_list)
     
     return data

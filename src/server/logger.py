@@ -1,6 +1,6 @@
 from logging import Formatter, Logger, StreamHandler, FileHandler, setLoggerClass
 from logging import Handler
-from logging import DEBUG, INFO
+from logging import DEBUG
 from datetime import datetime
 from typing import TypedDict, Literal
 from system.vars import Vars

@@ -1,9 +1,11 @@
 from .vars import Vars
 from pathlib import Path
-from .utils import get_dir_list
+from .utils import get_dir_list, generate_response
 from logger import Log
-from typing import TypedDict
-import subprocess, zipfile, os, pdb
+from typing import TypedDict, Any
+from contextlib import contextmanager
+from collections.abc import Callable
+import zipfile, os
 
 class PathArgs(TypedDict):
     dist_dir: str
@@ -32,12 +34,14 @@ class Zip:
         self.arm_binary: str = path_args.get("arm_binary", Vars.ARM_BINARY_NAME.value)
         self.x86_binary: str = path_args.get("x86_binary", Vars.X86_BINARY_NAME.value)
 
-    def start_zip(self, dist_path: Path = Path(Vars.DIST_PATH.value)) -> tuple[bool, str]:
+        # cache for recursive parent creation when appending new files in the ZIP
+        self._created_files: set[str] = {".", "./", ""}
+
+    def start_zip(self, dist_path: Path = Path(Vars.DIST_PATH.value)) -> dict[str, Any]:
         '''Starts the zipping process for the ZIP file.
         This will create a new ZIP file or update the existing ZIP file.
         
-        Upon completion it will return a boolean indicating its operational status, and a string for
-        additional information.
+        Upon completion it will return a dictionary for the response.
 
         Parameters
         ----------
@@ -53,23 +57,53 @@ class Zip:
         for binary in binary_names:
             if not (dist_path / binary).exists():
                 self.log.critical("Binary %s not found in %s", binary, dist_path_str)
-                return False, f"Binary not found on server"
+                return generate_response(
+                    status="error", 
+                    content=f"Binary not found on server",
+                    files={"size": 0, "content": []}
+                )
 
         try:
-            if not self.zip_path.exists():
-                zip_status: str = self._create_zip(dist_path)
-            else:
-                zip_status: str = self._update_zip(dist_path)
+            func: Callable[[str], dict[str, Any]] = self._create_zip
+            if self.zip_path.exists():
+                func = self._update_zip
+
+            with self._zipper(dist_path, func) as res:
+                zip_response: dict[str, Any] = res
         except Exception as e:
             # i have no idea what exceptions can happen here.
             # leaving a all-purpose catch, will change over time.
             self.log.critical(f"Failed ZIP process {e}")
 
-            return False, "An unexpected error occurred on the server"
+            return generate_response(
+                status="error", 
+                content=f"An unexpected error occurred on the server",
+                files={"size": 0, "content": []}
+            )
 
-        return True, zip_status
+        return zip_response
+    
+    @contextmanager
+    def _zipper(self, dist_path: Path, func: Callable[[str], dict[str, Any]]):
+        # ensure we are working in the parent of the distribution folder
+        cwd: str = os.getcwd()
+        parent: str = str(dist_path.parent)
+        if cwd != parent:
+            self.log.warning("Current directory %s was not in distribution's parent %s", cwd, parent)
+            os.chdir(parent)
+            self.log.info("Updated working directory to %s", parent)
 
-    def _create_zip(self, dist_path: Path) -> str:
+        res: dict[str, Any] = func(dist_path)
+        try:
+            yield res
+        finally:
+            # initially had below, but python should be in the root directory anyways.
+            # will keep it just in case.
+            pass
+            #os.chdir(cwd)
+            #self.log.info("Updated working directory to %s", cwd)
+
+    def _create_zip(self, dist_path: Path) -> dict[str, Any]:
         '''Creates the ZIP file of a package directory.
         
         Parameters
@@ -83,89 +117,127 @@ class Zip:
 
         zip_contents: list[str] = []
 
+        root_path: str = str(dist_path.parent)
+
         for path, _, file_list in dist_path.walk():
+            # required to make the directory paths relative and not absolute.
+            replaced_parent: Path = Path(str(path).replace(root_path + "/", ""))
+            # this creates the "folder" inside the zip, which mimics the way zip works on unix.
+            self._recurse_create_directories(replaced_parent, zip_file_obj, self._created_files)
             for file in file_list:
-                # adds the pkg_path value to nested directories to keep structure
-                # this works for both the test and production. did this at 2 am i have a brain aneurysm
-                file_name: str = f"{str(path)}/{file}".replace(Vars.ROOT_PATH.value + "/", "")
+                relative_file_path: Path = replaced_parent / file
 
-                path_of_pkg: Path = Path(file_name)
+                if relative_file_path.exists():
+                    if not relative_file_path.is_dir():
+                        zip_file_obj.write(relative_file_path)
 
-                if path_of_pkg.exists():
-                    zip_file_obj.write(path_of_pkg)
-                    zip_contents.append(path_of_pkg.name)
+                        self.log.info("File %s added", str(relative_file_path))
                 else:
-                    self.log.error("Issue searching path %s in pwd: %s", str(path_of_pkg), os.getcwd())
-                
+                    self.log.error("Issue searching path %s in pwd: %s", str(relative_file_path), os.getcwd())
+
+        zip_len: int = len(zip_file_obj.filelist)
+        
+        for file in zip_file_obj.filelist:
+            zip_contents.append(file.filename)
+
         zip_file_obj.close()
 
         self.log.info("Created ZIP file at %s", str(self.zip_path.absolute()))
-        self.log.debug(f"New ZIP contents: {zip_contents}")
+        self.log.debug(f"New ZIP: {zip_contents}")
+        self.log.debug(f"New ZIP length: {zip_len}")
 
-        return "Created ZIP file"
+        return generate_response(
+            status="success", 
+            content="ZIP file created",
+            files={"size": zip_len, "content": zip_contents}
+        )
 
-    def _update_zip(self, dist_path: Path) -> str:
+    def _update_zip(self, dist_path: Path) -> dict[str, Any]:
         '''Updates the ZIP file of using the `zip` command on Unix-like OSes.
 
-        Upon success, a string is returned indicating its status.
+        A dictionary response is returned upon success or failure.
 
         Parameters
         ----------
             dist_path: Path
                 The Path object of the dist folder.
         '''
-        zip_file_obj: zipfile.ZipFile = zipfile.ZipFile(self.zip_path)
-        zip_pkg_files: set[str] = set()
+        zip_file_obj: zipfile.ZipFile = zipfile.ZipFile(self.zip_path, mode="a")
 
+        root_path: str = str(dist_path.parent)
         for file in zip_file_obj.filelist:
-            if not file.is_dir():
-                zip_pkg_files.add(file.filename.lower())
-
-        self.log.debug(f"Zip file contents: {zip_pkg_files}")
-
-        # checks for missing packages in the zip file, and updates them with the
-        # packages in the deployment files.    
-        missing_pkgs: list[str] = []
-        server_files: list[str] = get_dir_list(dist_path, replace_home=True)
-        for file in server_files:
-            # lol... splitting the dist directory and taking the last files for relative paths
-            # and removing the leading slash with a slice
-            file_name: str = file.lower()
-
-            if not file_name in zip_pkg_files:
-                # drops the full path up to the parent from the file name
+            updated_file: str = file.filename.lower().replace(root_path + "/", "")
             
-                missing_pkgs.append(file_name)
+            if file.is_dir():
+                # drops the ending slash, ZipFile appends it to directories.
+                updated_file = updated_file[:-1]
 
-        # missing_pkgs turned out to be useless. keeping it just for logging though.
+            self._created_files.add(updated_file)
+
+        self.log.debug(f"Existing files: {self._created_files}")
+
+        # checks the files in the current server directory to the files in the
+        # ZIP. this is to get the files that do not exist.
+        new_files: list[str] = []
+        server_files: list[str] = get_dir_list(dist_path, replace_root=True)
+        for file in server_files:
+            updated_file: str = file.lower().replace(root_path + "/", "")
+
+            if not updated_file in self._created_files:
+                # drops the full path up to the parent from the file name
+                new_files.append(updated_file)
+                self.log.debug("Found new file %s", updated_file)
+
+        content_msg: str = "No new files found to update ZIP"
+        added_count: int = len(new_files)
+        original_count: int = len(zip_file_obj.filelist)
+
+        # new_files turned out to be useless. keeping it just for logging though.
         # update any missing packages. this will be done subprocess because i am lazy.
-        if len(missing_pkgs) > 0:
-            self.log.info(f"Missing packages in ZIP file: {missing_pkgs}") 
+        if added_count > 0:
+            self.log.debug(f"Missing packages in ZIP file: {new_files}") 
 
-            # relative path is needed to skip the full path creation
-            # of the zip command while maintaining its folder structure.
-            update_cmd: list[str] = f'zip -ru {str(self.zip_path)} {dist_path.name}'.split()
-            self._execute(update_cmd)
+            # files are already trimmed to relative paths with the loop above
+            for file in new_files:
+                file_path: Path = Path(file)
 
-            self.log.info(f"Updated ZIP file with files {missing_pkgs}")
+                if file_path.exists():
+                    self._recurse_create_directories(file_path, zip_file_obj, self._created_files)
 
-        return "Updated ZIP file"
+                    if not file_path.is_dir():
+                        zip_file_obj.write(file_path)
 
-    def _execute(self, cmd: list[str]) -> None:
-        '''Runs a subprocess command for execution for ZIP files.
-        
-        This is blocking by default, run with threading if non-blocking is required.
+                        self.log.info("File %s added", str(file_path))
+
+            self.log.info(f"Updated ZIP file with files {new_files}")
+            self.log.debug(
+                f"Original ZIP length: {original_count} | New length: {added_count + original_count}"
+            )
+            content_msg = f"ZIP file updated with {added_count} {"file" if added_count == 1 else "files"}"
+        else:
+            self.log.info(f"No new files found, skipping ZIP update")
+
+        return generate_response(
+            status="success", 
+            content=content_msg,
+            files={"size": len(new_files), "content": new_files}
+        )
+    
+    def _recurse_create_directories(self, path: Path, zip_obj: zipfile.ZipFile, created_paths: set[str]) -> None:
+        '''Writes to the ZIP file by recursively going through each parent until
+        the base case is reached.
+
+        This is to simulate the zip -ru command, which creates the files and its parent
+        folders.
         '''
-        self.log.debug(f"Running command {' '.join(cmd)}")
-        try:
-            output: subprocess.CompletedProcess = subprocess.run(cmd, capture_output=True)
+        parent: str = str(path.parent)
+        if parent in created_paths and str(path) in created_paths:
+            return
 
-            stdout: str = output.stdout.decode().strip()
-            stderr: str = output.stderr.decode().strip()
+        if path.is_dir():
+            zip_obj.write(path)
+            self.log.info("Directory %s added", path)
 
-            if stdout != "":
-                self.log.info(stdout)
-            if stderr != "":
-                self.log.info(stderr)
-        except Exception as e:
-            self.log.critical(e)
+        created_paths.add(str(path))
+        created_paths.add(parent)
+        self._recurse_create_directories(path.parent, zip_obj, created_paths)

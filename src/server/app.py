@@ -2,9 +2,11 @@ from flask import Flask, send_file, request, jsonify
 from system.process import Process
 from system.vars import Vars
 from pathlib import Path
-from logger import Log, INFO
+from logger import Log
+from logging import INFO
 from concurrent.futures import ThreadPoolExecutor, Future
 from system.zipper import Zip
+from typing import Any
 import system.system_types as types
 import system.utils as utils
 import threading
@@ -107,6 +109,12 @@ def update_zip():
     This endpoint should only be accessed be some type of scheduler.
     '''
     h_token: str = request.headers.get("x-zip-token")
+    
+    token_path: Path = Path(token_file_path)
+    # used to ensure during runtime the file exists.
+    if not token_path.exists():
+        utils.write_to_file(token_file_path, secret_token)
+
     secret_token: str = utils.read_from(token_file_path)
 
     if h_token != secret_token:
@@ -116,17 +124,17 @@ def update_zip():
     zip_path: Path = Path(Vars.ROOT_PATH.value) / Vars.ZIP_FILE_NAME.value
 
     zipper: Zip = Zip(zip_path, logger)
-    zip_status, zip_msg = zipper.start_zip()
+    zip_response: dict[str, Any] = zipper.start_zip()
 
-    if not zip_status:
-        return jsonify(utils.generate_response("error", content=zip_msg)), 500
+    if zip_response["status"] == "error":
+        return jsonify(zip_response), 500
 
     logger.info("ZIP updated access, token refreshed")
 
     secret_token = secrets.token_hex(TOKEN_BITS)
     utils.write_to_file(token_file_path, secret_token)
 
-    return jsonify(utils.generate_response("success" if zip_status else "error", content=zip_msg)), 200
+    return jsonify(zip_response), 200
 
 if __name__ == '__main__':
     host: str = "0.0.0.0"
