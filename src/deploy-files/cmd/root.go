@@ -96,6 +96,7 @@ var rootCmd = &cobra.Command{
 			err = config.Admin.SetPassword()
 			if err != nil {
 				fmt.Println(err)
+				os.Exit(1)
 			}
 		}
 
