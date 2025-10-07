@@ -24,7 +24,6 @@ utils.write_to_file(token_file_path, secret_token)
 
 # change the working directory to the project root folder
 curr_path: str = os.getcwd()
-logger.debug(f"{__file__.split('/')[-1]} ran in {curr_path}")
 if curr_path != Vars.ROOT_PATH.value:
     os.chdir(Vars.ROOT_PATH.value)
 
@@ -85,6 +84,8 @@ def add_filevault_key():
 def add_log():
     '''Adds the logs from the client device to the server.'''
     content: types.LogInfo = request.get_json()
+
+    logger.debug(f"POST: {content}")
 
     if not all([key in content for key in ["body", "logFileName"]]):
         logger.warning(f"Invalid POST: {content}")
