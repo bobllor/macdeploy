@@ -78,7 +78,7 @@ class Process:
         log_file_path: Path = self.log_dir / date_logs_name / log_info["logFileName"]
 
         if not log_file_path.parent.exists():
-            self.log_dir.mkdir(parents=True, exist_ok=True)
+            log_file_path.mkdir(parents=True, exist_ok=True)
 
         self.log.info(f"Added log {log_info['logFileName']}")
 
