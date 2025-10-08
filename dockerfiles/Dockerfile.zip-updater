@@ -1,6 +1,6 @@
-FROM debian:bookworm-slim AS cronner
+FROM debian:bookworm-slim AS zip-updater
 
-ARG USER=cronuser
+ARG USER=updater
 ARG GROUP=${USER}
 ENV HOME=/home/${USER}
 
@@ -9,13 +9,11 @@ RUN mkdir ${HOME} && chown ${USER}:${GROUP} ${HOME}
 
 RUN apt-get update \ 
     && apt-get install -y \
-    cron curl procps
+    curl procps
 
 COPY scripts/zip_updater.sh ${HOME}
+RUN chown -R ${USER}:${GROUP} ${HOME}
 WORKDIR ${HOME}
+USER ${USER}
 
-ARG TIME=30
-RUN crontab -l | echo "*/${TIME} * * * * zip_updater.sh" > cron.txt \
-    && crontab cron.txt
-
-CMD ["cron", "-f"]
+CMD [ "bash", "zip_updater.sh" ]
