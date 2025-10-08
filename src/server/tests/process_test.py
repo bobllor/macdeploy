@@ -95,9 +95,28 @@ def test_fail_wrong_key(tmp_path: Path):
 
     log_content: LogInfo = {
         "body": body,
-        "fakeKeyBTW": log_file
+        "fakeFileBTW": log_file
     } 
 
     log_res: dict[str, Any] = process.add_log(log_content)
 
     assert log_res["status"] == "error"
+
+def test_add_key(tmp_path: Path):
+    log: Log = ttils.get_log(tmp_path)
+    process: Process = Process(log_dir=tmp_path, log=log)
+
+    serial: str = "SERIAL1234"
+    key: str = "1235-6789-1024-ABC0"
+
+    key_info: KeyInfo = {
+        "key": key,
+        "serialTag": serial,
+    } 
+
+    key_res: dict[str, Any] = process.add_filevault(key_info, tmp_path)
+    if key_res["status"] == "error":
+        assert key_res["status"] != "error"
+
+    files: list[str] = utils.get_dir_list(tmp_path)
+    print(files)

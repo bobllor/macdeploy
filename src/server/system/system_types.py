@@ -1,11 +1,10 @@
 from typing import TypedDict
 
-class Info(TypedDict):
+
+class LogInfo(TypedDict):
+    logFileName: str
     body: str
 
-class LogInfo(Info):
-    logFileName: str
-
-class KeyInfo(Info):
+class KeyInfo(TypedDict):
     key: str
     serialTag: str

@@ -25,7 +25,7 @@ class Process:
         self._log_info_keys: list[str] = [key for key in LogInfo.__annotations__.keys()]
         self._key_info_keys: list[str] = [key for key in KeyInfo.__annotations__.keys()]
 
-    def add_filevault(self, key_info: KeyInfo) -> dict[str, Any]:
+    def add_filevault(self, key_info: KeyInfo, keys_dir: Path = Path(Vars.FILEVAULT_PATH.value)) -> dict[str, Any]:
         '''Adds the laptop device and key to the server.
 
         If there is an existing entry then the contents of the entry
@@ -44,7 +44,7 @@ class Process:
         serial: str = key_info.get("serialTag", None)
 
         try:
-            serial_dir: Path = Path(f"{Vars.FILEVAULT_PATH.value}/{serial}")
+            serial_dir: Path = keys_dir / serial
             key_entry: Path = serial_dir / key
 
             key_log = f"No key entries found for device {serial}"
