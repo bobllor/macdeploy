@@ -1,9 +1,10 @@
 from pathlib import Path
 from system.zipper import Zip, PathArgs
-from logger import LogLevelOptions, Log
-from logging import CRITICAL, DEBUG
+from logger import LogLevelOptions
+from logging import CRITICAL
 from zipfile import ZipFile
 from typing import Any
+from . import t_utils as ttils
 import os
 import system.utils as servu
 
@@ -13,9 +14,6 @@ ZIP_FILE: str = "deploy.zip"
 OPT_PATHS: PathArgs = {
     'arm_binary': ARM_BINARY,
     'x86_binary': X86_BINARY,
-}
-LOG_OTIONS: LogLevelOptions = {
-    "log_level": CRITICAL
 }
 
 def test_create_zip(tmp_path: Path):
@@ -32,9 +30,9 @@ def test_create_zip(tmp_path: Path):
 
     zip_path: Path = tmp_path / ZIP_FILE
 
-    log_options: LogLevelOptions = LOG_OTIONS.copy()
+    log_options: LogLevelOptions = ttils.LOG_OPTIONS.copy()
     log_options["log_level"] = 50
-    zipper: Zip = Zip(zip_path, get_log(str(tmp_path), levels=log_options), path_args=OPT_PATHS)
+    zipper: Zip = Zip(zip_path, ttils.get_log(str(tmp_path), levels=log_options), path_args=OPT_PATHS)
 
     zip_data: dict[str, Any] = zipper.start_zip(dist_path=test_dist_path)
     zip_file_content: list[str] = zip_data["files"]["content"]
@@ -59,9 +57,9 @@ def test_update_zip(tmp_path: Path):
     setup(dist_dir, files=[ARM_BINARY, X86_BINARY])
 
     zip_path: Path = tmp_path / ZIP_FILE
-    log_options: LogLevelOptions = LOG_OTIONS.copy()
+    log_options: LogLevelOptions = ttils.LOG_OPTIONS.copy()
     log_options["log_level"] = 10
-    zipper: Zip = Zip(zip_path, get_log(str(tmp_path), levels=log_options), path_args=OPT_PATHS)
+    zipper: Zip = Zip(zip_path, ttils.get_log(str(tmp_path), levels=log_options), path_args=OPT_PATHS)
 
     zip_data: dict[str, Any] = zipper.start_zip(dist_path=dist_dir)
     base_length: int = zip_data["files"]["size"]
@@ -87,9 +85,9 @@ def test_dir_change(tmp_path: Path):
     setup(dist_dir, files=[ARM_BINARY, X86_BINARY], overwrite=True)
     
     zip_path: Path = tmp_path / ZIP_FILE
-    log_options: LogLevelOptions = LOG_OTIONS.copy()
+    log_options: LogLevelOptions = ttils.LOG_OPTIONS.copy()
     log_options["log_level"] = 10
-    zipper: Zip = Zip(zip_path, get_log(str(tmp_path), levels=log_options), path_args=OPT_PATHS)
+    zipper: Zip = Zip(zip_path, ttils.get_log(str(tmp_path), levels=log_options), path_args=OPT_PATHS)
     
     os.chdir("/tmp")
     zipper.start_zip(dist_dir)
@@ -157,9 +155,3 @@ def setup(path: Path, *, files: list[str] = None, overwrite: bool = False):
             temp_file.parent.mkdir(parents=True, exist_ok=True)
 
         temp_file.touch()
-
-def get_log(path: str, *, levels: LogLevelOptions = None) -> Log:
-    if not levels:
-        levels = {"log_level": DEBUG}
-
-    return Log(log_path=path, levels=levels)

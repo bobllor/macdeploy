@@ -9,7 +9,6 @@ from system.zipper import Zip
 from typing import Any
 import system.system_types as types
 import system.utils as utils
-import threading
 import secrets, os
 
 app: Flask = Flask(__name__)
@@ -61,44 +60,32 @@ def add_filevault_key():
     
     The endpoint only takes POST requests with JSON as the body.
     '''
-    content: dict[str, str] = request.get_json()
+    content: types.KeyInfo = request.get_json()
 
     logger.debug(f"POST: {content}")
 
-    if not all([key in content for key in ["key", "serialTag"]]):
-        logger.warning(f"Invalid POST: {content}")
-        return 'Missing expected JSON values "key" or "serial"', 400
-
-    # TODO: figure out how to log this in the same file without needing to make a new log.
-    file_vault_key: str = content.get("key")
-    serial_tag: str = content.get("serialTag")
-
     with ThreadPoolExecutor(max_workers=2) as executor:
-        future: Future = executor.submit(process.add_filevault, serial_tag, file_vault_key)
+        future: Future = executor.submit(process.add_filevault, content)
 
         data: str = future.result()
 
-    return jsonify(utils.generate_response(content=data)), 200
+    return data, data["statusCode"]
 
 @app.route("/api/log", methods=["POST"])
 def add_log():
     '''Adds the logs from the client device to the server.'''
     content: types.LogInfo = request.get_json()
-
-    if not all([key in content for key in ["body", "logFileName"]]):
-        logger.warning(f"Invalid POST: {content}")
-        return jsonify({"status": "error", "content": 'Missing exepected JSON values "body" or "logFileName"'}), 400
     
     logs_dir_path: Path = Path(Vars.LOGS_PATH.value)
     if not logs_dir_path.exists():
         logs_dir_path.mkdir()
 
-    # NOTE: if the log file is large this could be an issue. maybe look into this in the future? 
-    # for now it isn't an issue and probably will not be unless it scales to a large amount...
-    # FIXME: proper exception handling here, it's 3 AM bro...
-    threading.Thread(target=process.add_log, args=(content,)).start()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future: Future = executor.submit(process.add_log, content)
 
-    return jsonify({"status": "success", "content": "Added logs to the server"}), 200
+        data: dict[str, Any] = future.result()
+    
+    return data, data["statusCode"]
 
 @app.route("/api/zip/update", methods=["GET"])
 def update_zip():
