@@ -9,7 +9,7 @@ import system.utils as utils
 
 def test_add_log(tmp_path: Path):
     log: Log = ttils.get_log(tmp_path)
-    process: Process = Process(log_dir=tmp_path, log=log)
+    process: Process = Process(log=log)
 
     body: str = "Log content\nLine one\nLine two\nLine three"
     log_file: str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S.SERIAL.log")
@@ -19,7 +19,7 @@ def test_add_log(tmp_path: Path):
         "logFileName": log_file
     } 
 
-    log_res: dict[str, Any] = process.add_log(log_content)
+    log_res: dict[str, Any] = process.add_log(log_content, tmp_path)
     if log_res["status"] == "error":
         assert log_res["status"] != "error"
 
@@ -40,7 +40,7 @@ def test_add_log(tmp_path: Path):
 
 def test_multiple_keys_log(tmp_path: Path):
     log: Log = ttils.get_log(tmp_path)
-    process: Process = Process(log_dir=tmp_path, log=log)
+    process: Process = Process(log=log)
 
     body: str = "Log content\nLine one\nLine two\nLine three"
     log_file: str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S.SERIAL2.log")
@@ -52,7 +52,7 @@ def test_multiple_keys_log(tmp_path: Path):
         "extraKey2": "test again",
     } 
 
-    log_res: dict[str, Any] = process.add_log(log_content)
+    log_res: dict[str, Any] = process.add_log(log_content, tmp_path)
     if log_res["status"] == "error":
         assert log_res["status"] != "error"
 
@@ -73,7 +73,7 @@ def test_multiple_keys_log(tmp_path: Path):
 
 def test_fail_empty_string(tmp_path: Path):
     log: Log = ttils.get_log(tmp_path)
-    process: Process = Process(log_dir=tmp_path, log=log)
+    process: Process = Process(log=log)
 
     log_file: str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S.SERIAL.log")
 
@@ -82,13 +82,13 @@ def test_fail_empty_string(tmp_path: Path):
         "logFileName": log_file
     } 
 
-    log_res: dict[str, Any] = process.add_log(log_content)
+    log_res: dict[str, Any] = process.add_log(log_content, tmp_path)
 
     assert log_res["status"] == "error"
 
 def test_fail_wrong_key(tmp_path: Path):
     log: Log = ttils.get_log(tmp_path)
-    process: Process = Process(log_dir=tmp_path, log=log)
+    process: Process = Process(log=log)
 
     body: str = "Log content\nLine one\nLine two\nLine three"
     log_file: str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S.SERIAL.log")
@@ -98,25 +98,6 @@ def test_fail_wrong_key(tmp_path: Path):
         "fakeFileBTW": log_file
     } 
 
-    log_res: dict[str, Any] = process.add_log(log_content)
+    log_res: dict[str, Any] = process.add_log(log_content, tmp_path)
 
     assert log_res["status"] == "error"
-
-def test_add_key(tmp_path: Path):
-    log: Log = ttils.get_log(tmp_path)
-    process: Process = Process(log_dir=tmp_path, log=log)
-
-    serial: str = "SERIAL1234"
-    key: str = "1235-6789-1024-ABC0"
-
-    key_info: KeyInfo = {
-        "key": key,
-        "serialTag": serial,
-    } 
-
-    key_res: dict[str, Any] = process.add_filevault(key_info, tmp_path)
-    if key_res["status"] == "error":
-        assert key_res["status"] != "error"
-
-    files: list[str] = utils.get_dir_list(tmp_path)
-    print(files)

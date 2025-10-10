@@ -7,12 +7,12 @@ from contextlib import contextmanager
 from collections.abc import Callable
 import zipfile, os
 
-class PathArgs(TypedDict):
-    dist_dir: str
-    binary_file: str
+class BinaryArgs(TypedDict):
+    arm: str
+    x86_64: str
 
 class Zip:
-    def __init__(self, zip_path: Path, log: Log, *, path_args: PathArgs = {}):
+    def __init__(self, zip_path: Path, log: Log, *, binary_args: BinaryArgs = {}):
         '''Create and update ZIP files.
         
         Parameters
@@ -20,19 +20,18 @@ class Zip:
             zip_path: Path
                 The Path object of the path to the ZIP file.
             
-            path_args: PathArgs, default {}
-                Dictionary arguments replacing paths in the class. This should not be
-                used except during testing.
-            
             log: Log
                 The logger Log of the program.
-
+            
+            binary_args: BinaryArgs, default {}
+                Dictionary arguments replacing the two binary names to a given name.
+                Only used for testing.
         '''
         self.zip_path: Path = zip_path
         self.log: Log = log
 
-        self.arm_binary: str = path_args.get("arm_binary", Vars.ARM_BINARY_NAME.value)
-        self.x86_binary: str = path_args.get("x86_binary", Vars.X86_BINARY_NAME.value)
+        self.arm_binary: str = binary_args.get("arm", Vars.ARM_BINARY_NAME.value)
+        self.x86_binary: str = binary_args.get("x86_64", Vars.X86_BINARY_NAME.value)
 
         # cache for recursive parent creation when appending new files in the ZIP
         self._created_files: set[str] = {".", "./", ""}
@@ -60,7 +59,8 @@ class Zip:
                 return generate_response(
                     status="error", 
                     content=f"Binary not found on server",
-                    files={"size": 0, "content": []}
+                    files={"size": 0, "content": []},
+                    statusCode=500
                 )
 
         try:
@@ -78,7 +78,8 @@ class Zip:
             return generate_response(
                 status="error", 
                 content=f"An unexpected error occurred on the server",
-                files={"size": 0, "content": []}
+                files={"size": 0, "content": []},
+                statusCode=500
             )
 
         return zip_response
@@ -149,7 +150,8 @@ class Zip:
         return generate_response(
             status="success", 
             content="ZIP file created",
-            files={"size": zip_len, "content": zip_contents}
+            files={"size": zip_len, "content": zip_contents},
+            statusCode=200
         )
 
     def _update_zip(self, dist_path: Path) -> dict[str, Any]:
@@ -213,6 +215,9 @@ class Zip:
             self.log.debug(
                 f"Original ZIP length: {original_count} | New length: {added_count + original_count}"
             )
+
+            zip_file_obj.close()
+
             content_msg = f"ZIP file updated with {added_count} {"file" if added_count == 1 else "files"}"
         else:
             self.log.info(f"No new files found, skipping ZIP update")
@@ -220,7 +225,8 @@ class Zip:
         return generate_response(
             status="success", 
             content=content_msg,
-            files={"size": len(new_files), "content": new_files}
+            files={"size": len(new_files), "content": new_files},
+            statusCode=200
         )
     
     def _recurse_create_directories(self, path: Path, zip_obj: zipfile.ZipFile, created_paths: set[str]) -> None:
