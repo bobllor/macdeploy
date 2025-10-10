@@ -4,6 +4,7 @@ from logging import DEBUG
 from datetime import datetime
 from typing import TypedDict, Literal
 from system.vars import Vars
+from pathlib import Path
 
 # this value will be the same as soon as the server is launched.
 # this keeps all logs in one day on the same day.
@@ -19,7 +20,7 @@ class Log(Logger):
     def __init__(self, 
     name: str = __name__,
     *, 
-    log_path: str = Vars.SERVER_LOG_PATH.value,
+    log_path: Path | str,
     levels: LogLevelOptions = {},
     logfmt: str = "%(asctime)s:%(filename)s:%(name)s [%(levelname)s] %(message)s",
     datefmt: str = DEFAULT_DATEFMT):
@@ -31,9 +32,9 @@ class Log(Logger):
                 The name of the logger. By default, it uses the __name__ variable, or
                 in other words __main__.
             
-            log_path: str default `logs/server-logs`
+            log_path: Path | str
                 The log file name. By default it names the logs based on the current date
-                and is stored in the logs folder, for example: `logs/server-2000-11-01.log`.
+                and is stored in the logs folder, for example: `logs/server-2025-05-05/server-2000-11-01.log`.
             
             levels: LogLevelOptions default `{}`
                 A dictionary that holds the logging levels of the logger, stream handler, and file handler.
@@ -47,15 +48,24 @@ class Log(Logger):
         '''
         super().__init__(name)
 
-        filename: str = f"{log_path}/{DEFAULT_FILENAME}"
+        new_log_path: Path = Path("")
+        if isinstance(log_path, str):
+            new_log_path = Path(log_path)
+        elif isinstance(log_path, Path):
+            new_log_path = log_path
+        
+        if not new_log_path.exists():
+            new_log_path.mkdir(parents=True, exist_ok=True)
 
-        stream_handler: StreamHandler = StreamHandler()
-        file_handler: FileHandler = FileHandler(filename)
+        log_file: Path = new_log_path / DEFAULT_FILENAME
+
+        self.stream_handler: StreamHandler = StreamHandler()
+        self.file_handler: FileHandler = FileHandler(log_file)
         formatter: Formatter = Formatter(fmt=logfmt, datefmt=datefmt)
 
         handlers: list[tuple[str, Handler]] = [
-            ("file_level", file_handler), 
-            ("stream_level", stream_handler)
+            ("file_level", self.file_handler), 
+            ("stream_level", self.stream_handler)
         ]
         for level_key, hdlr in handlers:
             hdlr.setFormatter(formatter)
@@ -64,5 +74,3 @@ class Log(Logger):
             self.addHandler(hdlr)
 
         self.setLevel(levels.get("log_level", DEBUG))
-
-setLoggerClass(Log)

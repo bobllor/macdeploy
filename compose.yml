@@ -18,15 +18,13 @@ services:
     tty: true
     stdin_open: true
     restart: on-failure:5
-  cron-service:
-    container_name: cronner
-    image: deploy:cronner
+  zip-updater:
+    container_name: zip-updater
+    image: deploy:zip-updater
     depends_on:
       - fs-server
     build:
-      dockerfile: dockerfiles/Dockerfile.cronner
-      args:
-        TIME: 20
+      dockerfile: dockerfiles/Dockerfile.zip-updater
     volumes:
       - macdeploy-server:/macdeploy/src
     stop_grace_period: .5s
