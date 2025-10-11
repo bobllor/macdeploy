@@ -23,7 +23,7 @@ type Log struct {
 
 type Logger struct {
 	silent bool
-	*log.Logger
+	logger *log.Logger
 }
 
 // NewLog creates a Log struct for logging.
@@ -48,12 +48,12 @@ func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
 		logFileName:  logFile,
 		logDirectory: logDirectory,
 		Debug: Logger{
-			Logger: log.New(buf, "[DEBUG] ", flag),
+			logger: log.New(buf, "[DEBUG] ", flag),
 			silent: verboseDebug,
 		},
-		Info:  Logger{Logger: log.New(buf, "[INFO] ", flag)},
-		Error: Logger{Logger: log.New(buf, "[ERROR] ", flag)},
-		Warn:  Logger{Logger: log.New(buf, "[WARNING] ", flag)},
+		Info:  Logger{logger: log.New(buf, "[INFO] ", flag)},
+		Error: Logger{logger: log.New(buf, "[ERROR] ", flag)},
+		Warn:  Logger{logger: log.New(buf, "[WARNING] ", flag)},
 	}
 
 	return &log
@@ -95,12 +95,16 @@ func (l *Logger) Log(msg string, v ...any) {
 	if len(v) > 0 {
 		msg = fmt.Sprintf(msg, v...)
 	}
-	l.Logger.Println(msg)
+	l.logger.Println(msg)
 
 	if !l.silent {
-		msg = fmt.Sprintf("%s%s", l.Prefix(), msg)
+		msg = fmt.Sprintf("%s%s", l.logger.Prefix(), msg)
 		fmt.Println(msg)
 	}
+}
+
+func (l *Logger) Logf(format string, v ...any) {
+	l.logger.Printf(format, v...)
 }
 
 // FormatLogOutput formats the output path of the log, based on if it ends with a

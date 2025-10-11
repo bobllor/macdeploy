@@ -450,7 +450,7 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDirectoryFiles []string) {
 	err := handler.InstallRosetta()
 	if err != nil {
-		r.log.Error.Printf("Failed to install Rosetta: %v", err)
+		r.log.Error.Logf("Failed to install Rosetta: %v", err)
 		return
 	}
 
@@ -480,7 +480,7 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 	// doesn't matter if it fails, an attempt will always occur.
 	fvStatus, err := filevault.Status()
 	if err != nil {
-		r.log.Warn.Printf("Failed to check FileVault status: %v", err)
+		r.log.Warn.Logf("Failed to check FileVault status: %v", err)
 	}
 
 	if !fvStatus {
@@ -498,10 +498,10 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 	fwStatus, err := firewall.Status()
 	if err != nil {
 		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %v", err))
-		r.log.Error.Printf(firewallErrMsg, 3)
+		r.log.Error.Logf(firewallErrMsg, 3)
 	}
 
-	r.log.Debug.Printf("Firewall status: %t", fwStatus)
+	r.log.Debug.Logf("Firewall status: %t", fwStatus)
 
 	if !fwStatus {
 		err = firewall.Enable()
@@ -519,7 +519,7 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 
 	serverStatus, err := request.VerifyConnection(r.config.ServerHost)
 	if err != nil {
-		r.log.Error.Printf("Error reaching host: %v", err)
+		r.log.Error.Logf("Error reaching host: %v", err)
 
 		return err
 	}
