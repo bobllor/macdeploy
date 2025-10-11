@@ -111,7 +111,7 @@ class Process:
 
         validation_res: dict[str, Any] = self._validate_info(self._log_info_keys, log_info)
         if validation_res["status"] == "error":
-            self.log.error(f"Missing key in response: {[key for key in log_info]}")
+            self.log.error(f"Missing key, got: {[key for key in log_info]}")
             return validation_res
 
         # used for formatting logs into the correct dates for organization

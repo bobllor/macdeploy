@@ -104,6 +104,36 @@ func TestLogSpecialFormat(t *testing.T) {
 	}
 }
 
+func TestLogf(t *testing.T) {
+	log := GetLogger(t)
+
+	err := logger.MkdirAll(log.Log.GetLogDirectory(), 0o755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	baseMsg := "This is a test message"
+	fmtMsg := "This is a test %s"
+
+	log.Log.Info.Logf(fmtMsg, "message")
+
+	err = log.Log.WriteFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := os.ReadFile(log.Log.GetLogPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contentStr := strings.TrimSpace(string(content))
+
+	if !strings.Contains(contentStr, baseMsg) {
+		t.Fatalf(`Did not get baseline "%s" in file, got: "%s"`, baseMsg, contentStr)
+	}
+}
+
 func TestWriteLog(t *testing.T) {
 	log := GetLogger(t)
 

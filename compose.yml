@@ -14,6 +14,7 @@ services:
       - ./keys:/macdeploy/keys
       - ./build:/macdeploy/build
       - ./dist:/macdeploy/dist
+      - ./gunicorn.conf.py:/macdeploy/gunicorn.conf.py
     stop_grace_period: .5s
     tty: true
     stdin_open: true
