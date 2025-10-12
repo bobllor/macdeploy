@@ -18,7 +18,6 @@ packages:
   some pkg name.pkg:
     - "installed file"
   another_pkg_file:
-    -
 search_directories:
   - "/Applications" 
 admin:
@@ -40,6 +39,29 @@ func TestGetConfig(t *testing.T) {
 	_, err := yaml.NewConfig([]byte(baseYaml))
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestEmptyPackages(t *testing.T) {
+	config, err := yaml.NewConfig([]byte(baseYaml))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	baseString := "another_pkg_file"
+	found := false
+	for key := range config.Packages {
+		if key == baseString {
+			found = true
+		}
+	}
+
+	if found != true {
+		t.Fatalf("Missing key %s", baseString)
+	}
+
+	if len(config.Packages[baseString]) != 0 {
+		t.Fatalf("Package %s is not 0", baseString)
 	}
 }
 
