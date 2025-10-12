@@ -107,7 +107,7 @@ var rootCmd = &cobra.Command{
 
 		// by default we will put in the home directory if none is given
 		logDirectory := config.Log
-		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "/logs")
+		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs")
 		if logDirectory == "" {
 			logDirectory = defaultLogDir
 		} else {
@@ -296,8 +296,6 @@ var rootCmd = &cobra.Command{
 
 				if !fvStatus {
 					root.log.Warn.Log("FileVault key failed to generate.")
-				} else {
-					root.log.Info.Log("FileVault is already enabled.")
 				}
 			}
 		}
@@ -463,7 +461,7 @@ func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDir
 		return
 	}
 
-	if len(packages) < 2 {
+	if len(packages) < 1 {
 		r.log.Warn.Log("No packages found")
 		return
 	}
