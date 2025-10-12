@@ -163,5 +163,5 @@ class Process:
   
     def _create_entry(self, path: Path) -> None:
         '''Creates the given Path object with its parents.'''
-        path.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()

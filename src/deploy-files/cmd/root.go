@@ -174,12 +174,6 @@ var rootCmd = &cobra.Command{
 		}
 
 		root.startAccountCreation(root.dep.usermaker, root.dep.filevault, root.AdminStatus)
-		// apply policies to the admin account
-		if root.config.Admin.ApplyPolicy {
-			policyString := root.config.Policy.BuildCommand()
-
-			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
-		}
 
 		err = root.log.WriteFile()
 		if err != nil {
@@ -267,6 +261,15 @@ var rootCmd = &cobra.Command{
 
 		if root.config.Firewall {
 			root.startFirewall(root.dep.firewall)
+		}
+
+		// if admin is applied policies, it must be after all the sudo commands.
+		// unsure why, but from my testing it fails the filevault command when it was applied
+		// prior to running the command.
+		if root.config.Admin.ApplyPolicy {
+			policyString := root.config.Policy.BuildCommand()
+
+			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
 		}
 
 		request := requests.NewRequest(root.log)
