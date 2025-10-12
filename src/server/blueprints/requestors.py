@@ -31,7 +31,10 @@ class Requestors():
 
         @bp.route("/")
         def home():
-            return "Use the endpoints to start the deployment."
+            return jsonify(
+                utils.generate_response(
+                    content="Use the endpoints to start the deployment."
+                )), 200
 
         @bp.route(f"/api/packages/{Vars.ZIP_FILE_NAME.value}", methods=["GET"])
         def get_client_files():
