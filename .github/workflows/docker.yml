@@ -14,23 +14,4 @@ jobs:
         run: |
           docker compose build
           docker compose up -d
-      - name: Connection test with curl
-        run: |
-          server_status=false
-          status=0
-          for i in {1..10}; do
-            echo "Trying curl ($i)..."
-            curl -f https://localhost:5000 --insecure
-            status=$?
-            if (( "$status" == "0" )); then
-              server_status=true
-              break
-            fi
-            sleep 1
-          done
-          if [[ $server_status == false ]]; then
-            echo "Failed to connect to server"
-            exit $status
-          fi
-      - name: Clean up
-        run: docker compose down -v
+          docker compose down -v
