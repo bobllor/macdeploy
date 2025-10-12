@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	embedhandler "macos-deployment/config"
@@ -11,7 +12,7 @@ import (
 	"macos-deployment/deploy-files/utils"
 	"macos-deployment/deploy-files/yaml"
 	"os"
-	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -30,6 +31,26 @@ type RootData struct {
 	config          *yaml.Config
 	script          *scripts.BashScripts
 	metadata        *utils.Metadata
+	errors          errorFlags
+	data            varData
+	dep             dependencies
+	perm            *utils.Perms
+}
+
+type errorFlags struct {
+	ServerFailed  bool // Indicates if sending the files to the server has failed.
+	ScriptsFailed bool // Indicates if searching for script files (.sh) has failed.
+}
+
+type dependencies struct {
+	filehandler *core.FileHandler
+	usermaker   *core.UserMaker
+	filevault   *core.FileVault
+	firewall    *core.Firewall
+}
+
+type varData struct {
+	scriptFiles []string
 }
 
 var root RootData
@@ -50,13 +71,16 @@ var rootCmd = &cobra.Command{
 			fmt.Printf("Unable to get serial number: %v\n", err)
 		}
 
+		perms := utils.NewPerms()
+		root.perm = perms
+
 		metadata := utils.NewMetadata(projectName, serialTag, distDirectory, zipFile)
 		scripts := scripts.NewScript()
 		config, err := yaml.NewConfig(embedhandler.YAMLBytes)
 		if err != nil {
 			// TODO: make this a better error message (incorrect keys, required keys missing, etc)
 			fmt.Printf("Error parsing YAML configuration, %v\n", err)
-			os.Exit(1)
+			return
 		}
 
 		// checking if admin info was given or not
@@ -76,58 +100,80 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		// initializes sudo for automation purposes.
 		err = config.Admin.InitializeSudo()
 		if err != nil {
 			fmt.Printf("Failed to initialize sudo with given password: %v\n", err)
-			os.Exit(1)
 		}
 
 		// by default we will put in the home directory if none is given
-		logDirectory := config.LogOutput
-		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, ".macdeploy")
+		logDirectory := config.Log
+		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs")
 		if logDirectory == "" {
 			logDirectory = defaultLogDir
 		} else {
-			logDirectory = logger.FormatLogOutput(logDirectory)
+			logDirectory = logger.FormatLogPath(logDirectory)
 		}
 
-		err = logger.MkdirAll(logDirectory, 0o744)
+		// mkdir needs full permission for some reason.
+		// anything other than full will have permissions of 000.
+		// full perms assigns it the normal permissions: rwxr-xr-x. which is odd to me.
+		err = logger.MkdirAll(logDirectory, root.perm.Full)
 		if err != nil {
 			fmt.Printf("Unable to make logging directory: %v\n", err)
 			fmt.Printf("Changing log output to home directory: %s\n", defaultLogDir)
 			logDirectory = defaultLogDir
 
-			err = logger.MkdirAll(defaultLogDir, 0o744)
+			err = logger.MkdirAll(defaultLogDir, root.perm.Full)
 			if err != nil {
 				fmt.Printf("Unable to make logging directory: %v\n", err)
 			}
 		}
 
 		log := logger.NewLog(serialTag, logDirectory, root.Verbose)
+		log.Info.Log("Starting deployment for %s", metadata.SerialTag)
 		log.Debug.Log("Log directory: %s", logDirectory)
-		log.Debug.Log("Admin username: %s", config.Admin.Username)
+
+		// dependency initializations
+		filevault := core.NewFileVault(config.Admin, scripts, log)
+		user := core.NewUser(config.Admin, scripts, log)
+		handler := core.NewFileHandler(config.Packages, log)
+		firewall := core.NewFirewall(log, scripts)
 
 		root.log = log
 		root.config = config
 		root.script = scripts
 		root.metadata = metadata
+
+		root.dep.usermaker = user
+		root.dep.filehandler = handler
+		root.dep.firewall = firewall
+		root.dep.filevault = filevault
+
+		// initialized for the lifecycle during pre, install, and post script stages
+		scriptFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".sh")
+		if err != nil {
+			root.log.Error.Log("Failed to find script files: %v", err)
+			fmt.Println("Scripts will not be ran during the deployment")
+
+			root.errors.ScriptsFailed = true
+		}
+
+		root.data.scriptFiles = scriptFiles
+
+		// pre script execution
+		if len(root.config.Scripts.Pre) > 0 && !root.errors.ScriptsFailed {
+			root.log.Debug.Log("Pre script files: %v", root.config.Scripts.Pre)
+
+			root.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
+		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		root.log.Info.Log("Starting deployment for %s", root.metadata.SerialTag)
-		root.log.Debug.Log("Architecture: %s", runtime.GOARCH)
-
-		// initializes sudo for automation purposes.
 		err := root.config.Admin.InitializeSudo()
 		if err != nil {
 			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
 		}
 
-		// dependency initializations
-		filevault := core.NewFileVault(&root.config.Admin, root.script, root.log)
-		user := core.NewUser(root.config.Admin, root.script, root.log)
-
-		root.startAccountCreation(user, filevault, root.AdminStatus)
+		root.startAccountCreation(root.dep.usermaker, root.dep.filevault, root.AdminStatus)
 		// apply policies to the admin account
 		if root.config.Admin.ApplyPolicy {
 			policyString := root.config.Policy.BuildCommand()
@@ -143,7 +189,7 @@ var rootCmd = &cobra.Command{
 		// creating the files found in the search directories, it is flattened.
 		searchDirectoryFiles := make([]string, 0)
 		for _, searchDir := range root.config.SearchDirectories {
-			searchFiles, err := utils.GetSearchFiles(searchDir)
+			searchFiles, err := utils.GetFiles(searchDir)
 			if err != nil {
 				root.log.Warn.Log("Path %s does not exist, skipping path", searchDir)
 				continue
@@ -160,35 +206,37 @@ var rootCmd = &cobra.Command{
 
 		// used to have len(searchDirectoryFiles) > 0 here, but it doesn't matter just install the files anyways.
 		if root.Mount {
-			dmg := core.NewDmg(root.log, root.script)
-
-			dmgFiles, err := dmg.ReadDmgDirectory(root.metadata.DistDirectory)
+			root.log.Info.Log("Searching for DMG files")
+			dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".dmg")
 			if err != nil {
 				root.log.Error.Log("Failed to search directory: %v", err)
 			} else {
 				// this requires the use of --include to install properly.
-				volumeMounts := dmg.AttachDmgs(dmgFiles)
+				volumeMounts := root.dep.filehandler.AttachDmgs(dmgFiles)
 				if len(volumeMounts) > 0 {
-					dmg.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
-					dmg.DetachDmgs(volumeMounts)
+					root.dep.filehandler.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+					root.dep.filehandler.DetachDmgs(volumeMounts)
 				}
 			}
 		}
 
-		packager := core.NewPackager(root.config.Packages, searchDirectoryFiles, root.log)
-		root.startPackageInstallation(packager)
+		root.startPackageInstallation(root.dep.filehandler, searchDirectoryFiles)
 
-		if len(root.config.Scripts) > 0 {
-			root.log.Debug.Log("Script execution initiated")
+		// app files will automatically get placed into the Applications folder
+		appFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".app")
+		if err != nil {
+			root.log.Error.Log("Failed to search directory: %v", err)
+		}
+		if len(appFiles) > 0 {
+			applicationDir := "/Applications"
+			root.dep.filehandler.CopyFiles(appFiles, applicationDir)
+		}
 
-			scriptHandler := core.NewScriptHandler(root.log, root.script)
+		// inter script execution
+		if len(root.config.Scripts.Inter) > 0 && !root.errors.ScriptsFailed {
+			root.log.Debug.Log("Inter script files: %v", root.config.Scripts.Inter)
 
-			scriptFiles, err := scriptHandler.GetFilePaths("*.sh", root.metadata.DistDirectory)
-			if err != nil {
-				root.log.Error.Log("Failed to search files for %s: %v", root.metadata.DistDirectory, err)
-			} else {
-				scriptHandler.ExecuteScripts(root.config.Scripts, scriptFiles)
-			}
+			root.executeScripts(root.config.Scripts.Inter, root.data.scriptFiles)
 		}
 
 		err = root.log.WriteFile()
@@ -196,14 +244,18 @@ var rootCmd = &cobra.Command{
 			fmt.Printf("Failed to write to log file: %v\n", err)
 		}
 
+		err = root.config.Admin.InitializeSudo()
+		if err != nil {
+			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
+		}
+
 		// payload for sending to the server
-		logPayload := requests.NewLogPayload(root.log.GetLogName())
 		// initialized with an empty key, Key gets updated below.
 		// used for sending the log over to the server.
+		logPayload := requests.NewLogPayload(root.log.GetLogName())
 		filevaultPayload := requests.NewFileVaultPayload("")
-
 		if root.config.FileVault {
-			fvKey := root.startFileVault(filevault)
+			fvKey := root.startFileVault(root.dep.filevault)
 
 			filevaultPayload.Key = fvKey
 			filevaultPayload.SetBody(root.metadata.SerialTag)
@@ -214,13 +266,40 @@ var rootCmd = &cobra.Command{
 		}
 
 		if root.config.Firewall {
-			firewall := core.NewFirewall(root.log, root.script)
-
-			root.startFirewall(firewall)
+			root.startFirewall(root.dep.firewall)
 		}
 
-		// if a filevault key is present, always send regardless of flag usage
-		if filevaultPayload.Key != "" || !root.NoSend {
+		request := requests.NewRequest(root.log)
+
+		if filevaultPayload.Key != "" {
+			root.log.Info.Log("Sending FileVault key to the server")
+
+			err = root.startRequest(filevaultPayload, request, "/api/fv")
+			if err != nil {
+				root.log.Error.Log("Failed to send to data to server: %v", err)
+				root.log.Error.Log("The log file contains the generated FileVault key")
+
+				err = root.log.WriteFile()
+				if err != nil {
+					fmt.Printf("Failed to write to log file: %v\n", err)
+				}
+
+				root.errors.ServerFailed = true
+
+				return
+			}
+		} else {
+			fvStatus, err := root.dep.filevault.Status()
+			if err != nil {
+				root.log.Error.Log("Failed to check FileVault status %v", err)
+			} else {
+
+				if !fvStatus {
+					root.log.Warn.Log("FileVault key failed to generate.")
+				}
+			}
+		}
+		if !root.NoSend {
 			root.log.Info.Log("Sending log file to the server")
 
 			err = root.log.WriteFile()
@@ -228,42 +307,59 @@ var rootCmd = &cobra.Command{
 				fmt.Printf("Failed to write to log file: %v\n", err)
 			}
 
-			request := requests.NewRequest(root.log)
-
 			logPayload.Body = string(root.log.GetContent())
 			err = root.startRequest(logPayload, request, "/api/log")
 			if err != nil {
 				root.log.Error.Log("Failed to send to data to server: %v", err)
-
-				if filevaultPayload.Key != "" {
-					root.log.Error.Log("The log file must be saved in order not to lose the generated FileVault key")
-				}
-
-				os.Exit(1)
 			}
+		}
+	},
+	PostRun: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Completed deployment for %s\n", root.metadata.SerialTag)
+		fmt.Printf("Log output: %s\n", root.log.GetLogPath())
 
-			if filevaultPayload.Key != "" {
-				root.log.Info.Log("Sending FileVault key to the server")
+		// post script execution
+		if len(root.config.Scripts.Post) > 0 && !root.errors.ScriptsFailed {
+			root.log.Debug.Log("Post script files: %v", root.config.Scripts.Post)
 
-				err = root.startRequest(filevaultPayload, request, "/api/fv")
-				if err != nil {
-					root.log.Error.Log("Failed to send to data to server: %v", err)
-					fmt.Println("The log file must be saved in order not to lose the generated FileVault key")
-
-					err = root.log.WriteFile()
-					if err != nil {
-						fmt.Printf("Failed to write to log file: %v\n", err)
-					}
-
-					os.Exit(1)
-				}
-			}
-		} else if filevaultPayload.Key == "" && root.NoSend {
-			root.log.Info.Log("No FileVault key generated")
-			root.log.Info.Log("Skipping sending logs to server, flag --no-send: %v", root.NoSend)
+			root.executeScripts(root.config.Scripts.Post, root.data.scriptFiles)
 		}
 
 		if root.RemoveFiles {
+			if root.errors.ServerFailed {
+				choice := ""
+				validChoices := "yn"
+
+				validation := func(choice string, validChoices string) bool {
+					choice = strings.ToLower(choice)
+					validChoices = strings.ToLower(validChoices)
+
+					validArr := strings.Split(validChoices, "")
+
+					return slices.Contains(validArr, choice)
+				}
+
+				reader := bufio.NewReader(os.Stdin)
+
+				fmt.Println("The FileVault key failed to send to the server.")
+				fmt.Println("You can re-run the binary to try again.")
+				for !validation(choice, validChoices) {
+					fmt.Print("Remove all deployment files? [y/N]: ")
+					choice, _ = reader.ReadString('\n')
+
+					choice = strings.ToLower(choice)
+					choice = strings.TrimSpace(choice)
+
+					if choice == "n" || choice == "" {
+						return
+					} else if choice == "y" {
+						break
+					} else {
+						fmt.Printf("invalid response [%s]\n", choice)
+					}
+				}
+			}
+
 			filesToRemove := map[string]struct{}{
 				root.metadata.DistDirectory: {},
 				root.metadata.ZipFile:       {},
@@ -271,10 +367,6 @@ var rootCmd = &cobra.Command{
 
 			root.startCleanup(filesToRemove)
 		}
-	},
-	PostRun: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Completed deployment for %s\n", root.metadata.SerialTag)
-		fmt.Printf("Log output: %s\n", root.log.GetLogPath())
 	},
 }
 
@@ -351,29 +443,30 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 }
 
 // startPackageInstallation begins the package installation process.
-func (r *RootData) startPackageInstallation(packager *core.Packager) {
-	err := packager.InstallRosetta()
+func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDirectoryFiles []string) {
+	err := handler.InstallRosetta()
 	if err != nil {
-		r.log.Error.Printf("Failed to install Rosetta: %v", err)
+		r.log.Error.Logf("Failed to install Rosetta: %v", err)
 		return
 	}
 
 	// removing packages take precedent.
-	packager.AddPackages(r.IncludePackages)
-	packager.RemovePackages(r.ExcludePackages)
+	handler.AddPackages(r.IncludePackages)
+	handler.RemovePackages(r.ExcludePackages)
 
-	packages, err := packager.ReadPackagesDirectory(r.metadata.DistDirectory, r.script.FindFiles)
+	r.log.Info.Log("Searching for packages")
+	packages, err := handler.ReadDir(r.metadata.DistDirectory, ".pkg")
 	if err != nil {
 		r.log.Error.Log("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err)
 		return
 	}
 
-	if len(packages) < 2 {
+	if len(packages) < 1 {
 		r.log.Warn.Log("No packages found")
 		return
 	}
 
-	packager.InstallPackages(packages)
+	handler.InstallPackages(packages, searchDirectoryFiles)
 }
 
 // startFileVault begins the FileVault process and returns the generated key.
@@ -383,15 +476,15 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 	// doesn't matter if it fails, an attempt will always occur.
 	fvStatus, err := filevault.Status()
 	if err != nil {
-		r.log.Warn.Printf("Failed to check FileVault status: %v", err)
+		r.log.Warn.Logf("Failed to check FileVault status: %v", err)
 	}
 
 	if !fvStatus {
 		fvKey = filevault.Enable(r.config.Admin.Username, r.config.Admin.Password)
-	}
 
-	if fvKey != "" {
-		r.log.Info.Log("Generated key %s", fvKey)
+		if fvKey != "" {
+			fmt.Printf("Generated key %s\n", fvKey)
+		}
 	}
 
 	return fvKey
@@ -401,10 +494,10 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 	fwStatus, err := firewall.Status()
 	if err != nil {
 		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %v", err))
-		r.log.Error.Printf(firewallErrMsg, 3)
+		r.log.Error.Logf(firewallErrMsg, 3)
 	}
 
-	r.log.Debug.Printf("Firewall status: %t", fwStatus)
+	r.log.Debug.Logf("Firewall status: %t", fwStatus)
 
 	if !fwStatus {
 		err = firewall.Enable()
@@ -422,7 +515,7 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 
 	serverStatus, err := request.VerifyConnection(r.config.ServerHost)
 	if err != nil {
-		r.log.Error.Printf("Error reaching host: %v", err)
+		r.log.Error.Logf("Error reaching host: %v", err)
 
 		return err
 	}
@@ -433,7 +526,8 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 			return err
 		}
 
-		r.log.Info.Log("Server response: %s", res.Content)
+		// filevault errors will be printed out here, not logged.
+		fmt.Printf("Server response: %s\n", res.Content)
 
 		if !strings.Contains(res.Status, "success") {
 			r.log.Warn.Log("Failed to send payload to server")
@@ -441,7 +535,7 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 			return errors.New("payload failed to send to server")
 		}
 
-		r.log.Info.Log("Successfully sent log file to server")
+		r.log.Info.Log("Successfully sent file to server")
 	} else {
 		r.log.Warn.Log("Unable to connect to host, manual interactions needed")
 
@@ -501,5 +595,21 @@ func (r *RootData) applyPasswordPolicy(policyString string, username string) {
 			username)
 	} else {
 		r.log.Info.Log("Successfully applied policy: %s", out)
+	}
+}
+
+func (r *RootData) executeScripts(executingScripts []string, scriptPaths []string) {
+	for _, scriptFile := range executingScripts {
+		if scriptFile == "" {
+			continue
+		}
+
+		out, err := r.dep.filehandler.ExecuteScript(scriptFile, scriptPaths)
+		if err != nil {
+			r.log.Error.Log("%v, output: %s", err, out)
+			continue
+		}
+
+		r.log.Info.Log("Output: %s", out)
 	}
 }

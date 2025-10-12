@@ -3,6 +3,7 @@ package tests
 import (
 	"macos-deployment/deploy-files/logger"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -14,8 +15,8 @@ func TestDirFileNames(t *testing.T) {
 		t.Fatalf("log file name failed to generate: %s", log.Log.GetLogName())
 	}
 
-	if !strings.Contains(log.Log.GetLogPath(), log.MainDirectory) {
-		t.Fatalf("generated log path %s does not match base path %s", log.Log.GetLogPath(), log.MainDirectory)
+	if !strings.Contains(log.Log.GetLogPath(), log.ProjectDirectory) {
+		t.Fatalf("generated log path %s does not match base path %s", log.Log.GetLogPath(), log.ProjectDirectory)
 	}
 }
 
@@ -27,7 +28,7 @@ func TestMkDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = os.Stat(log.MainDirectory)
+	_, err = os.Stat(log.ProjectDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,28 +42,95 @@ func TestFormatDir(t *testing.T) {
 		baseDirName + "////",
 		baseDirName + "/",
 		baseDirName + "/a-name.log",
-		baseDirName + "\\",
+		baseDirName + "\\/////",
 		tempDir + "\\this\\is\\a\\dir",
-		baseDirName,
 		baseDirName + "/a.log/b.log",
 		baseDirName + "/a.log/b.log/c.log/d.log//",
 	}
 
 	for _, dir := range dirs {
-		newDir := logger.FormatLogOutput(dir)
+		newDir := logger.FormatLogPath(dir)
 
 		if newDir != baseDirName {
 			t.Fatalf("formatting directory %s failed: got %s", dir, newDir)
 		}
 	}
+}
 
-	singleDirTests := []string{"/", "\\", "///"}
-	for _, dir := range singleDirTests {
-		newDir := logger.FormatLogOutput(dir)
+func TestLogHomeExansionFormat(t *testing.T) {
+	baseline := []string{
+		"./~test", os.Getenv("HOME"),
+		os.Getenv("HOME") + "/~", "/~",
+		"./~~",
+	}
 
-		if newDir != "./" {
-			t.Fatalf("formatting directory %s failed: got %s", dir, newDir)
+	logPaths := []string{
+		"~test", "~",
+		"/~", "~~",
+		"////~", "~/~//",
+	}
+
+	for _, path := range logPaths {
+		newPath := logger.FormatLogPath(path)
+
+		if !slices.Contains(baseline, newPath) {
+			t.Fatalf("path: %s, got %s, failed to meet baseline output", path, newPath)
 		}
+	}
+}
+
+func TestLogSpecialFormat(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	baseline := []string{
+		os.Getenv("HOME") + "/logs",
+		wd, "./...",
+	}
+
+	logPaths := []string{
+		".", "/", "./", "",
+		"///", "\\////", "...",
+	}
+
+	for _, path := range logPaths {
+		newPath := logger.FormatLogPath(path)
+
+		if !slices.Contains(baseline, newPath) {
+			t.Fatalf("path: %s, got %s, failed to meet baseline output", path, newPath)
+		}
+	}
+}
+
+func TestLogf(t *testing.T) {
+	log := GetLogger(t)
+
+	err := logger.MkdirAll(log.Log.GetLogDirectory(), 0o755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	baseMsg := "This is a test message"
+	fmtMsg := "This is a test %s"
+
+	log.Log.Info.Logf(fmtMsg, "message")
+
+	err = log.Log.WriteFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := os.ReadFile(log.Log.GetLogPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contentStr := strings.TrimSpace(string(content))
+
+	if !strings.Contains(contentStr, baseMsg) {
+		t.Fatalf(`Did not get baseline "%s" in file, got: "%s"`, baseMsg, contentStr)
 	}
 }
 

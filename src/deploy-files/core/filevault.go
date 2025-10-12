@@ -10,12 +10,12 @@ import (
 )
 
 type FileVault struct {
-	admin  *yaml.UserInfo
+	admin  yaml.UserInfo
 	script *scripts.BashScripts
 	log    *logger.Log
 }
 
-func NewFileVault(admin *yaml.UserInfo, script *scripts.BashScripts, log *logger.Log) *FileVault {
+func NewFileVault(admin yaml.UserInfo, script *scripts.BashScripts, log *logger.Log) *FileVault {
 	fv := FileVault{
 		admin:  admin,
 		script: script,
@@ -34,11 +34,7 @@ func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 
 	out, err := exec.Command("sudo", "bash", "-c", f.script.EnableFileVault,
 		adminUser, adminPassword).CombinedOutput()
-
 	outText := string(out)
-	logMsg := strings.TrimSpace(fmt.Sprintf("Output: %s", outText))
-	f.log.Debug.Log(logMsg, 7)
-
 	if err != nil {
 		f.log.Warn.Log("Failed to enable FileVault")
 		return ""
@@ -46,11 +42,10 @@ func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 
 	// output is <name> = '<key>'
 	outArr := strings.Split(outText, "'")
-	// TIL: in Go an empty string is added to the array if the delimiter is at the end!
-	// also println is not the same as fmt.Println...
-	key = outArr[1]
+	// TIL an empty string is added to the array if there is a delimiter at the end!
+	key = outArr[len(outArr)-2]
 
-	f.log.Info.Log("Enabled FileVault")
+	f.log.Info.Log("FileVault enabled")
 
 	return key
 }

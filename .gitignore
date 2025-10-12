@@ -14,7 +14,8 @@
 dist
 logs
 pkg-files
-filevault-keys
+keys
+build
 
 # python stuff
 __pycache__/
@@ -27,8 +28,10 @@ __pycache__/
 *.zip
 *.bin
 .token
+.vscode
 
 # yaml stuff
 !config-sample.yaml
 !compose.yml
 config.*[yY][mM][lL]
+config.*[yY][aA][mM][lL]

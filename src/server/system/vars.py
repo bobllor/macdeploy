@@ -6,22 +6,21 @@ class Vars(Enum):
     
     # file names
     ZIP_FILE_NAME = "deploy.zip"
-    ARM_BINARY_NAME = "deploy-arm.bin"
-    X86_BINARY_NAME = "deploy-x86_64.bin"
+    ARM_BINARY_NAME = "macdeploy"
+    X86_BINARY_NAME = "x86_64-macdeploy"
 
     # directory names
-    _FILEVAULT_DIR_NAME = "filevault-keys"
-    _PKG_DIR_NAME = "pkg-files"
+    _KEYS_DIR_NAME = "keys"
     _SERVER_DIR_NAME = "server"
     _LOGS_DIR_NAME = "logs"
     _SERVER_LOG_NAME = "server-logs"
 
     # default directory paths
-    FILEVAULT_PATH = f"{ROOT_PATH}/{_FILEVAULT_DIR_NAME}"
+    KEYS_PATH = f"{ROOT_PATH}/{_KEYS_DIR_NAME}"
 
-    PKG_PATH = f"{ROOT_PATH}/dist/{_PKG_DIR_NAME}"
     SERVER_PATH = f"{ROOT_PATH}/src/{_SERVER_DIR_NAME}"
-    DIST_PATH = f"{ROOT_PATH}/dist" # zip file, binary, and pkg-files are located in here
+    DIST_PATH = f"{ROOT_PATH}/dist" # binary and pkg-files are located in here
+    ZIP_PATH = f"{ROOT_PATH}/build" # zip is located in build
 
     LOGS_PATH = f"{ROOT_PATH}/{_LOGS_DIR_NAME}"
     SERVER_LOG_PATH = f"{LOGS_PATH}/{_SERVER_LOG_NAME}"

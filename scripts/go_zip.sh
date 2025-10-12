@@ -39,4 +39,4 @@ echo "binary output: dist/$amd_binary"
 zip_name="deploy.zip"
 
 echo "generating zip file"
-zip -ru "$zip_name" "$dist_dir"
+zip -ru "build/$zip_name" "$dist_dir"

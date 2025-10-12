@@ -2,22 +2,35 @@ services:
   fs-server:
     container_name: python-fs
     image: deploy:fsserver
+    build:
+      dockerfile: dockerfiles/Dockerfile.fs-server
+      args:
+        PROJECT_DIR: /macdeploy
     ports:
       - "5000:5000"
     volumes:
-      - type: bind
-        source: ./
-        target: /macos-deployment
+      - macdeploy-server:/macdeploy/src
+      - ./logs:/macdeploy/logs
+      - ./keys:/macdeploy/keys
+      - ./build:/macdeploy/build
+      - ./dist:/macdeploy/dist
+      - ./gunicorn.conf.py:/macdeploy/gunicorn.conf.py
+    stop_grace_period: .5s
     tty: true
     stdin_open: true
-    restart: unless-stopped
-  cron-service:
-    container_name: cron-job
-    image: deploy:cronner
+    restart: on-failure:5
+  zip-updater:
+    container_name: zip-updater
+    image: deploy:zip-updater
+    depends_on:
+      - fs-server
+    build:
+      dockerfile: dockerfiles/Dockerfile.zip-updater
     volumes:
-      - type: bind
-        source: ./
-        target: /macos-deployment
+      - macdeploy-server:/macdeploy/src
+    stop_grace_period: .5s
     tty: true
     stdin_open: true
-    restart: unless-stopped
+
+volumes:
+  macdeploy-server:
