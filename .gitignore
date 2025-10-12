@@ -10,6 +10,7 @@
 # directories
 .git
 .venv
+.vscode
 dist
 logs
 pkg-files

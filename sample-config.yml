@@ -23,8 +23,8 @@ scripts:
 policies:
   reuse_password: 1
   require_alpha: true
-  requrie_numeric: false
-  min_chararacters: 5
+  require_numeric: false
+  min_characters: 5
   max_characters: 15
   change_on_login: true # REQUIRED true for policies to be applied
 admin: # username and password can be omitted.

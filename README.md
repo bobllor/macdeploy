@@ -70,7 +70,7 @@ Below are the tools and software required on the server before starting the depl
 `zip`, `unzip`, and `curl` are required on the clients. MacBook devices have these installed by default.
 The server only requires `zip` and `unzip`.
 
-### Installation
+### Installation and Setup
 
 ```shell
 git clone REPLACE_ME_HERE && \
@@ -88,109 +88,79 @@ Clone the repository and change the working directory:
 git clone REPLACE_ME_HERE && cd macos-deployment
 ```
 
-Create the Docker images, the deployment binary, and the ZIP file:
+If a specific version is needed: 
 ```shell
-bash scripts/docker_build.sh && bash scripts/go_zip.sh
+git checkout VERSION_TAG
 ```
 
-Create and run the containers:
+Server setup:
 ```shell
-docker compose create && docker compose start
+git clone REPLACE_ME_HERE && \
+cd macos-deployment && \
+bash init.sh && \
+git checkout $(git describe --tags $(git rev-list --tags --max-count=1)) && \
+docker compose build && docker compose up -d
 ```
 
-Alternatively, you can run `docker compose up` to create and start the containers.
-
-**IMPORTANT**: Before usage, it is required to configure the *YAML* configuration file in order
+**IMPORTANT**: Before usage, the *YAML* configuration is required to be created in order
 for the deployment process to work.
-Click [here](#yaml-configuration-file) to get started on the YAML configuration file.
+- Click [here](#yaml-configuration) to get started on the YAML configuration file.
+- A sample configuration is given inside the project's root directory.
+
+`go_zip.sh` located in the `scripts` folder is required to be ran after the YAML configured.
+***Two binaries are generated*** in the `dist` folder and ZIP file after running `go_zip.sh`: 
+`macdeploy` and `x86_64-macdeploy`.
+- `macdeploy` is used for *Apple Silicon* MacBooks.
+- `x86_64-macdeploy` is used for *Intel* MacBooks.
+
+As Intel MacBooks are being phased out, the following examples will be using `macdeploy`, however the 
+commands will be the same if the *Intel* version is used.
 
 ### Usage
 
-The MacBook devices must be connected to the same network as the server.
+The client devices *must be connected to the same network* as the server.
 
-You must have a **YAML configuration file** set up prior to deploying, otherwise there will be issues running the
-deployment process.
-- Run `bash scripts/go_zip.sh` after configuring to setup the ZIP file for deployment.
+***Two binaries are generated*** in the `dist` folder and ZIP file after running `go_zip.sh`: 
+`macdeploy` and `x86_64-macdeploy`.
+- `macdeploy` is used for *Apple Silicon* MacBooks.
+- `x86_64-macdeploy` is used for *Intel* MacBooks.
 
-There are ***two binaries generated*** when running the script: `macdeploy` and `deploy-x86_64.bin`.
-- `macdeploy` is used on *Apple Silicon* MacBooks.
-- `deploy-x86_64.bin` is used on *Intel* MacBooks.
+As Intel MacBooks are being phased out, the following examples will be using `macdeploy`, however the 
+commands will be the same if the *Intel* version is used.
 
-As Intel MacBooks are being phased out, the most often use case would be `macdeploy`.
-
-The binary has three flags that can be used, `-a`, `--exclude`, and `--include`.
-
-### Deployment
-
-Access the ZIP file endpoint to obtain the deployment zip file. 
-Replace the `<YOUR_DOMAIN>` with your domain (by default the server's private IP): 
+Replace `SERVER_IP_DOMAIN` with the IP or domain name to the server.
 ```shell
-curl https://<YOUR_DOMAIN>:5000/api/packages/deploy.zip --insecure -o deploy.zip
-```
-
-Unzip the contents of the ZIP file: 
-```shell
+curl https://SERVER_IP_DOMAIN:5000/api/packages/deploy.zip -o deploy.zip --insecure && \
 unzip deploy.zip
 ```
-This unzips the `dist` directory into the current working directory, which contains all the files for the clients.
+This downloads the ZIP file from the server and unzips the contents into the working directory of the client.
 
-Run the binary to start the deployment process (`deploy-x86_64.bin` if Intel is required):
+To start the deployment process:
 ```shell
 ./dist/macdeploy
 ```
 
-**DISCLAIMER**: It is not possible to fully automate macOS deployments due to Apple's policies.
-Some processes will still require manual interactions.
+The binary supports *flags*, which can be found [here](#deployment-options).
 
-### Deploy Flags
+### Deployment Options
 
-| Flag | Usage | Example |
-| ---- | ---- | ---- |
-| `--admin`, `-a` | Gives admin to the user. If `ignore_admin` is true for a user, this is ignored. | `./dist/macdeploy -a` |
-| `--mount` | Auto mount, unmount, and extraction of DMGs. | `./dist/macdeploy --mount` |
-| `--remove-files` | Cleans up deployment files upon successful completion. | `./dist/macdeploy --remove-files` |
-| `--verbose`, `-v` | Output debug logging to the terminal. | `./dist/macdeploy -v` |
-| `--no-send` | Prevents the log from being sent to the server. | `./dist/macdeploy --no-send` |
-| `--apply-policy` | Applies password policy to the created user. | `./dist/macdeploy --apply-policy` |
-| `--plist` | Apply password policies using a plist path. | `./dist/macdeploy --plist "/tmp/password-plist.plist` |
-| `--exclude <file>` | Excludes a package from installation. | `./dist/macdeploy --exclude "Chrome"` |
-| `--include "<file/installed_file_1/installed_file_2>"` | Include a package to install. | `./dist/macdeploy --include "zoomUSInstaller/zoom.us"` |
+| Options | Description |
+| ---- | ---- |
+| `--admin`, `-a` | Gives admin to a created user. If `ignore_admin` is true in the YAML, this is ignored. |
+| `--mount` | Mounts DMGs and extracts contents into the distribution directory on the client. |
+| `--remove-files` | Removes deployment files upon successful completion. |
+| `--verbose`, `-v` | Output debug logging to the terminal. |
+| `--no-send` | Prevents the log from being sent to the server. |
+| `--plist "./path/to/plist"` | Apply password policies using a plist path. |
+| `--exclude "file"` | Excludes a package from installation. |
+| `--include "<file/installed_file_1/installed_file_2>"` | Include a package to install. |
 
-The `installed_file_1/installed_file_2` of the flag `--include` is the installed file name, i.e. the files
-on the device after installing the package.
+The `installed_file_1/installed_file_2` arguments of the`--include` flag is the installed file name, 
+i.e. the files on the device after installing the package.
 - For example, if `Chrome.pkg` is installed a file will be created named `Google Chrome.app` 
-found inside `/Applications`. To install it and check if it is already installed: 
-`--include "chrome.pkg/google chrome"`.
-
-## Zipping
-
-Upon generation, the ZIP file is placed inside the root directory.
-
-The files that are *zipped* for deployment are located inside the `dist` directory.
-To add files that is used on the client, place the files inside the `dist` directory.
-Directory structure does not matter .
-
-It is *important to update the ZIP file after any changes*, running `bash scripts/go_zip.sh` will update it properly.
-Additionally, there is a Docker container (`cronner`) that periodically runs a cron job every 10 minutes by
-accessing the token-based endpoint to update the ZIP file.
-
-## Logging
-
-The log output location can be defined inside the YAML configuration.
-The value to the log path is expected to be *a directory*, and if a `.log` extension is attached to the
-the file will be dropped, taking the parent.
-- All directories will be created for the log path.
-
-In the event of a failure, the default log output will be set to `~/.macdeploy`.
-
-The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
-- The permissions are 0600 by default.
-
-If the **log file fails to send to the server**, ensure to save this log file if the FileVault key was generated.
-**Any subsequent reruns** will not include the key in new logs if FileVault was successfully enabled. 
-
-Logs from the client and server are found in the `logs` folder in the root directory. 
-The server logs are located in the subdirectory `server-logs`.
+found inside `/Applications`. 
+- To install the package and check if it is already installed: 
+`--include "chrome.pkg/Google Chrome"`.
 
 ## YAML Configuration
 
@@ -208,6 +178,7 @@ packages:
     - "installed file name.app"
   package 2:
     - "fuzzy installed app"
+  excluded package.pkg:
 search_directories:
   - "/Applications" 
   - "/Library/Application Support" 
@@ -217,8 +188,8 @@ scripts:
 policies:
   reuse_password: 1
   require_alpha: true
-  requrie_numeric: false
-  min_chararacters: 5
+  require_numeric: false
+  min_characters: 5
   max_characters: 15
   change_on_login: true # REQUIRED true for policies to be applied
 admin:
@@ -226,80 +197,103 @@ admin:
   password: "ADMIN_PASSWORD"
   apply_policy: true # applies the policies above on the admin account
 server_host: "https://127.0.0.1:5000"
-log_output: "/path/to/log"
+log: "/path/to/log"
 filevault: true
 firewall: true
 ```
 
-The YAML configuration file is used for configuration of the binary.
-The ***YAML should be configured prior to building the binary***.
-It is <u>embedded into the binary</u>, and *any changes will require an update to the binary* 
-via `bash scripts/go_zip.sh`.
+The YAML configuration file is used for configuration of the binary, and must be 
+***configured prior to building the binary***.
+It is *embedded into the binary*, meaning any new updates will require a new binary to be generated
+via `bash scripts/go_zip.sh`. 
 
-The YAML file is not case sensitive, but *must be named `config.*`*. 
-The extension can be any valid YAML extension.
-
-A sample config can be found in the repository or by looking at the top of this section.
-
-***IMPORTANT***: If special characters are used inside a string field, **it must be quoted**.
+The YAML file is not case sensitive, but *must be named `config`* and can end in `.yaml`, `.yml`, `.YAML`, or `.YML`. 
 
 ### YAML Reference
 
 `accounts`: Creates the default users on the client device.
-- `account_name`: A user info map, it can be named anything but *must be unique*. 
-*This is not the admin account*.
-    - `username` (string): The username of the user, this value *must be unique*. If omitted, an input prompt for a
+- `account_name`: It can be named anything but *must be unique*. *This is not the admin account*.
+    - `username`: This value *must be unique*. If omitted, an input prompt for a
     username will be displayed.
-    - `password` (string): The password of the user used to login. Can be omitted, then a password 
-    prompt will appear for input.
-    - `apply_policy` (boolean): Apply password policies to the user from the given values.
-    - `ignore_admin` (boolean): Ignores creating the user as admin if the *admin flag* is used. 
+    - `password`: Can be omitted, a password input prompt will appear.
+    - `apply_policy`: Apply password policies to the user from the given values.
+    - `ignore_admin`: Ignores giving admin to the user if the *admin flag* is used. 
     This is only used for default accounts in the YAML config.
 
-`admin`: A user info map for the main root account of the device, used to automate majority of the workflow.
+`admin`: A user info map for the main root account of the device for automation. 
 It can be omitted for security purposes. 
-  - `username` (string): The username of the admin, it must match the same internal username
-  during the initial account creation. Can be omitted.
+  - `username`: It must match the same internal username during the initial account creation. It can be omitted.
   For example, if the display name is `Admin User` the *internal username* is `adminuser`.
-  - `password` (string): The password of the admin. If omitted, then a prompt for the password is displayed. If 
-  the password fails to validate then the program will not continue.
-  - `apply_policy` (boolean): Apply password policies to the admin. Must be `true` if the admin account requires
+  - `password`: If the password fails to validate then the program will exit. It can be omitted, but will prompt
+  for the password.
+  - `apply_policy`: Apply password policies to the admin. Must be `true` if the admin account requires
   policies applied.
 
-`packages`: Package file names that are being installed from the `pkg-files` directory on the client device.
-  - `package_name` (string): The package file. The `dist` folder will be read to find any files ending in `.pkg`. 
-  The file names can be an exact match or fuzzy matched, but it is recommended to put the full 
-  package name in, e.g. `teamviewer.pkg`. Quotes are required if there are spaces in the package name, 
-  e.g. `"Office 2016.pkg"`.
-    - `installed_file_name` (string): This is the file that is installed when a `.pkg` is successfully installed. 
-    It is *not case sensitive*, and should match the file name in the given search directory. 
-    For example, `Microsoft Word.app` can be found by `"microsoft word"` or `"Word.app"`.
-    Can be omitted in the config but must pass an empty value `-` or `- ""`.
+`packages`: Packages that are being installed from the distribution directory.
+  - `package_name`: All files ending in ending in `.pkg` are retrieved, and will be matched to the given `package_name`. 
+  It is not case sensitive and fuzzy finds, but it is *recommended to match the name in the folder*.
+    - `installed_file_name`: The folder added after installing a `.pkg` file. It is not case sensitive, 
+    and matches the file name in the search directories. 
+    Example: `Microsoft Word.app` can be found by `"microsoft word"` or `"Word.app"`.
+    If omitted then the package will be installed on every attempt.
 
-`scripts`: Array of script names that are to be executed upon the device. These files must be stored inside the
-*distribution folder*. Files ending in the extension `.sh` are searched and executed if the file names are found
-in this array. Ensure that the file has *executable permissions* or it will cause an error.
+`scripts`: Array of script names that are to be executed upon the device. These files are *expected to be in the
+distribution folder. All files ending in `.sh` will be obtained, and this array is used to execute matching scripts.
+Prior to creating the script, ensure that it has the correct permissions.
   
 `policies`: A map of password policies applied to chosen accounts in the config.
-  - `reuse_password` (number): Determines if the user can reuse a password. The number ranges from 0 to 15, with 1
-  being the default. 0 means the current password can be reused, 1 means the current password cannot be reused,
-  and numbers between 2-15 means the user cannot reuse the last N passwords. If more than 15 is given, it will reduce
-  back down to 15.
-  - `require_alpha` (boolean): Requires the password to have at least one letter.
-  - `require_numeric` (boolean): Requires the password to have at least one number.
-  - `min_characters` (number): Minimum characters for the password.
-  - `max_characters` (number): Maxmimum characters for the password. 
-  - `change_on_login` (boolean): Prevents the user from logging in without changing their password. This is
-  **required** in order to apply the password policies.
+  - `reuse_password`: Determines if the user can reuse a password. Ranges from 0 to 15, with 1 being the default. 
+  - `require_alpha`: Requires the password to have at least one letter.
+  - `require_numeric`: Requires the password to have at least one number.
+  - `min_characters`: Minimum characters for the password.
+  - `max_characters`: Maxmimum characters for the password. 
+  - `change_on_login`: Requires a password change before logging in. This is **required** in order 
+  to apply the password policies.
 
-`search_directories` (string array): Array of paths that are used for `installed_file_name` to search for applications.
+`search_directories`: Array of paths that are used for `installed_file_name` to search for applications.
 
-`server_host` (string): The URL of the server, used for client-server communication in HTTPS. 
-By default it is the private IP of the server on port 5000. Any CURL requests must use `--insecure`.
+`server_host`: The IP or domain of the server, used for client-server communication. *This is required* for the
+deployment to work.
 
-`filevault` (boolean): Enable or disable FileVault activation in the deployment.
+`log`: The path to the folder of the log files. By default, it is stored at `~/logs/macdeploy`.
 
-`firewall` (boolean): Enable or disable Firewall activation in the deployment.
+`filevault`: Enable or disable FileVault activation in the deployment.
+
+`firewall`: Enable or disable Firewall activation in the deployment.
+
+## Server and Deployment
+
+### Zipping
+
+Upon generation, the ZIP file is placed inside the `build` directory in the project's root directory.
+
+The files that are *zipped for deployment* are located inside the `dist` directory.
+- This is the location for all packages, scripts, DMGs, and any other files that need to be on the 
+client device.
+
+Directory structure does not matter in `dist`, but it is recommended to create separate directories in order
+to keep them organized and prevent naming conflicts. Additionally, some *packages may require config files* along
+side the installer.
+- During deployment files paths are obtained recursively.
+
+It is *important to update the ZIP file after any changes*, running `bash scripts/go_zip.sh` will update it properly.
+Additionally, there is another Docker container that periodically runs a loop by default every 30 minutes.
+
+### Logging
+
+The log output location can be defined inside the YAML configuration with the field `log`.
+
+The value to the log path is expected to be *a directory*, and if a `.log` extension is attached to the
+the file will be dropped, taking the parent directory instead.
+- All parent directories are created.
+
+In the event of a failure, the default log output will be set to `~/logs/macdeploy`.
+
+The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
+- The permissions are 0600 by default.
+
+Logs from the client and server are found in the `logs` folder in the project's root directory. 
+The server logs are located in the subdirectory `server-logs`.
 
 ## Limitations and Security
 
