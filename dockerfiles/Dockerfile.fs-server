@@ -27,6 +27,6 @@ RUN openssl req -x509 -newkey rsa:4096 -keyout ${HOME}/ca/key.pem \
 
 EXPOSE ${PORT}
 
-CMD /bin/bash -c "python3 -m gunicorn --workers=6 \ 
+CMD /bin/bash -c "python3 -m gunicorn \ 
 --bind=0.0.0.0:5000 --keyfile $HOME/ca/key.pem \
 --certfile $HOME/ca/cert.pem 'src.server.app:create_app()'"

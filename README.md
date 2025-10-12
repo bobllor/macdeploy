@@ -17,11 +17,11 @@ Looking to automate MacBook deployments? No MDM? No JAMF? No problem!
 
 *MacDeploy* is a light-weight server and CLI automation tool used to deploy MacBooks with minimal manual interactions 
 needed. It features:
-- Automation of package installation, DMG extraction, user creation, admin tools, logging, and more.
+- Automation of package installation, DMG extraction, user creation, admin tools, script executions, and more.
 - A lightweight file server to facilitate client-server communication and file distributing.
 - Automated storage of the FileVault key to the server upon generation.
 - Password policies for user created accounts.
-- Portability of server deployment on any Linux or MacBook device.
+- Portability of server deployment on any Linux or MacBook server.
 - Uses a self-signed certificate to enable HTTPS for encryption.
 - Customizable YAML configuration.
 
@@ -56,7 +56,7 @@ There is no additional security implemented to handle a public facing server.
 
 ### Prerequisites
 
-The server must **run on a macOS or Linux** operating system.
+The server must **run on a macOS, Unix, or Linux** operating system.
 Windows is not supported (WSL is fine).
 
 Below are the tools and software required on the server before starting the deployment process.
@@ -68,16 +68,20 @@ Below are the tools and software required on the server before starting the depl
 - `unzip`
 
 `zip`, `unzip`, and `curl` are required on the clients. MacBook devices have these installed by default.
+The server only requires `zip` and `unzip`.
 
 ### Installation
 
-One-liner for installation.
 ```shell
 git clone REPLACE_ME_HERE && \
 cd macos-deployment && \
 bash scripts/docker_build.sh && bash scripts/go_zip.sh && \
 docker compose create && docker compose start
 ```
+
+For specific version you can use `git checkout $(git describe --tags $(git rev-list --tags --max-count=1))` 
+for the latest release (recommended).
+- If you need a specific version: `git checkout <TAG_VERSION>`/
 
 Clone the repository and change the working directory: 
 ```shell
@@ -326,3 +330,6 @@ Special thanks to these resources:
 - [Cobra CLI](https://github.com/spf13/cobra)
 - [Go YAML](https://github.com/goccy/go-yaml)
 - [MD Badges](https://github.com/inttter/md-badges)
+- [Flask](https://github.com/pallets/flask)
+- [Gunicorn](https://github.com/benoitc/gunicorn)
+- and various other Python libraries.

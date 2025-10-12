@@ -1,5 +1,3 @@
-import multiprocessing
-
 preload_app = True # i got this from a stack overflow in regards to thread locks.
 loglevel = "info"
-workers = (multiprocessing.cpu_count() * 2) + 1
+workers = 4 # there is no need to go over 4 workers, it is overkill. YMMV
