@@ -269,8 +269,39 @@ var rootCmd = &cobra.Command{
 			root.startFirewall(root.dep.firewall)
 		}
 
-		// if a filevault key is present, always send regardless of flag usage
-		if filevaultPayload.Key != "" || !root.NoSend {
+		request := requests.NewRequest(root.log)
+
+		if filevaultPayload.Key != "" {
+			root.log.Info.Log("Sending FileVault key to the server")
+
+			err = root.startRequest(filevaultPayload, request, "/api/fv")
+			if err != nil {
+				root.log.Error.Log("Failed to send to data to server: %v", err)
+				root.log.Error.Log("The log file contains the generated FileVault key")
+
+				err = root.log.WriteFile()
+				if err != nil {
+					fmt.Printf("Failed to write to log file: %v\n", err)
+				}
+
+				root.errors.ServerFailed = true
+
+				return
+			}
+		} else {
+			fvStatus, err := root.dep.filevault.Status()
+			if err != nil {
+				root.log.Error.Log("Failed to check FileVault status %v", err)
+			} else {
+
+				if !fvStatus {
+					root.log.Warn.Log("FileVault key failed to generate.")
+				} else {
+					root.log.Info.Log("FileVault is already enabled.")
+				}
+			}
+		}
+		if !root.NoSend {
 			root.log.Info.Log("Sending log file to the server")
 
 			err = root.log.WriteFile()
@@ -278,44 +309,11 @@ var rootCmd = &cobra.Command{
 				fmt.Printf("Failed to write to log file: %v\n", err)
 			}
 
-			request := requests.NewRequest(root.log)
-
-			if filevaultPayload.Key != "" {
-				root.log.Info.Log("Sending FileVault key to the server")
-
-				err = root.startRequest(filevaultPayload, request, "/api/fv")
-				if err != nil {
-					root.log.Error.Log("Failed to send to data to server: %v", err)
-					root.log.Error.Log("The log file contains the generated FileVault key")
-
-					err = root.log.WriteFile()
-					if err != nil {
-						fmt.Printf("Failed to write to log file: %v\n", err)
-					}
-
-					root.errors.ServerFailed = true
-
-					return
-				}
-			}
-
 			logPayload.Body = string(root.log.GetContent())
 			err = root.startRequest(logPayload, request, "/api/log")
 			if err != nil {
 				root.log.Error.Log("Failed to send to data to server: %v", err)
-
-				if filevaultPayload.Key != "" {
-					root.log.Error.Log("The log file must be saved in order not to lose the generated FileVault key")
-				}
-
-				root.errors.ServerFailed = true
-
-				return
 			}
-
-		} else if filevaultPayload.Key == "" && root.NoSend {
-			root.log.Info.Log("No FileVault key generated")
-			root.log.Debug.Log("Skipping sending logs to server, flag --no-send: %v", root.NoSend)
 		}
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
@@ -345,7 +343,7 @@ var rootCmd = &cobra.Command{
 
 				reader := bufio.NewReader(os.Stdin)
 
-				fmt.Println("The logs have failed to send to the server.")
+				fmt.Println("The FileVault key failed to send to the server.")
 				fmt.Println("You can re-run the binary to try again.")
 				for !validation(choice, validChoices) {
 					fmt.Print("Remove all deployment files? [y/N]: ")
@@ -539,7 +537,7 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 			return errors.New("payload failed to send to server")
 		}
 
-		r.log.Info.Log("Successfully sent log file to server")
+		r.log.Info.Log("Successfully sent file to server")
 	} else {
 		r.log.Warn.Log("Unable to connect to host, manual interactions needed")
 
