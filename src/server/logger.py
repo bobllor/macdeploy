@@ -20,7 +20,7 @@ class Log(Logger):
     def __init__(self, 
     name: str = __name__,
     *, 
-    log_path: Path | str,
+    log_path: Path | str = Vars.SERVER_LOG_PATH.value,
     levels: LogLevelOptions = {},
     logfmt: str = "%(asctime)s:%(filename)s:%(name)s [%(levelname)s] %(message)s",
     datefmt: str = DEFAULT_DATEFMT):
@@ -32,7 +32,7 @@ class Log(Logger):
                 The name of the logger. By default, it uses the __name__ variable, or
                 in other words __main__.
             
-            log_path: Path | str
+            log_path: Path | str, default `./logs/server`
                 The log file name. By default it names the logs based on the current date
                 and is stored in the logs folder, for example: `logs/server-2025-05-05/server-2000-11-01.log`.
             
