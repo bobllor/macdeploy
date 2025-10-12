@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Build and start Docker
+      - name: Build and start containers
         run: |
           docker compose build
           docker compose up -d
-      - name: Check Docker status
+      - name: Check container status
         run: |
           sleep 2
           containers=$(docker compose ps | grep -E "deploy:*")
@@ -22,5 +22,7 @@ jobs:
             echo "Failed to start containers"
             exit 1
           fi
+          echo "Successfully started containers"
+          echo $containers
       - name: Cleanup
         run: docker compose down -v
