@@ -107,7 +107,7 @@ var rootCmd = &cobra.Command{
 
 		// by default we will put in the home directory if none is given
 		logDirectory := config.Log
-		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs")
+		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs/macdeploy")
 		if logDirectory == "" {
 			logDirectory = defaultLogDir
 		} else {
