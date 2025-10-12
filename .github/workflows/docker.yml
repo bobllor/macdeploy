@@ -14,4 +14,13 @@ jobs:
         run: |
           docker compose build
           docker compose up -d
-          docker compose down -v
+      - name: Check Docker status
+        run: |
+          sleep 2
+          containers=$(docker compose ps | grep -E)
+          if [[ -z "$val" ]]; then
+            echo "Failed to start containers"
+            exit 1
+          fi
+      - name: Clean up
+        run: docker compose down -v
