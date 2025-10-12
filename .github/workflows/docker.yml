@@ -18,9 +18,9 @@ jobs:
         run: |
           sleep 2
           containers=$(docker compose ps | grep -E "deploy:*")
-          if [[ -z "$val" ]]; then
+          if [[ -z "$containers" ]]; then
             echo "Failed to start containers"
             exit 1
           fi
-      - name: Clean up
+      - name: Cleanup
         run: docker compose down -v
