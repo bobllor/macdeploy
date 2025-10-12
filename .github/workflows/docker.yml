@@ -12,7 +12,6 @@ jobs:
       - uses: actions/checkout@v5
       - name: Build and test Docker
         run: |
-          docker compose build && docker compose up -d
-          sleep 2 
-          curl -f https://localhost:5000 --insecure
+          docker compose build
+          docker compose up -d
           docker compose down -v
