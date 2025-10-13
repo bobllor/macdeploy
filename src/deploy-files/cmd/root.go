@@ -280,7 +280,7 @@ var rootCmd = &cobra.Command{
 			err = root.startRequest(filevaultPayload, request, "/api/fv")
 			if err != nil {
 				root.log.Error.Log("Failed to send to data to server: %v", err)
-				root.log.Error.Log("The log file contains the generated FileVault key")
+				fmt.Printf("The key must be saved manually: %s", filevaultPayload.Key)
 
 				err = root.log.WriteFile()
 				if err != nil {
