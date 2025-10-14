@@ -71,7 +71,7 @@ class Process:
                         
                 # if key is empty then the there are files inside the serial tag that isn't the key.
                 if prev_key != "": 
-                    key_log = f"Replaced existing key {prev_key} with {key}"
+                    key_log = f"Replaced existing entry for {serial}"
 
                     self.log.info(f"{key_log}")
                     utils.unlink_children(path=key_entry.parent)
@@ -163,5 +163,5 @@ class Process:
   
     def _create_entry(self, path: Path) -> None:
         '''Creates the given Path object with its parents.'''
-        path.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()

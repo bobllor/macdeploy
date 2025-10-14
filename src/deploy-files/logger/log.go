@@ -114,7 +114,7 @@ func (l *Logger) Logf(format string, v ...any) {
 // Any path ending in .log will only use the parent.
 func FormatLogPath(logPath string) string {
 	home := os.Getenv("HOME")
-	defaultPath := home + "/logs"
+	defaultPath := home + "/logs/macdeploy"
 	// just in case backslash is used for some reason. windows is not supported.
 	// honestly maybe this should throw an error in a config validation
 	logPath = strings.TrimSpace(strings.ReplaceAll(logPath, "\\", "/"))

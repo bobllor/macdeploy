@@ -107,7 +107,7 @@ var rootCmd = &cobra.Command{
 
 		// by default we will put in the home directory if none is given
 		logDirectory := config.Log
-		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs")
+		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs/macdeploy")
 		if logDirectory == "" {
 			logDirectory = defaultLogDir
 		} else {
@@ -174,12 +174,6 @@ var rootCmd = &cobra.Command{
 		}
 
 		root.startAccountCreation(root.dep.usermaker, root.dep.filevault, root.AdminStatus)
-		// apply policies to the admin account
-		if root.config.Admin.ApplyPolicy {
-			policyString := root.config.Policy.BuildCommand()
-
-			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
-		}
 
 		err = root.log.WriteFile()
 		if err != nil {
@@ -269,6 +263,15 @@ var rootCmd = &cobra.Command{
 			root.startFirewall(root.dep.firewall)
 		}
 
+		// if admin is applied policies, it must be after all the sudo commands.
+		// unsure why, but from my testing it fails the filevault command when it was applied
+		// prior to running the command.
+		if root.config.Admin.ApplyPolicy {
+			policyString := root.config.Policy.BuildCommand()
+
+			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
+		}
+
 		request := requests.NewRequest(root.log)
 
 		if filevaultPayload.Key != "" {
@@ -277,7 +280,7 @@ var rootCmd = &cobra.Command{
 			err = root.startRequest(filevaultPayload, request, "/api/fv")
 			if err != nil {
 				root.log.Error.Log("Failed to send to data to server: %v", err)
-				root.log.Error.Log("The log file contains the generated FileVault key")
+				fmt.Printf("The key must be saved manually: %s", filevaultPayload.Key)
 
 				err = root.log.WriteFile()
 				if err != nil {
