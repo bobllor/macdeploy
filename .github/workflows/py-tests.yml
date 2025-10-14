@@ -6,13 +6,13 @@ on:
     paths:
       - '**.py'
     paths-ignore:
-      - '**.yml'
+      - 'sample**'
       - '**.md'
   pull_request:
     paths:
       - '**.py'
     paths-ignore:
-      - '**.yml'
+      - 'sample**'
       - '**.md'
 
 jobs:

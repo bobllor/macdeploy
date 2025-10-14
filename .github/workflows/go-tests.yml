@@ -5,13 +5,13 @@ on:
     paths:
       - '**.go'
     paths-ignore:
-      - '**.yml'
+      - 'sample**'
       - '**.md'
   pull_request:
     paths:
       - '**.go'
     paths-ignore:
-      - '**.yml'
+      - 'sample**'
       - '**.md'
 
 jobs:
