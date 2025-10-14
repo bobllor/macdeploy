@@ -81,7 +81,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			// TODO: make this a better error message (incorrect keys, required keys missing, etc)
 			fmt.Printf("Error parsing YAML configuration, %v\n", err)
-			return
+			os.Exit(1)
 		}
 
 		// checking if admin info was given or not
@@ -278,7 +278,7 @@ var rootCmd = &cobra.Command{
 			err = root.startRequest(filevaultPayload, request, "/api/fv")
 			if err != nil {
 				root.log.Error.Log("Failed to send to data to server: %v", err)
-				fmt.Printf("The key must be saved manually: %s", filevaultPayload.Key)
+				fmt.Printf("The key must be saved manually: %s\n", filevaultPayload.Key)
 
 				err = root.log.WriteFile()
 				if err != nil {
@@ -315,7 +315,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		// firewall must be last, upon activation everything connections are blocked, including this.
+		// firewall must be last, upon activation all connections are blocked/reset, including the deployment.
 		// fun fact: i forgot i fixed this issue 4 months ago, and brought it back.
 		if root.config.Firewall {
 			root.startFirewall(root.dep.firewall)
