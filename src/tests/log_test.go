@@ -85,8 +85,13 @@ func TestLogSpecialFormat(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// NOTE: let's be a bit careful on this if this is changed.
+	// yes, i do not want to try to implement this correctly.
+	defaultLogs := os.Getenv("HOME") + "/logs/macdeploy"
+
 	baseline := []string{
 		os.Getenv("HOME") + "/logs",
+		defaultLogs,
 		wd, "./...",
 	}
 
