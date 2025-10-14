@@ -4,9 +4,15 @@ on:
   push: 
     paths:
       - '**.go'
+    paths-ignore:
+      - '**.yml'
+      - '**.md'
   pull_request:
     paths:
       - '**.go'
+    paths-ignore:
+      - '**.yml'
+      - '**.md'
 
 jobs:
   build:

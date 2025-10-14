@@ -5,9 +5,15 @@ on:
   push: 
     paths:
       - '**.py'
+    paths-ignore:
+      - '**.yml'
+      - '**.md'
   pull_request:
     paths:
       - '**.py'
+    paths-ignore:
+      - '**.yml'
+      - '**.md'
 
 jobs:
   build-and-test:
