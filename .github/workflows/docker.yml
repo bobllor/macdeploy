@@ -5,9 +5,13 @@ on:
   push: 
     paths:
       - '**.py'
+      - '!**.yml'
+      - '!**.md'
   pull_request:
     paths:
       - '**.py'
+      - '!**.yml'
+      - '!**.md'
 
 jobs:
   build-and-test:

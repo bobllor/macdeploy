@@ -22,6 +22,7 @@ type RootData struct {
 	AdminStatus     bool
 	RemoveFiles     bool
 	Verbose         bool
+	Debug           bool
 	NoSend          bool
 	Mount           bool
 	ExcludePackages []string
@@ -129,8 +130,9 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		log := logger.NewLog(serialTag, logDirectory, root.Verbose)
+		log := logger.NewLog(serialTag, logDirectory, root.Verbose, root.Debug)
 		log.Info.Log("Starting deployment for %s", metadata.SerialTag)
+		fmt.Printf("Starting deployment for %s\n", metadata.SerialTag)
 		log.Debug.Log("Log directory: %s", logDirectory)
 
 		// dependency initializations
@@ -394,7 +396,9 @@ func InitializeRoot() {
 	rootCmd.Flags().BoolVar(
 		&root.RemoveFiles, "remove-files", false, "Remove the deployment files on the device upon successful execution")
 	rootCmd.Flags().BoolVarP(
-		&root.Verbose, "verbose", "v", false, "Displays the debug output to the terminal")
+		&root.Verbose, "verbose", "v", false, "Displays the info output to the terminal")
+	rootCmd.Flags().BoolVar(
+		&root.Debug, "debug", false, "Displays the debug output to the terminal")
 	rootCmd.Flags().BoolVar(
 		&root.NoSend, "no-send", false, "Prevent the log file from being sent to the server")
 	rootCmd.Flags().BoolVar(
@@ -578,6 +582,7 @@ func (r *RootData) startCleanup(filesToRemove map[string]struct{}) {
 func (r *RootData) applyPasswordPolicy(policyString string, username string) {
 	out := ""
 	var err error
+	// if a plist is given, it takes precendent over the policies defined in the config
 	if r.PlistPath == "" {
 		r.log.Debug.Log("Policy string: %s | User: %s", policyString, username)
 		out, err = root.config.Policy.SetPolicy(policyString, username)

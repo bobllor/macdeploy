@@ -27,7 +27,7 @@ type Logger struct {
 }
 
 // NewLog creates a Log struct for logging.
-func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
+func NewLog(serialTag string, logDirectory string, verbose bool, debug bool) *Log {
 	date := time.Now().Format("2006-01-02T15-04-05")
 
 	logFile := fmt.Sprintf("%s.%s.log", date, serialTag)
@@ -36,10 +36,17 @@ func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
 	buf := bytes.NewBuffer([]byte{})
 	flag := log.Ltime | log.Lmsgprefix
 
-	// debug will always be silent unless verbose is used.
-	verboseDebug := true
+	// logging will always be silent (true) unless the flags (args) are true.
+	verboseBool := true
+	debugBool := true
+
 	if verbose {
-		verboseDebug = false
+		verboseBool = false
+	}
+	// if debug is true then it will always take precedent over verbose.
+	if debug {
+		debugBool = false
+		verboseBool = debugBool
 	}
 
 	log := Log{
@@ -49,9 +56,12 @@ func NewLog(serialTag string, logDirectory string, verbose bool) *Log {
 		logDirectory: logDirectory,
 		Debug: Logger{
 			logger: log.New(buf, "[DEBUG] ", flag),
-			silent: verboseDebug,
+			silent: debugBool,
 		},
-		Info:  Logger{logger: log.New(buf, "[INFO] ", flag)},
+		Info: Logger{
+			logger: log.New(buf, "[INFO] ", flag),
+			silent: verboseBool,
+		},
 		Error: Logger{logger: log.New(buf, "[ERROR] ", flag)},
 		Warn:  Logger{logger: log.New(buf, "[WARNING] ", flag)},
 	}

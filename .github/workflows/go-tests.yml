@@ -1,12 +1,17 @@
 name: go-deployment-test
 
 on:
+  workflow_dispatch:
   push: 
     paths:
       - '**.go'
+      - '!**.yml'
+      - '!**.md'
   pull_request:
     paths:
       - '**.go'
+      - '!**.yml'
+      - '!**.md'
 
 jobs:
   build:

@@ -24,9 +24,10 @@ var filePerms = utils.Perms{
 func GetLogger(t *testing.T) *testLogger {
 	tempDir := t.TempDir()
 	serialTag := "SERIAL_TAG"
-	verbose := false
+	verbose := true
 
-	logger := logger.NewLog(serialTag, tempDir+"/logs", verbose)
+	// using verbose twice for debug as well.
+	logger := logger.NewLog(serialTag, tempDir+"/logs", verbose, verbose)
 
 	testLogger := testLogger{
 		Log:              logger,
