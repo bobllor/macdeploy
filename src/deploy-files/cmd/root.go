@@ -582,6 +582,7 @@ func (r *RootData) startCleanup(filesToRemove map[string]struct{}) {
 func (r *RootData) applyPasswordPolicy(policyString string, username string) {
 	out := ""
 	var err error
+	// if a plist is given, it takes precendent over the policies defined in the config
 	if r.PlistPath == "" {
 		r.log.Debug.Log("Policy string: %s | User: %s", policyString, username)
 		out, err = root.config.Policy.SetPolicy(policyString, username)

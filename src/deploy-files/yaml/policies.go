@@ -16,7 +16,7 @@ type Policies struct {
 }
 
 // NOTE: i am using pwpolicy -setpolicy for these and is "deprecated", but the user can
-// override these policies and its logic by using --apply-policy "<path/to/plist>".
+// override these policies and its logic by using --plist "<path/to/plist>".
 // expiration dates are not used because pwpolicy has a bug setting date values.
 // i'll probably look into plist sometime in the future, but it is complicated and not documented well.
 
