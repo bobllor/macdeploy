@@ -7,16 +7,16 @@ accounts:
     apply_policy: true
 packages:
   package_1.pkg:
-    - "package 1 installed.app"
+    - "package 1.app"
   package 2:
-    - "package_2 folder"
+    - "package_2"
 search_directories:
   - "/Applications" 
   - "/Library/Application Support" 
 scripts:
   pre: # execute scripts before the deployment starts
     - "change_timezone.sh"
-  inter: # execute scripts during the deployment, right after packages/dmg/app parsing
+  inter: # execute scripts during the deployment, right after packages installation.
     - "add_all_users.sh"
   post: # execute scripts after the deployment finishes
     - "custom_remove_files.sh"
