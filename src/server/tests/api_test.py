@@ -117,25 +117,25 @@ def test_create_zip_race(tmp_path: Path, client: FlaskClient):
         response: TestResponse = client.get(api)
         responses.append(response)
 
+    content: str = ""
+    status: str = ""
     race_status: bool = False
     for _ in range(3): 
+        if race_status:
+            break
+
         threads: list[Thread] = [Thread(target=get) for _ in range(2)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
 
-        content: str = ""
-        status: str = ""
         for res in responses:
             if res.status_code != 200:
                 d: dict[str, Any] = json.loads(res.data)
                 content = d["content"]
                 status = d["status"]
                 race_status = True
-        
-        if race_status:
-            break
     
     if not race_status:
         raise AssertionError(f"Max attempts reached for race condition, failed to test: {race_status}")
