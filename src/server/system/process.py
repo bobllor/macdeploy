@@ -73,9 +73,9 @@ class Process:
                 if prev_key != "": 
                     key_log = f"Replaced existing entry for {serial}"
 
-                    self.log.info(f"{key_log}")
                     utils.unlink_children(path=key_entry.parent)
                     self._create_entry(key_entry)
+                    self.log.info(f"Replaced existing key {prev_key} with {key}")
                 elif prev_key == key:
                     key_log = "Key already exists in entry"
                     return utils.generate_response(
