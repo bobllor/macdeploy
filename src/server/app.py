@@ -38,12 +38,12 @@ def create_app(config_arg: Config = None) -> Flask:
             config[key] = val
 
     app.config.update(config)
-    logger: Log = Log(log_path=config["log_server_path"], levels=config["log_levels"])
+    logger: Log = Log(log_path=config["log_server_path"], levels=app.config["log_levels"])
     setLoggerClass(Log)
 
-    updater: ZipUpdater = ZipUpdater(log=logger, config=config)
-    processor: Processor = Processor(log=logger, config=config)
-    requestors: Requestors = Requestors(log=logger, config=config)
+    updater: ZipUpdater = ZipUpdater(config=app.config)
+    processor: Processor = Processor(config=app.config)
+    requestors: Requestors = Requestors(config=app.config)
 
     app.register_blueprint(updater.get_blueprint())
     app.register_blueprint(processor.get_blueprint())

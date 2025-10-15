@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from logger import Log
+from logging import Logger, getLogger
 from system.zipper import Zip
 from typing import Any
 from app_types import Config
@@ -7,18 +7,15 @@ import secrets
 import system.utils as utils
 
 class ZipUpdater():
-    def __init__(self, *, log: Log, config: Config):
+    def __init__(self, *, config: Config):
         '''ZIP updating class blueprint.
         
         Parameters
         ----------
-            logger: Log
-                The Logging object used to log the server.
-            
             config: Config
                 A dictionary of configuration settings.
         '''
-        self.logger: Log = log
+        self.logger: Logger = getLogger("Log")
         self.config: Config = config
 
     def get_blueprint(self) -> Blueprint:

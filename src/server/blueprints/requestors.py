@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, send_file
 from system.vars import Vars
 from pathlib import Path
-from logger import Log
+from logging import Logger, getLogger
 from concurrent.futures import ThreadPoolExecutor, Future
 from multiprocessing import Lock as Lock_
 from multiprocessing.synchronize import Lock
@@ -10,18 +10,15 @@ from app_types import Config
 import system.utils as utils
 
 class Requestors():
-    def __init__(self, *, log: Log, config: Config):
+    def __init__(self, *, config: Config):
         '''Default GET request routes blueprint.
         
         Parameters
         ----------
-            logger: Log
-                The Logging object used to log the server.
-            
             config: Config
                 A dictionary of configuration settings.
         '''
-        self.logger: Log = log
+        self.logger: Logger = getLogger("Log")
         self.config: Config = config
 
         self.lock: Lock = Lock_()
