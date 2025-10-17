@@ -2,7 +2,10 @@ FROM debian:bookworm-slim AS zip-updater
 
 ARG USER=updater
 ARG GROUP=${USER}
+ARG TIMER=2H
+
 ENV HOME=/home/${USER}
+ENV TIMER=${TIMER}
 
 RUN groupadd ${GROUP} && useradd ${USER} -g ${GROUP}
 RUN mkdir ${HOME} && chown ${USER}:${GROUP} ${HOME}
@@ -16,4 +19,4 @@ RUN chown -R ${USER}:${GROUP} ${HOME}
 WORKDIR ${HOME}
 USER ${USER}
 
-CMD [ "bash", "zip_updater.sh" ]
+CMD /bin/bash -c "./zip_updater.sh ${TIMER}"
