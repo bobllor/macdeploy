@@ -25,12 +25,20 @@ jobs:
       - name: Check container status
         run: |
           sleep 2
-          containers=$(docker compose ps | grep -E "deploy:*")
-          if [[ -z "$containers" ]]; then
-            echo "Failed to start containers"
+          python_container=$(docker compose ps | grep -E "python-fs")
+          if [[ -z "$python_container" ]]; then
+            echo "Failed to start Python container"
             exit 1
           fi
+          echo $python_container
+
+          zip_container=$(docker compose ps | grep -E "zip-updater")
+          if [[ -z "$zip_container" ]]; then
+            echo "Failed to start ZIP container"
+            exit 1
+          fi
+          echo $zip_container
+
           echo "Successfully started containers"
-          echo $containers
       - name: Cleanup
         run: docker compose down -v

@@ -286,8 +286,6 @@ var rootCmd = &cobra.Command{
 				}
 
 				root.errors.ServerFailed = true
-
-				return
 			}
 		} else {
 			fvStatus, err := root.dep.filevault.Status()
@@ -315,10 +313,16 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		// firewall must be last, upon activation all connections are blocked/reset, including the deployment.
-		// fun fact: i forgot i fixed this issue 4 months ago, and brought it back.
+		// firewall must be last, all outbound connections are blocked upon activation.
+		// fun fact: i forgot i fixed this issue 4 months ago in a bash only script, and brought it back.
 		if root.config.Firewall {
 			root.startFirewall(root.dep.firewall)
+
+			// this is not sent with logs due to the connection reset, it will be available on the client.
+			err = root.log.WriteFile()
+			if err != nil {
+				fmt.Printf("Failed to write to log file: %v\n", err)
+			}
 		}
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
@@ -455,7 +459,7 @@ func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.Fi
 func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDirectoryFiles []string) {
 	err := handler.InstallRosetta()
 	if err != nil {
-		r.log.Error.Logf("Failed to install Rosetta: %v", err)
+		r.log.Error.Logf("Failed to install Rosetta: %v\n", err)
 		return
 	}
 
@@ -485,7 +489,7 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 	// doesn't matter if it fails, an attempt will always occur.
 	fvStatus, err := filevault.Status()
 	if err != nil {
-		r.log.Warn.Logf("Failed to check FileVault status: %v", err)
+		r.log.Warn.Logf("Failed to check FileVault status: %v\n", err)
 	}
 
 	if !fvStatus {
@@ -502,11 +506,10 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 func (r *RootData) startFirewall(firewall *core.Firewall) {
 	fwStatus, err := firewall.Status()
 	if err != nil {
-		firewallErrMsg := strings.TrimSpace(fmt.Sprintf("Failed to execute Firewall script | %v", err))
-		r.log.Error.Logf(firewallErrMsg, 3)
+		r.log.Error.Logf("Failed to execute firewall: %v\n", err)
 	}
 
-	r.log.Debug.Logf("Firewall status: %t", fwStatus)
+	r.log.Debug.Logf("Firewall status: %t\n", fwStatus)
 
 	if !fwStatus {
 		err = firewall.Enable()
@@ -524,7 +527,7 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 
 	serverStatus, err := request.VerifyConnection(r.config.ServerHost)
 	if err != nil {
-		r.log.Error.Logf("Error reaching host: %v", err)
+		r.log.Error.Logf("Error reaching host: %v\n", err)
 
 		return err
 	}
@@ -567,7 +570,7 @@ func (r *RootData) startCleanup(filesToRemove map[string]struct{}) {
 
 	// just in case this is ran in the main project directory.
 	if strings.Contains(currDir, r.metadata.ProjectName) {
-		fmt.Printf("project directory is forbidden, clean up aborted %v\n", currDir)
+		fmt.Printf("Project directory is forbidden, clean up aborted %v\n", currDir)
 		return
 	}
 
@@ -614,12 +617,17 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 			continue
 		}
 
+		fmt.Printf("Running script %s\n", scriptFile)
 		out, err := r.dep.filehandler.ExecuteScript(scriptFile, scriptPaths)
 		if err != nil {
-			r.log.Error.Log("%v, output: %s", err, out)
+			r.log.Error.Log("Failed to run %s: %v", scriptFile, err)
+			r.log.Error.Log("%s: %s", scriptFile, out)
 			continue
 		}
 
-		r.log.Info.Log("Output: %s", out)
+		r.log.Info.Log("Ran script %s: %s", scriptFile, out)
+		if out != "" {
+			fmt.Printf("%s: %s\n", scriptFile, out)
+		}
 	}
 }

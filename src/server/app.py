@@ -39,7 +39,7 @@ def create_app(config_arg: Config = None) -> Flask:
 
     app.config.update(config)
     logger: Log = Log(log_path=config["log_server_path"], levels=app.config["log_levels"])
-    setLoggerClass(Log)
+    logger.set_logger()
 
     updater: ZipUpdater = ZipUpdater(config=app.config)
     processor: Processor = Processor(config=app.config)
