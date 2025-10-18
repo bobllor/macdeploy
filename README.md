@@ -19,7 +19,7 @@ Looking to automate MacBook deployments? No MDM? No JAMF? No problem!
 needed. It features:
 - Automation of package installation, DMG extraction, user creation, admin tools, script executions, and more.
 - A lightweight file server to facilitate client-server communication and file distributing.
-- Automated storage of the FileVault key to the server upon generation.
+- Automated storage of the FileVault key to the server when generation.
 - Password policies for user created accounts.
 - Uses HTTPS for encrypted communications.
 - Customizable YAML configuration.
@@ -129,12 +129,13 @@ The binary supports *flags* options which can be found [here](#deployment-option
 | Options | Description |
 | ---- | ---- |
 | `--admin`, `-a` | Gives admin to a created user. If `ignore_admin` is true in the YAML, this is ignored. |
-| `--mount` | Mounts DMGs and extracts contents into the distribution directory on the client. |
+| `--skip-local`, `-s` | Skips the creation of the local user account, if configured in the YAML. |
+| `--create-local`, `-c` | Enables the local user account creation process. |
 | `--remove-files` | Removes deployment files upon successful completion. |
 | `--verbose`, `-v` | Output info level logging to the terminal. |
-| `--debug` | Output debug level logging to the terminal. |
+| `--debug` | Output debug level logging to the terminal, this includes info level logging. |
 | `--no-send` | Prevents the log from being sent to the server. |
-| `--plist "./path/to/plist"` | Apply password policies using a plist path. |
+| `--pwlist "/path/to/plist"` | Apply password policies using a plist path. |
 | `--exclude "file"` | Excludes a package from installation. |
 | `--include "<file/installed_file_1/installed_file_2>"` | Include a package to install. |
 
@@ -212,26 +213,60 @@ occurs.
 
 ## Server and Deployment
 
+### Gunicorn Configuration
+
+In the root directory is the `gunicorn.conf.py` file, the configuration for the server.
+By default there are three values defined: the preload status, log level, and number of workers.
+- It is recommended to keep the preload status enabled, ensuring the thread locks work during the ZIP file update.
+- The worker amounts defaults to four. Additional workers beyond that are unnecessary, depending on the amount of device
+deployments.
+
+These can be modified as needed, based on the [Gunicorn's documentation](https://docs.gunicorn.org/en/stable/settings.html).
+
+
+Any changes to the configuration *will require a reset of the server*, but does not require the containers to be rebuilt.
+
 ### Zipping
 
-Upon generation, the ZIP file is placed inside the `build` directory in the project's root directory.
+When generated, the ZIP file is placed inside the `build` directory in the project's root directory.
 
-The files that the *deployment binary reads from* are expected to be inside the `dist` directory.
-- This is the location for all packages, scripts, DMGs, and any other files that need to be on the 
-client device.
+The *deployment binary reads all files* in the `dist` directory.
+- This is the folder for all packages, scripts, DMGs, etc. that need to be on the client device.
 
-Directory structure does not matter in `dist`, but it is recommended to create separate directories in order
-to keep them organized and prevent naming conflicts. Additionally, some *packages may require config files* in the same
-directory as the installer.
+Directory structure does not matter in `dist`. It is recommended to create separate directories in order
+to prevent naming conflicts. Some *packages may require config files* alongside the installer, which the folders
+ensure separation.
 - During deployment, all files are obtained recursively.
 
 It is *important to update the ZIP file after any changes*, running `bash scripts/go_zip.sh` will generate a new ZIP file
 and deployment binaries.
-Additionally, there is a Docker container that periodically runs a loop accessing an API to update every 30 minutes.
+
+### Server Zipping
+
+The server contains an endpoint used for updating and creating (if missing) the ZIP file. 
+This is intended for use with the `zip-updater` container in Docker.
+- The ZIP file update/creation *works similar to* the `zip` command on Linux.
+
+It *does not create the binary*, the binary is generated via `bash scripts/go_zip.sh`.
+
+The container accesses the endpoint *every 2 hours*, which can be modified inside the `compose.yml` file:
+```yaml
+zip-updater:
+  build:
+    args:
+      TIMER: 2h # valid arguments: [0-9]+[HMShms]
+```
+
+Expected arguments are numbers followed by H, M, or S; hours, minutes, and seconds respectively.
+The script *uses seconds for the timer*, with H and M converting into seconds. If S is used, the script
+will use the argument as-is.
+- The timer is automatically converted to seconds, e.g. `3H` -> `10800`.
+- The argument is case insensitive.
+- In the event of a parsing failure, it will always default back to 2 hours or 7200 seconds.
 
 ### FileVault
 
-FileVault is recommended to be turned on for security purposes. Majority of the processes in the deployment also expects
+FileVault is recommended to be turned on for security purposes. Nearly all the processes in the deployment expects
 FileVault to be enabled, otherwise it will not work as intended.
 
 Upon successful execution, the key will be generated. This key *is not logged on the client* but will be 
@@ -241,6 +276,7 @@ The key is sent over HTTPS to the server for storage. It can be found in the `ke
 under a parent folder that is the *serial tag* of the device.
 If this process fails in any way, the key *must be saved* manually.
 - Any created account (not the root/main admin) is removed. 
+- Example of a folder structure: `./SERIAL_TAG/1234-5678-9000-ABCD`.
 
 ### Logging
 
@@ -262,30 +298,27 @@ The server logs are located in the subdirectory `server-logs`.
 
 ### Supported MacBook Versions
 
-Below is a table of confirmed MacBook versions that works.
+Below is a table of confirmed MacBook versions that work.
 
 | Version |
 | ------- |
 | Ventura 13.7.x |
-| Sequioa 15.x |
+| Sequoia 15.x |
 
 Other versions are not confirmed yet.
 
 ### Security
 
-**Do not run this** publicly, which will cause the endpoints to be accessible to everyone.
+**Do not run this** publicly, which will cause the endpoints to be accessible to everyone. The lacks proper
+authentication and rate-limiting protections.
 
-The deployment process is expected to be ran ***on a private network***, and therefore its security is at a level where 
-it protects the bare minimum. 
-
-The endpoints do not have proper safeguards in place. Exposing these endpoints can cause unintended consequences.
+The deployment process is expected to run ***on a private, isolated network***. Exposure can cause unintended consequences. 
 
 ### Features
 
-Some features expected with JAMF or other MDM tools may be missing, as I wrote this solo.
-It is very likely due my lack of knowledge, having little time to research, or it may not be possible to implement.
+Various features expected with JAMF or other MDM tools may be missing. 
 
-Any suggestions or issues are encouraged.
+Contributions and suggestions are always welcome.
 
 ## License
 
