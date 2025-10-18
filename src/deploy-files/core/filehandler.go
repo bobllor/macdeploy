@@ -243,7 +243,7 @@ func (f *FileHandler) AddDmgPackages(volumePaths []string, pkgDirectory string) 
 // AttachDmgs takes an array of paths and attaches it to the disk via hdiutil.
 //
 // Upon successful completion, an array of paths to the mount inside the Volumes
-// Volumes directory is returned.
+// directory is returned.
 func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 	cmd := "hdiutil attach '%s'"
 

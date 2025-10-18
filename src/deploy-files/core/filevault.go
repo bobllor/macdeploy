@@ -63,7 +63,7 @@ func (f *FileVault) Status() (bool, error) {
 
 	// either some fail happened or this is ran on a non-mac OS
 	if fileVaultStatus == "" {
-		return false, fmt.Errorf("filevault checking failed: %s", fileVaultStatus)
+		return false, fmt.Errorf("%s", fileVaultStatus)
 	}
 
 	f.log.Debug.Log("FileVault status: %s", fileVaultStatus)

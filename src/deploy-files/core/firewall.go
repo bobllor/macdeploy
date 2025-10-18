@@ -39,8 +39,8 @@ func (f *Firewall) Status() (bool, error) {
 	cmd := "sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate"
 	out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
 	if err != nil {
-		errMsg := strings.TrimSpace(fmt.Sprintf("Failed to check Firewall status | %s", string(out)))
-		f.log.Error.Log(errMsg, 3)
+		errMsg := strings.TrimSpace(fmt.Sprintf("Failed to check Firewall status: %s", string(out)))
+		f.log.Error.Log(errMsg)
 
 		return false, errors.New(string(out))
 	}
