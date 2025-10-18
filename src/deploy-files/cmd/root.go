@@ -24,7 +24,8 @@ type RootData struct {
 	Verbose         bool
 	Debug           bool
 	NoSend          bool
-	Mount           bool
+	SkipLocal       bool
+	CreateLocal     bool
 	ExcludePackages []string
 	IncludePackages []string
 	PlistPath       string
@@ -60,114 +61,17 @@ var rootCmd = &cobra.Command{
 	Use:   "macdeploy",
 	Short: "MacBook deployment tool",
 	Long:  `Automated deployment for MacBooks for ITAMs.`,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		const projectName string = "macos-deployment"
-		const distDirectory string = "dist"
-		const zipFile string = "deploy.zip"
-
-		// not exiting, just in case mac fails somehow. but there are checks for non-mac devices.
-		serialTag, err := utils.GetSerialTag()
-		if err != nil {
-			serialTag = "UNKNOWN"
-			fmt.Printf("Unable to get serial number: %v\n", err)
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if root.Verbose && root.Debug {
+			return fmt.Errorf("--verbose and --debug cannot be used together")
+		}
+		if root.SkipLocal && root.CreateLocal {
+			return fmt.Errorf("--skip-local/-s and --create-local/-c cannot be used together")
 		}
 
-		perms := utils.NewPerms()
-		root.perm = perms
+		root.initialize()
 
-		metadata := utils.NewMetadata(projectName, serialTag, distDirectory, zipFile)
-		scripts := scripts.NewScript()
-		config, err := yaml.NewConfig(embedhandler.YAMLBytes)
-		if err != nil {
-			// TODO: make this a better error message (incorrect keys, required keys missing, etc)
-			fmt.Printf("Error parsing YAML configuration, %v\n", err)
-			os.Exit(1)
-		}
-
-		// checking if admin info was given or not
-		if config.Admin.Username == "" {
-			err = config.Admin.SetUsername()
-			if err != nil {
-				fmt.Printf("Failed to get username of admin: %v\n", err)
-				os.Exit(1)
-			}
-		}
-		if config.Admin.Password == "" {
-			fmt.Println("No admin password given")
-			err = config.Admin.SetPassword()
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		}
-
-		err = config.Admin.InitializeSudo()
-		if err != nil {
-			fmt.Printf("Failed to initialize sudo with given password: %v\n", err)
-		}
-
-		// by default we will put in the home directory if none is given
-		logDirectory := config.Log
-		defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs/macdeploy")
-		if logDirectory == "" {
-			logDirectory = defaultLogDir
-		} else {
-			logDirectory = logger.FormatLogPath(logDirectory)
-		}
-
-		// mkdir needs full permission for some reason.
-		// anything other than full will have permissions of 000.
-		// full perms assigns it the normal permissions: rwxr-xr-x. which is odd to me.
-		err = logger.MkdirAll(logDirectory, root.perm.Full)
-		if err != nil {
-			fmt.Printf("Unable to make logging directory: %v\n", err)
-			fmt.Printf("Changing log output to home directory: %s\n", defaultLogDir)
-			logDirectory = defaultLogDir
-
-			err = logger.MkdirAll(defaultLogDir, root.perm.Full)
-			if err != nil {
-				fmt.Printf("Unable to make logging directory: %v\n", err)
-			}
-		}
-
-		log := logger.NewLog(serialTag, logDirectory, root.Verbose, root.Debug)
-		log.Info.Log("Starting deployment for %s", metadata.SerialTag)
-		fmt.Printf("Starting deployment for %s\n", metadata.SerialTag)
-		log.Debug.Log("Log directory: %s", logDirectory)
-
-		// dependency initializations
-		filevault := core.NewFileVault(config.Admin, scripts, log)
-		user := core.NewUser(config.Admin, scripts, log)
-		handler := core.NewFileHandler(config.Packages, log)
-		firewall := core.NewFirewall(log, scripts)
-
-		root.log = log
-		root.config = config
-		root.script = scripts
-		root.metadata = metadata
-
-		root.dep.usermaker = user
-		root.dep.filehandler = handler
-		root.dep.firewall = firewall
-		root.dep.filevault = filevault
-
-		// initialized for the lifecycle during pre, install, and post script stages
-		scriptFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".sh")
-		if err != nil {
-			root.log.Error.Log("Failed to find script files: %v", err)
-			fmt.Println("Scripts will not be ran during the deployment")
-
-			root.errors.ScriptsFailed = true
-		}
-
-		root.data.scriptFiles = scriptFiles
-
-		// pre script execution
-		if len(root.config.Scripts.Pre) > 0 && !root.errors.ScriptsFailed {
-			root.log.Debug.Log("Pre script files: %v", root.config.Scripts.Pre)
-
-			root.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
-		}
+		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		err := root.config.Admin.InitializeSudo()
@@ -175,7 +79,11 @@ var rootCmd = &cobra.Command{
 			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
 		}
 
-		root.startAccountCreation(root.dep.usermaker, root.dep.filevault, root.AdminStatus)
+		// skip local also skips YAML configured accounts
+		// create local will trigger a manual account creation, but will not
+		if !root.SkipLocal || root.CreateLocal {
+			root.startAccountCreation(root.AdminStatus)
+		}
 
 		err = root.log.WriteFile()
 		if err != nil {
@@ -197,22 +105,23 @@ var rootCmd = &cobra.Command{
 		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchDirectoryFiles), root.config.SearchDirectories)
 
 		if len(searchDirectoryFiles) < 1 {
-			root.log.Warn.Log("No files found with search directories, all packages will be installed with no checks")
+			root.log.Warn.Log("No files found with search directories, all packages will be installed")
 		}
 
-		// used to have len(searchDirectoryFiles) > 0 here, but it doesn't matter just install the files anyways.
-		if root.Mount {
-			root.log.Info.Log("Searching for DMG files")
-			dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".dmg")
-			if err != nil {
-				root.log.Error.Log("Failed to search directory: %v", err)
-			} else {
-				// this requires the use of --include to install properly.
-				volumeMounts := root.dep.filehandler.AttachDmgs(dmgFiles)
-				if len(volumeMounts) > 0 {
-					root.dep.filehandler.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
-					root.dep.filehandler.DetachDmgs(volumeMounts)
-				}
+		// NOTE: can make the pkg/dmg/app process efficient by searching once.
+		// something to note in the future if needed.
+
+		// automatically mount, extract, and dismount DMG files if they exist.
+		root.log.Info.Log("Searching for DMG files")
+		dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".dmg")
+		if err != nil {
+			root.log.Error.Log("Failed to search directory: %v", err)
+		} else {
+			// this requires the use of --include to install properly.
+			volumeMounts := root.dep.filehandler.AttachDmgs(dmgFiles)
+			if len(volumeMounts) > 0 {
+				root.dep.filehandler.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+				root.dep.filehandler.DetachDmgs(volumeMounts)
 			}
 		}
 
@@ -391,10 +300,10 @@ func InitializeRoot() {
 	rootCmd.Flags().StringArrayVar(&root.IncludePackages,
 		"include", []string{}, "Include a package to install")
 	rootCmd.Flags().StringVar(
-		&root.PlistPath, "plist", "", "Apply password policies with a plist path")
+		&root.PlistPath, "pwlist", "", "Apply password policies with a plist")
 
 	rootCmd.Flags().BoolVarP(
-		&root.AdminStatus, "admin", "a", false, "Grants admin to the created user")
+		&root.AdminStatus, "admin", "a", false, "Grants admin to local users")
 	rootCmd.Flags().BoolVar(
 		&root.RemoveFiles, "remove-files", false, "Remove the deployment files on the device upon successful execution")
 	rootCmd.Flags().BoolVarP(
@@ -402,52 +311,80 @@ func InitializeRoot() {
 	rootCmd.Flags().BoolVar(
 		&root.Debug, "debug", false, "Displays the debug output to the terminal")
 	rootCmd.Flags().BoolVar(
-		&root.NoSend, "no-send", false, "Prevent the log file from being sent to the server")
-	rootCmd.Flags().BoolVar(
-		&root.Mount, "mount", false, "Mount all DMG files found inside the distribution folder")
+		&root.NoSend, "no-send", false, "Do not send the log file to the server")
+	rootCmd.Flags().BoolVarP(
+		&root.SkipLocal, "skip-local", "s", false, "Skip the local user creation")
+	rootCmd.Flags().BoolVarP(
+		&root.CreateLocal, "create-local", "c", false, "Create a local user")
+
+	rootCmd.MarkFlagsMutuallyExclusive("skip-local", "create-local")
+	rootCmd.MarkFlagsMutuallyExclusive("debug", "verbose")
 }
 
-// accountCreation starts the account making process.
-//
-// User is used to call and start the account creation process.
-func (r *RootData) startAccountCreation(user *core.UserMaker, filevault *core.FileVault, adminStatus bool) {
-	if len(r.config.Accounts) < 1 {
-		r.log.Warn.Log("No account information given in YAML file")
+// startAccountCreation starts the account making process.
+// This is used for the YAML accounts and single use accounts.
+func (r *RootData) startAccountCreation(adminStatus bool) {
+	r.log.Debug.Log("YAML accounts: %v", r.config.Accounts)
+	r.log.Debug.Log("Skip create user: %v | Create user: %v", r.SkipLocal, r.CreateLocal)
+
+	if len(r.config.Accounts) < 1 && r.CreateLocal {
+		account := yaml.UserInfo{}
+
+		accountName := r.accountCreation(&account, adminStatus)
+		if accountName != "" {
+			r.postAccountCreation(accountName, account.Password, account.ApplyPolicy)
+		}
+
 		return
 	}
 
 	for key := range r.config.Accounts {
 		currAccount := r.config.Accounts[key]
 
-		accountName, err := user.CreateAccount(&currAccount, adminStatus)
+		accountName := r.accountCreation(&currAccount, adminStatus)
+		if accountName != "" {
+			r.postAccountCreation(accountName, currAccount.Password, currAccount.ApplyPolicy)
+		}
+	}
+}
+
+// accountCreation starts the account creation process.
+//
+// It returns the internal username if successful, otherwise it will return an empty string.
+func (r *RootData) accountCreation(currAccount *yaml.UserInfo, adminStatus bool) string {
+	accountName, err := r.dep.usermaker.CreateAccount(currAccount, adminStatus)
+	if err != nil {
+		// if user creation is skipped then dont log the error
+		if !strings.Contains(err.Error(), "skipped") {
+			logMsg := fmt.Sprintf("Error making user: %v", err)
+			r.log.Error.Log(logMsg)
+		}
+
+		return ""
+	}
+
+	return accountName
+}
+
+// postAccountCreation applies the post account creation policies and secure token.
+func (r *RootData) postAccountCreation(accountName string, accountPassword string, applyPolicy bool) {
+	err := r.dep.filevault.AddSecureToken(accountName, accountPassword)
+	if err != nil {
+		r.log.Error.Log("Failed to add user to secure token, manual interaction needed")
+
+		// do not skip this process if secure token fails
+		err = r.dep.usermaker.DeleteAccount(accountName)
 		if err != nil {
-			// if user creation is skipped then dont log the error
-			if !strings.Contains(err.Error(), "skipped") {
-				logMsg := fmt.Sprintf("Error making user: %v", err)
-				r.log.Error.Log(logMsg)
-			}
+			r.log.Error.Log("Failed to run user removal command, manual deletion needed: %v", err)
 
-			continue
+			return
 		}
+	}
 
-		err = filevault.AddSecureToken(accountName, currAccount.Password)
-		if err != nil {
-			r.log.Error.Log("Failed to add user to secure token, manual interaction needed")
+	if applyPolicy {
+		policyString := r.config.Policy.BuildCommand()
 
-			// do not skip this process if secure token fails
-			err = user.DeleteAccount(accountName)
-			if err != nil {
-				r.log.Error.Log("Failed to run user removal command, manual deletion needed: %v", err)
-
-				continue
-			}
-		}
-
-		if currAccount.ApplyPolicy {
-			policyString := r.config.Policy.BuildCommand()
-
-			root.applyPasswordPolicy(policyString, accountName)
-		}
+		r.applyPasswordPolicy(policyString, accountName)
 	}
 }
 
@@ -621,5 +558,116 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 		}
 
 		r.log.Info.Log("Output: %s", out)
+	}
+}
+
+// initialize initializes the data for the entire program.
+func (r *RootData) initialize() {
+	const projectName string = "macos-deployment"
+	const distDirectory string = "dist"
+	const zipFile string = "deploy.zip"
+
+	// not exiting, just in case mac fails somehow. but there are checks for non-mac devices.
+	serialTag, err := utils.GetSerialTag()
+	if err != nil {
+		serialTag = "UNKNOWN"
+		fmt.Printf("Unable to get serial number: %v\n", err)
+	}
+
+	perms := utils.NewPerms()
+	r.perm = perms
+
+	metadata := utils.NewMetadata(projectName, serialTag, distDirectory, zipFile)
+	scripts := scripts.NewScript()
+	config, err := yaml.NewConfig(embedhandler.YAMLBytes)
+	if err != nil {
+		// TODO: make this a better error message (incorrect keys, required keys missing, etc)
+		fmt.Printf("Error parsing YAML configuration, %v\n", err)
+		os.Exit(1)
+	}
+
+	// checking if admin info was given or not
+	if config.Admin.Username == "" {
+		err = config.Admin.SetUsername()
+		if err != nil {
+			fmt.Printf("Failed to get username of admin: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	if config.Admin.Password == "" {
+		fmt.Println("No admin password given")
+		err = config.Admin.SetPassword()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
+
+	err = config.Admin.InitializeSudo()
+	if err != nil {
+		fmt.Printf("Failed to initialize sudo with given password: %v\n", err)
+	}
+
+	// by default we will put in the home directory if none is given
+	logDirectory := config.Log
+	defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs/macdeploy")
+	if logDirectory == "" {
+		logDirectory = defaultLogDir
+	} else {
+		logDirectory = logger.FormatLogPath(logDirectory)
+	}
+
+	// mkdir needs full permission for some reason.
+	// anything other than full will have permissions of 000.
+	// full perms assigns it the normal permissions: rwxr-xr-x. which is odd to me.
+	err = logger.MkdirAll(logDirectory, r.perm.Full)
+	if err != nil {
+		fmt.Printf("Unable to make logging directory: %v\n", err)
+		fmt.Printf("Changing log output to home directory: %s\n", defaultLogDir)
+		logDirectory = defaultLogDir
+
+		err = logger.MkdirAll(defaultLogDir, r.perm.Full)
+		if err != nil {
+			fmt.Printf("Unable to make logging directory: %v\n", err)
+		}
+	}
+
+	log := logger.NewLog(serialTag, logDirectory, r.Verbose, root.Debug)
+	log.Info.Log("Starting deployment for %s", metadata.SerialTag)
+	fmt.Printf("Starting deployment for %s\n", metadata.SerialTag)
+	log.Debug.Log("Log directory: %s", logDirectory)
+
+	// dependency initializations
+	filevault := core.NewFileVault(config.Admin, scripts, log)
+	user := core.NewUser(config.Admin, scripts, log)
+	handler := core.NewFileHandler(config.Packages, log)
+	firewall := core.NewFirewall(log, scripts)
+
+	r.log = log
+	r.config = config
+	r.script = scripts
+	r.metadata = metadata
+
+	r.dep.usermaker = user
+	r.dep.filehandler = handler
+	r.dep.firewall = firewall
+	r.dep.filevault = filevault
+
+	// initialized for the lifecycle during pre, install, and post script stages
+	scriptFiles, err := r.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".sh")
+	if err != nil {
+		r.log.Error.Log("Failed to find script files: %v", err)
+		fmt.Println("Scripts will not be ran during the deployment")
+
+		r.errors.ScriptsFailed = true
+	}
+
+	r.data.scriptFiles = scriptFiles
+
+	// pre script execution
+	if len(r.config.Scripts.Pre) > 0 && !root.errors.ScriptsFailed {
+		r.log.Debug.Log("Pre script files: %v", root.config.Scripts.Pre)
+
+		r.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
 	}
 }
