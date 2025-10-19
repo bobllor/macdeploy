@@ -62,6 +62,8 @@ var rootCmd = &cobra.Command{
 	Short: "MacBook deployment tool",
 	Long:  `Automated deployment for MacBooks for ITAMs.`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
 		if root.Verbose && root.Debug {
 			return fmt.Errorf("--verbose and --debug cannot be used together")
 		}
@@ -332,7 +334,7 @@ func (r *RootData) startAccountCreation(adminStatus bool) {
 
 		accountName := r.accountCreation(&account, adminStatus)
 		if accountName != "" {
-			r.postAccountCreation(accountName, account.Password, account.ApplyPolicy)
+			r.postAccountCreation(accountName, account.Password, r.config.Policy.ChangeOnLogin)
 		}
 
 		return
