@@ -45,6 +45,7 @@ There is *no additional security* implemented to handle a public facing server.
 - [Usage](#usage)
   - [Deployment](#deployment) 
   - [Deployment options](#deployment-options)
+  - [Updating](#updating)
 - [YAML Configuration File](#yaml-configuration-file)
   - [YAML Reference](#yaml-reference)
 - [Server and Deployment](#server-and-deployment)
@@ -157,17 +158,6 @@ found inside `/Applications`.
 - To install the package and check if it is already installed: 
 `--include "chrome.pkg/Google Chrome"`.
 
-## YAML Configuration
-
-The YAML configuration file is used for configuration of the binary, and must be 
-***configured prior to building the binary***.
-It is *embedded into the binary*, meaning any new updates will require a new binary to be generated
-via `bash scripts/go_zip.sh`. 
-
-The YAML file *must be named `config`* and can end in `.yaml`, `.yml`, `.YAML`, or `.YML`. 
-
-A sample file can be found in the repository.
-
 ### Updating
 
 ```shell
@@ -178,10 +168,21 @@ docker compose build && docker compose up -d
 ```
 
 Alternatively, there is a script for updating in the scripts folder. 
-However, this is *only available for release v1.2.2 and above*:
+However, this is *only available for release v1.2.3 and above*:
 ```shell
 bash scripts/update.sh
 ``` 
+
+## YAML Configuration
+
+The YAML configuration file is used for configuration of the binary, and must be 
+***configured prior to building the binary***.
+It is *embedded into the binary*, meaning any new updates will require a new binary to be generated
+via `bash scripts/go_zip.sh`. 
+
+The YAML file *must be named `config`* and can end in `.yaml`, `.yml`, `.YAML`, or `.YML`. 
+
+A sample file can be found in the repository.
 
 ### YAML Reference
 
