@@ -13,7 +13,7 @@
 
 ## About the Project
 
-Looking to automate MacBook deployments? No MDM? No JAMF? No problem! 
+Looking to automate MacBook deployments? No problem! 
 
 *MacDeploy* is a light-weight server and CLI automation tool used to deploy MacBooks with minimal manual interactions 
 needed. It features:
@@ -24,8 +24,11 @@ needed. It features:
 - Uses HTTPS for encrypted communications.
 - Customizable YAML configuration.
 
-***DISCLAIMER***: The HTTPS file server was built with the intention to be running on a *secure, private network*.
-There is no additional security implemented to handle a public facing server.
+***DISCLAIMER***: MacDeploy is provided only to automate MacBook deployment. Securing and management of the 
+hardware itself is the responsibility of the user.
+
+The HTTPS file server was built with the intention to be running on a *secure, private network*.
+There is *no additional security* implemented to handle a public facing server.
 
 ### Powered By
 
@@ -75,18 +78,26 @@ Below are the tools and software required on the server before starting the depl
 For the latest release you can use `git checkout $(git describe --tags $(git rev-list --tags --max-count=1))`.
 - If you need a specific version: `git checkout <TAG_VERSION>`.
 
-Inside the root directory is `init.sh`, this is required to be ran prior to running `docker compose up`.
-The bind mounts of Docker will create missing directories owned by `root`, which will cause issues for the server
-being unable to write to the directories due to permissions.
+Ensure to run `bash build.sh`, which creates the required directories and creates the containers prior to setup.
+This is required to prevent permission issues with bind mounts.
 
 This creates the server setup, but *not the deployment binaries*:
 ```shell
 git clone REPLACE_ME_HERE && \
 cd macos-deployment && \
-bash init.sh && \
 git checkout $(git describe --tags $(git rev-list --tags --max-count=1)) && \
-docker compose build && docker compose up -d
+bash build.sh
 ```
+
+To start the containers and server:
+```shell
+docker compose up -d
+```
+
+About the script `build.sh`:
+- It has an optional flag `-z` to generate the ZIP file. This *requires the YAML configuration file* to be present.
+- It *only creates the Docker containers*, it does not start them.
+- It removes the Docker volume, which is only used for the server code.
 
 **IMPORTANT**: Before usage, the *YAML* configuration is required to be created in order for the deployment binaries to work 
 properly. Click [here](#yaml-configuration) to get started.
@@ -156,6 +167,21 @@ via `bash scripts/go_zip.sh`.
 The YAML file *must be named `config`* and can end in `.yaml`, `.yml`, `.YAML`, or `.YML`. 
 
 A sample file can be found in the repository.
+
+### Updating
+
+```shell
+git fetch origin && \
+git checkout $(git describe --tags $(git rev-list --tags --max-count=1)) && \
+docker down -v && \
+docker compose build && docker compose up -d
+```
+
+Alternatively, there is a script for updating in the scripts folder. 
+However, this is *only available for release v1.2.2 and above*:
+```shell
+bash scripts/update.sh
+``` 
 
 ### YAML Reference
 
@@ -228,7 +254,7 @@ Any changes to the configuration *will require a reset of the server*, but does 
 
 ### Zipping
 
-When generated, the ZIP file is placed inside the `build` directory in the project's root directory.
+When generated, the ZIP file is placed inside the `zip-build` directory in the project's root directory.
 
 The *deployment binary reads all files* in the `dist` directory.
 - This is the folder for all packages, scripts, DMGs, etc. that need to be on the client device.
