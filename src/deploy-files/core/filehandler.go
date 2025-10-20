@@ -284,7 +284,7 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 // It returns a string and an error, depending on the exit status of the script.
 // If the script did not get executed, an error is returned.
 func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (string, error) {
-	f.log.Info.Log("Starting %s execution", scriptName)
+	f.log.Info.Log("Running %s", scriptName)
 	ogName := scriptName
 	scriptName = strings.TrimSpace(strings.ToLower(scriptName))
 
@@ -306,8 +306,6 @@ func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (st
 		scriptPathLow := strings.ToLower(scriptPath)
 
 		if strings.Contains(scriptPathLow, scriptName) {
-			f.log.Info.Log("Executing %s", ogName)
-
 			outMsg, err := f.execute(scriptPath)
 			outMsg = strings.TrimSpace(outMsg)
 			if err != nil {

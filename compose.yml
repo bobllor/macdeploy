@@ -26,6 +26,8 @@ services:
       - fs-server
     build:
       dockerfile: dockerfiles/Dockerfile.zip-updater
+      args:
+        TIMER: 2h
     volumes:
       - macdeploy-server:/macdeploy/src
     stop_grace_period: .5s

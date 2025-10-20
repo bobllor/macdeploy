@@ -55,7 +55,7 @@ func TestUserNoPassword(t *testing.T) {
 
 	_, err := user.CreateAccount(&userInfo, false)
 	if err == nil {
-		t.Error("expected password failure")
+		t.Fatal("expected password failure")
 	}
 }
 

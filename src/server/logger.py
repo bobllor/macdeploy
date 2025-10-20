@@ -82,3 +82,7 @@ class Log(Logger):
             self.addHandler(hdlr)
 
         self.setLevel(levels.get("log_level", DEBUG))
+    
+    def set_logger(self) -> None:
+        '''Sets the logger into the class.'''
+        setLoggerClass(Log)
