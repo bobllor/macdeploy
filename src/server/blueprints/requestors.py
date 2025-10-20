@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, send_file
-from system.vars import Vars
+from configuration import ZIP_NAME
 from pathlib import Path
-from logging import Logger, getLogger
+from logger import Log
+from logging import Logger
 from concurrent.futures import ThreadPoolExecutor, Future
 from multiprocessing import Lock as Lock_
 from multiprocessing.synchronize import Lock
@@ -10,7 +11,7 @@ from app_types import Config
 import system.utils as utils
 
 class Requestors():
-    def __init__(self, *, config: Config):
+    def __init__(self, *, config: Config, logger: Log):
         '''Default GET request routes blueprint.
         
         Parameters
@@ -18,7 +19,7 @@ class Requestors():
             config: Config
                 A dictionary of configuration settings.
         '''
-        self.logger: Logger = getLogger("Log")
+        self.logger: Logger = logger
         self.config: Config = config
 
         self.lock: Lock = Lock_()
@@ -33,7 +34,7 @@ class Requestors():
                     content="Use the endpoints to start the deployment."
                 )), 200
 
-        @bp.route(f"/api/packages/{Vars.ZIP_FILE_NAME.value}", methods=["GET"])
+        @bp.route(f"/api/packages/{str(ZIP_NAME)}", methods=["GET"])
         def get_client_files():
             '''Returns a ZIP file for the client to begin deployment.
             

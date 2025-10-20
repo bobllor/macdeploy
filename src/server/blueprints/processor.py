@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-from logging import Logger, getLogger
+from logger import Log
+from logger import Log
 from system.process import Process
 from typing import Any
 from app_types import Config
@@ -7,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 import system.system_types as types
 
 class Processor():
-    def __init__(self, *, config: Config):
+    def __init__(self, *, config: Config, logger: Log):
         '''Processing class blueprint.
         
         Parameters
@@ -15,7 +16,7 @@ class Processor():
             config: Config
                 A dictionary of configuration settings.
         '''
-        self.logger: Logger = getLogger("Log")
+        self.logger: Log = logger
         self.config: Config = config
 
     def get_blueprint(self) -> Blueprint:

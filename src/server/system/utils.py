@@ -1,6 +1,6 @@
 from pathlib import Path
 from flask import make_response, Response
-from .vars import Vars
+from configuration import ROOT_PATH
 
 def get_dir_list(path: Path | str, data: list[str] = None, 
     *, replace_root: bool = False, include_arg_path: bool = False) -> list[str]:
@@ -25,7 +25,7 @@ def get_dir_list(path: Path | str, data: list[str] = None,
     data = [] if not data else data 
     if include_arg_path:
         file: str = str(path)
-        if replace_root: file = file.replace(Vars.ROOT_PATH.value + "/", "")
+        if replace_root: file = file.replace(str(ROOT_PATH) + "/", "")
         data.append(file)
 
     if isinstance(path, str):
@@ -34,17 +34,15 @@ def get_dir_list(path: Path | str, data: list[str] = None,
     for child in path.iterdir():
         file: str = str(child)
         if not child.is_dir():
-            file: str = str(child)
-
             if replace_root:
                 # removing the home path and the trailing slash
-                file = file.replace(str(Vars.ROOT_PATH.value) + "/", "")
+                file = file.replace(str(ROOT_PATH) + "/", "")
 
             data.append(file)
         else:
             if replace_root:
                 # removing the home path and the trailing slash
-                file = file.replace(str(Vars.ROOT_PATH.value) + "/", "")
+                file = file.replace(str(ROOT_PATH) + "/", "")
 
             data.append(file)
             temp_list: list[str] = get_dir_list(child, replace_root=replace_root)

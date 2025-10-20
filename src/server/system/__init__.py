@@ -1,14 +1,9 @@
 from pathlib import Path
-from system.vars import Vars
+from configuration import KEYS_PATH, LOGS_PATH
 
-filevault_dir: str = Vars.KEYS_PATH.value
-logs_dir: str = Vars.LOGS_PATH.value
-
-dir_list: list[str] = [filevault_dir, logs_dir]
+dir_list: list[Path] = [KEYS_PATH, LOGS_PATH]
 
 # these directories are checked during runtime as well.
-for ele in dir_list:
-    path: Path = Path(ele)
-
+for path in dir_list:
     if not path.exists():
         path.mkdir(parents=True)
