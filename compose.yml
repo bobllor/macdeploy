@@ -12,7 +12,7 @@ services:
       - macdeploy-server:/macdeploy/src
       - ./logs:/macdeploy/logs
       - ./keys:/macdeploy/keys
-      - ./build:/macdeploy/build
+      - ./zip-build:/macdeploy/zip-build
       - ./dist:/macdeploy/dist
       - ./gunicorn.conf.py:/macdeploy/gunicorn.conf.py
     stop_grace_period: .5s
