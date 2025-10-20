@@ -31,7 +31,8 @@ func NewUser(adminInfo yaml.UserInfo, scripts *scripts.BashScripts, logger *logg
 	return &user
 }
 
-// CreateAccount creates the user account on the device.
+// CreateAccount creates the local user account on the device.
+// Empty usernames and passwords will have a prompt, with the password being set if empty.
 //
 // It will return the internal username of the macOS account upon success.
 // If there are any errors then an error is returned.

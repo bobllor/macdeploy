@@ -3,9 +3,7 @@ from flask.testing import FlaskClient
 from pathlib import Path
 from app import create_app
 from app_types import Config
-from logging import DEBUG
-from logger import Log
-from system.vars import Vars
+from configuration import ZIP_NAME
 from . import t_utils as ttils
 import pytest
 
@@ -16,7 +14,7 @@ def app_(tmp_path: Path):
         "log_path": tmp_path / "logs",
         "log_server_path": tmp_path / "logs" / "server",
         "log_levels": {"stream_level": 10},
-        "zip_path": tmp_path / "build" / Vars.ZIP_FILE_NAME.value,
+        "zip_path": tmp_path / "build" / ZIP_NAME,
         "dist_path": tmp_path / "dist",
         "testing": True
     }

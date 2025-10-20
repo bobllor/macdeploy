@@ -1,9 +1,9 @@
 from pathlib import Path
-from system.zipper import Zip, BinaryArgs
+from system.zipper import Zip
 from logger import LogLevelOptions
 from zipfile import ZipFile
 from typing import Any
-from system.vars import Vars
+from configuration import ZIP_NAME
 from . import t_utils as ttils
 import os
 import system.utils as servu
@@ -23,7 +23,7 @@ def test_create_zip(tmp_path: Path):
 
     ttils.setup(test_dist_path, files=files, overwrite=True)
 
-    zip_path: Path = tmp_path / Vars.ZIP_FILE_NAME.value
+    zip_path: Path = tmp_path / ZIP_NAME
 
     log_options: LogLevelOptions = ttils.LOG_OPTIONS.copy()
     log_options["log_level"] = 50
@@ -50,7 +50,7 @@ def test_update_zip(tmp_path: Path):
     dist_dir: Path = tmp_path / "dist"
     ttils.setup(dist_dir, files=[ARM_BINARY, X86_BINARY])
 
-    zip_path: Path = tmp_path / Vars.ZIP_FILE_NAME.value
+    zip_path: Path = tmp_path / ZIP_NAME
     log_options: LogLevelOptions = ttils.LOG_OPTIONS.copy()
     log_options["log_level"] = 10
     zipper: Zip = Zip(zip_path, ttils.get_log(str(tmp_path), levels=log_options), binary_args=ttils.BIN_ARGS)
@@ -78,7 +78,7 @@ def test_dir_change(tmp_path: Path):
     dist_dir: Path = tmp_path / "dist"
     ttils.setup(dist_dir, files=[ARM_BINARY, X86_BINARY], overwrite=True)
     
-    zip_path: Path = tmp_path / Vars.ZIP_FILE_NAME.value
+    zip_path: Path = tmp_path / ZIP_NAME
     log_options: LogLevelOptions = ttils.LOG_OPTIONS.copy()
     log_options["log_level"] = 10
     zipper: Zip = Zip(zip_path, ttils.get_log(str(tmp_path), levels=log_options), binary_args=ttils.BIN_ARGS)

@@ -1,16 +1,15 @@
 from logger import Log, LogLevelOptions
 from logging import DEBUG, CRITICAL
 from system.zipper import BinaryArgs
-from system.vars import Vars
+from configuration import ARM_BINARY_NAME, X86_BINARY_NAME
 from pathlib import Path
-from zipfile import ZipFile
 
 LOG_OPTIONS: LogLevelOptions = {
     "log_level": CRITICAL
 }
 BIN_ARGS: BinaryArgs = {
-    "arm": Vars.ARM_BINARY_NAME.value,
-    "x86_64": Vars.X86_BINARY_NAME.value,
+    "arm": ARM_BINARY_NAME,
+    "x86_64": X86_BINARY_NAME,
 }
 
 def get_log(path: str, *, levels: LogLevelOptions = None) -> Log:

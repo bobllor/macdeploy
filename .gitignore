@@ -16,6 +16,7 @@ logs
 pkg-files
 keys
 build
+zip-build
 
 # python stuff
 __pycache__/

@@ -1,10 +1,11 @@
-from logging import Formatter, Logger, StreamHandler, FileHandler, setLoggerClass
+from logging import Formatter, Logger, StreamHandler, FileHandler
 from logging import Handler
 from logging import DEBUG
 from datetime import datetime
-from typing import TypedDict, Literal
-from system.vars import Vars
+from typing import TypedDict, Literal, TextIO
+from configuration import SERVER_LOGS_PATH
 from pathlib import Path
+import sys
 
 # this value will be the same as soon as the server is launched.
 # this keeps all logs in one day on the same day.
@@ -20,7 +21,8 @@ class Log(Logger):
     def __init__(self, 
     name: str = __name__,
     *, 
-    log_path: Path | str = Vars.SERVER_LOG_PATH.value,
+    log_path: Path | str = None,
+    stream: TextIO = sys.stdout,
     levels: LogLevelOptions = {},
     logfmt: str = "%(asctime)s:%(filename)s:%(name)s [%(levelname)s] %(message)s",
     datefmt: str = DEFAULT_DATEFMT):
@@ -32,9 +34,11 @@ class Log(Logger):
                 The name of the logger. By default, it uses the __name__ variable, or
                 in other words __main__.
             
-            log_path: Path | str, default `./logs/server`
-                The log file name. By default it names the logs based on the current date
-                and is stored in the logs folder, for example: `logs/server-2025-05-05/server-2000-11-01.log`.
+            log_path: Path | str, default `None`
+                The log directory path. By default it is None, meaning it is not written to any directory.
+
+            stream: TextIO default `sys.stdout`
+                The stream output of the StreamHandler. By default it prints out to the console, sys.stdout.
             
             levels: LogLevelOptions default `{}`
                 A dictionary that holds the logging levels of the logger, stream handler, and file handler.
@@ -48,25 +52,29 @@ class Log(Logger):
         '''
         super().__init__(name)
 
-        new_log_path: Path = Path("")
-        if isinstance(log_path, str):
-            new_log_path = Path(log_path)
-        elif isinstance(log_path, Path):
-            new_log_path = log_path
-        
-        if not new_log_path.exists():
-            new_log_path.mkdir(parents=True, exist_ok=True)
-
-        log_file: Path = new_log_path / DEFAULT_FILENAME
-
-        self.stream_handler: StreamHandler = StreamHandler()
-        self.file_handler: FileHandler = FileHandler(log_file)
+        stream_handler: StreamHandler = StreamHandler(stream)
+        file_handler: FileHandler = None
         formatter: Formatter = Formatter(fmt=logfmt, datefmt=datefmt)
 
+        if log_path is not None:
+            new_log_path: Path = Path("")
+            if isinstance(log_path, str):
+                new_log_path = Path(log_path)
+            elif isinstance(log_path, Path):
+                new_log_path = log_path
+            
+            if not new_log_path.exists():
+                new_log_path.mkdir(parents=True, exist_ok=True)
+
+            log_file: Path = new_log_path / DEFAULT_FILENAME
+            file_handler = FileHandler(log_file)
+
         handlers: list[tuple[str, Handler]] = [
-            ("file_level", self.file_handler), 
-            ("stream_level", self.stream_handler)
+            ("stream_level", stream_handler)
         ]
+        if file_handler is not None:
+            handlers.append(("file_level", file_handler))
+
         for level_key, hdlr in handlers:
             hdlr.setFormatter(formatter)
             hdlr.setLevel(levels.get(level_key, DEBUG))

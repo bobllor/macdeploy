@@ -1,11 +1,9 @@
 from pathlib import Path
-from .vars import Vars
 from .system_types import LogInfo, KeyInfo
 from . import utils
 from logger import Log
 from datetime import date
 from typing import Any
-import re
 
 class Process:
     def __init__(self, *, log: Log):

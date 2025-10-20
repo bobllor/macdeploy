@@ -1,4 +1,4 @@
-from .vars import Vars
+from configuration import ARM_BINARY_NAME, X86_BINARY_NAME, DIST_PATH
 from pathlib import Path
 from .utils import get_dir_list, generate_response
 from logger import Log
@@ -30,13 +30,13 @@ class Zip:
         self.zip_path: Path = zip_path
         self.log: Log = log
 
-        self.arm_binary: str = binary_args.get("arm", Vars.ARM_BINARY_NAME.value)
-        self.x86_binary: str = binary_args.get("x86_64", Vars.X86_BINARY_NAME.value)
+        self.arm_binary: str = binary_args.get("arm", ARM_BINARY_NAME)
+        self.x86_binary: str = binary_args.get("x86_64", X86_BINARY_NAME)
 
         # cache for recursive parent creation when appending new files in the ZIP
         self._created_files: set[str] = {".", "./", ""}
 
-    def start_zip(self, dist_path: Path = Path(Vars.DIST_PATH.value)) -> dict[str, Any]:
+    def start_zip(self, dist_path: Path = DIST_PATH) -> dict[str, Any]:
         '''Starts the zipping process for the ZIP file.
         This will create a new ZIP file or update the existing ZIP file.
         
@@ -44,7 +44,7 @@ class Zip:
 
         Parameters
         ----------
-            dist_dir: Path, default Path(Vars.DIST_PATH.value)
+            dist_dir: Path, default Path(path/of/dist)
                 The string path to the directory of the dist directory, containing all the files for distribution.
         '''
         dist_path_str: str = str(dist_path)
