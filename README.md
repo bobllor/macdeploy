@@ -54,9 +54,7 @@ There is *no additional security* implemented to handle a public facing server.
   - [Server Zipping](#server-zipping)
   - [FileVault](#filevault)
   - [Logging](#logging)
-- [Other](#Other)
-  - [Supported MacBook Versions](#supported-macbook-versions)
-  - [Security](#security)
+- [Supported MacBook Versions](#supported-macbook-versions)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
 
@@ -65,7 +63,7 @@ There is *no additional security* implemented to handle a public facing server.
 ### Prerequisites
 
 The server must **run on a macOS, Unix, or Linux** operating system.
-Windows is not supported (WSL is fine).
+Windows is not supported, but WSL is supported.
 
 Below are the tools and software required on the server before starting the deployment process.
 - `Go`
@@ -295,8 +293,8 @@ will use the argument as-is.
 
 ### FileVault
 
-FileVault is recommended to be turned on for security purposes. Nearly all the processes in the deployment expects
-FileVault to be enabled, otherwise it will not work as intended.
+FileVault is recommended to be turned on for security purposes. Apple expects FileVault to be on, and a majority
+of the deployment process relies on FileVault being enabled.
 
 Upon successful execution, the key will be generated. This key *is not logged on the client* but will be 
 outputted onto the terminal.
@@ -323,9 +321,7 @@ The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
 Logs from the client and server are found in the `logs` directory in the project's root directory. 
 The server logs are located in the subdirectory `server-logs`.
 
-## Other
-
-### Supported MacBook Versions
+## Supported MacBook Versions
 
 Below is a table of supported versions that is confirmed to work.
 
@@ -334,14 +330,9 @@ Below is a table of supported versions that is confirmed to work.
 | Ventura 13.0+ |
 | Sonoma 14.0+ |
 | Sequoia 15.0+ |
-| Tahoe 26.0 - 26.0.1 |
+| Tahoe 26.0+ |
 
-### Security
-
-**Do not run this** publicly, which will cause the endpoints to be accessible to everyone. The lacks proper
-authentication and rate-limiting protections.
-
-The deployment process is expected to run ***on a private, isolated network***. Exposure can cause unintended consequences. 
+As of October 27th, 2025, M1 through M4 chips are confirmed working. M5 chips are in progress for testing.
 
 ## License
 
