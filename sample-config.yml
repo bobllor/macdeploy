@@ -1,0 +1,37 @@
+accounts:
+  account_one: # creates a user with no prompt, and ignores the admin flag.
+    username: "defaultuser0"
+    password: "PASSWORD"
+    ignore_admin: true
+  account_two: # creates a user with a username and password prompt.
+    apply_policy: true
+packages:
+  package_1.pkg:
+    - "package 1.app"
+  package 2:
+    - "package_2"
+search_directories:
+  - "/Applications" 
+  - "/Library/Application Support" 
+scripts:
+  pre: # execute scripts before the deployment starts
+    - "change_timezone.sh"
+  inter: # execute scripts during the deployment, right after packages installation.
+    - "add_all_users.sh"
+  post: # execute scripts after the deployment finishes
+    - "custom_remove_files.sh"
+policies:
+  reuse_password: 1
+  require_alpha: true
+  require_numeric: false
+  min_characters: 5
+  max_characters: 15
+  change_on_login: true # REQUIRED true for policies to be applied
+admin: # username and password can be omitted.
+  username: "ADMIN_USERNAME"
+  password: "ADMIN_PASSWORD"
+  apply_policy: true # applies the policies above on the admin account
+server_host: "https://127.0.0.1:5000"
+log: "~/.logs/macdeploy"
+filevault: true
+firewall: true

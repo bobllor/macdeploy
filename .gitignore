@@ -1,0 +1,38 @@
+# mac stuff (i use a mac as the server)
+.DS_Store
+.Spotlight-V100
+.Trashes
+.fseventsd
+# i am not sure why mac includes this.
+.
+..
+
+# directories
+.git
+.venv
+.vscode
+dist
+logs
+pkg-files
+keys
+build
+zip-build
+
+# python stuff
+__pycache__/
+.pytest_cache
+
+# files
+*.exe
+*.pyc
+*.log
+*.zip
+*.bin
+.token
+.vscode
+
+# yaml stuff
+!config-sample.yaml
+!compose.yml
+config.*[yY][mM][lL]
+config.*[yY][aA][mM][lL]

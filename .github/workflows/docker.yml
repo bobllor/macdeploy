@@ -1,0 +1,44 @@
+name: docker-test
+
+on:
+  workflow_dispatch:
+  push: 
+    paths:
+      - '**.py'
+      - '!**.yml'
+      - '!**.md'
+  pull_request:
+    paths:
+      - '**.py'
+      - '!**.yml'
+      - '!**.md'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build and start containers
+        run: |
+          docker compose build
+          docker compose up -d
+      - name: Check container status
+        run: |
+          sleep 2
+          python_container=$(docker compose ps | grep -E "python-fs")
+          if [[ -z "$python_container" ]]; then
+            echo "Failed to start Python container"
+            exit 1
+          fi
+          echo $python_container
+
+          zip_container=$(docker compose ps | grep -E "zip-updater")
+          if [[ -z "$zip_container" ]]; then
+            echo "Failed to start ZIP container"
+            exit 1
+          fi
+          echo $zip_container
+
+          echo "Successfully started containers"
+      - name: Cleanup
+        run: docker compose down -v
