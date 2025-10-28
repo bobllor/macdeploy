@@ -85,7 +85,7 @@ This is required to prevent permission issues with bind mounts.
 This creates the server setup, but *not the deployment binaries*:
 ```shell
 git clone https://github.com/bobllor/MacDeploy && \
-cd macos-deployment && \
+cd macdeploy && \
 git checkout $(git describe --tags $(git rev-list --tags --max-count=1)) && \
 bash build.sh
 ```
