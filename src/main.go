@@ -7,5 +7,6 @@ import (
 
 func main() {
 	cmd.InitializeRoot()
+	cmd.InitializeUserCmd()
 	cmd.Execute()
 }

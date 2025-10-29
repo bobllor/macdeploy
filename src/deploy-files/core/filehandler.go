@@ -162,6 +162,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 			relativePkgLow := strings.ToLower(file)
 			if strings.Contains(relativePkgLow, pkgLowered) {
 				f.log.Info.Log("Installing package %s", pkg)
+				fmt.Printf("Installing package %s\n", pkg)
 
 				cmd := fmt.Sprintf(`installer -pkg "%s" -target /`, file)
 				f.log.Debug.Log("Package: %s | Package path: %s | Command: %s", pkg, file, cmd)

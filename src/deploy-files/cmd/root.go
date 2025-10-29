@@ -57,6 +57,8 @@ type varData struct {
 
 var root RootData
 
+var paddingMsg int = 2
+
 var rootCmd = &cobra.Command{
 	Use:   "macdeploy",
 	Short: "MacBook deployment tool",
@@ -71,7 +73,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("--skip-local/-s and --create-local/-c cannot be used together")
 		}
 
-		root.initialize()
+		root.initialize(false)
 
 		return nil
 	},
@@ -183,44 +185,50 @@ var rootCmd = &cobra.Command{
 
 		request := requests.NewRequest(root.log)
 
-		fvFailWarning := []string{
-			"WARNING",
-			"FileVault activation has failed",
-			"The program can be reran again or manual intervention is required",
-		}
-		msgPadding := 2
-		fvFailMsg := utils.FormatImportantString(fvFailWarning, msgPadding)
-
-		// used for server failure.
-		fvFailWarning[1] = "FileVault failed to send to server"
-		fvServerFailMsg := utils.FormatImportantString(fvFailWarning, msgPadding)
-
-		if filevaultPayload.Key != "" {
-			root.log.Info.Log("Sending FileVault key to the server")
-
-			err = root.startRequest(filevaultPayload, request, "/api/fv")
-			if err != nil {
-				root.log.Error.Log("Failed to send to data to server: %v", err)
-
-				fmt.Println("\n" + fvServerFailMsg)
-
-				err = root.log.WriteFile()
-				if err != nil {
-					fmt.Printf("Failed to write to log file: %v\n", err)
+		if root.config.FileVault {
+			if filevaultPayload.Key != "" {
+				serverFailWarning := []string{
+					"WARNING",
+					"The FileVault key failed to send to the server",
+					"The deployment can be restarted or manual activation may be required",
+					"The key must be saved: %s", filevaultPayload.Key,
 				}
+				fvServerFailMsg := utils.FormatBannerString(serverFailWarning, paddingMsg)
 
-				root.errors.ServerFailed = true
-			}
-		} else {
-			fvStatus, err := root.dep.filevault.Status()
-			if err != nil {
-				root.log.Error.Log("Failed to check FileVault status %v", err)
+				root.log.Info.Log("Sending FileVault key to the server")
 
-				fmt.Println("\n" + fvFailMsg)
+				err = root.startRequest(filevaultPayload, request, "/api/fv")
+				if err != nil {
+					root.log.Error.Log("Failed to send to data to server: %v", err)
+
+					fmt.Println("\n" + fvServerFailMsg)
+
+					err = root.log.WriteFile()
+					if err != nil {
+						fmt.Printf("Failed to write to log file: %v\n", err)
+					}
+
+					root.errors.ServerFailed = true
+				}
 			} else {
-				if !fvStatus {
-					root.log.Warn.Log("FileVault key failed to generate.")
+				fvFailStrings := []string{
+					"WARNING",
+					"FileVault failed to activate and the key failed to generate",
+					"The deployment can be restarted or manual activation may be required",
+				}
+				fvFailMsg := utils.FormatBannerString(fvFailStrings, paddingMsg)
+
+				fvStatus, err := root.dep.filevault.Status()
+				if err != nil {
+					root.log.Error.Log("Failed to check FileVault status %v", err)
+
 					fmt.Println("\n" + fvFailMsg)
+				} else {
+					if !fvStatus {
+						root.log.Warn.Log("FileVault key failed to generate")
+
+						fmt.Println("\n" + fvFailMsg)
+					}
 				}
 			}
 		}
@@ -348,7 +356,8 @@ func (r *RootData) startAccountCreation(adminStatus bool) {
 	r.log.Debug.Log("YAML accounts amount: %v", len(r.config.Accounts))
 	r.log.Debug.Log("Skip create user: %v | Create user: %v", r.SkipLocal, r.CreateLocal)
 
-	if len(r.config.Accounts) < 1 && r.CreateLocal {
+	// this takes precedent over the r.config.Accounts.
+	if r.CreateLocal {
 		account := yaml.UserInfo{}
 
 		accountName := r.accountCreation(&account, adminStatus)
@@ -390,8 +399,19 @@ func (r *RootData) accountCreation(currAccount *yaml.UserInfo, adminStatus bool)
 // postAccountCreation applies the post account creation policies and secure token.
 func (r *RootData) postAccountCreation(accountName string, accountPassword string, applyPolicy bool) {
 	err := r.dep.filevault.AddSecureToken(accountName, accountPassword)
+	// major error if true.
 	if err != nil {
-		r.log.Error.Log("Failed to add user to secure token, manual interaction needed")
+		r.log.Error.Log("Failed to add user to secure token")
+
+		userSecureTokenString := []string{
+			"WARNING",
+			"The secure token has failed to apply to the user",
+			"The deployment can be restarted or manual user creation may be required",
+		}
+
+		secureErrorMsg := utils.FormatBannerString(userSecureTokenString, paddingMsg)
+
+		fmt.Println(secureErrorMsg)
 
 		// do not skip this process if secure token fails
 		err = r.dep.usermaker.DeleteAccount(accountName)
@@ -407,6 +427,8 @@ func (r *RootData) postAccountCreation(accountName string, accountPassword strin
 
 		r.applyPasswordPolicy(policyString, accountName)
 	}
+
+	fmt.Printf("User %s successfully created\n", accountName)
 }
 
 // startPackageInstallation begins the package installation process.
@@ -586,8 +608,11 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 	}
 }
 
-// initialize initializes the data for the entire program.
-func (r *RootData) initialize() {
+// initialize initializes the data for RootData.
+//
+// skipProcess is used to skip certain processes in the initialization. It is only
+// used for sub commands.
+func (r *RootData) initialize(skipProcess bool) {
 	const projectName string = "macos-deployment"
 	const distDirectory string = "dist"
 	const zipFile string = "deploy.zip"
@@ -678,21 +703,23 @@ func (r *RootData) initialize() {
 	r.dep.firewall = firewall
 	r.dep.filevault = filevault
 
-	// initialized for the lifecycle during pre, install, and post script stages
-	scriptFiles, err := r.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".sh")
-	if err != nil {
-		r.log.Error.Log("Failed to find script files: %v", err)
-		fmt.Println("Scripts will not be ran during the deployment")
+	if !skipProcess {
+		// initialized for the lifecycle during pre, install, and post script stages
+		scriptFiles, err := r.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".sh")
+		if err != nil {
+			r.log.Error.Log("Failed to find script files: %v", err)
+			fmt.Println("Scripts will not be ran during the deployment")
 
-		r.errors.ScriptsFailed = true
-	}
+			r.errors.ScriptsFailed = true
+		}
 
-	r.data.scriptFiles = scriptFiles
+		r.data.scriptFiles = scriptFiles
 
-	// pre script execution
-	if len(r.config.Scripts.Pre) > 0 && !root.errors.ScriptsFailed {
-		r.log.Debug.Log("Pre script files: %v", root.config.Scripts.Pre)
+		// pre script execution
+		if len(r.config.Scripts.Pre) > 0 && !root.errors.ScriptsFailed {
+			r.log.Debug.Log("Pre script files: %v", root.config.Scripts.Pre)
 
-		r.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
+			r.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
+		}
 	}
 }
