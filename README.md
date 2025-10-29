@@ -143,7 +143,7 @@ The binary supports *flags* options which can be found [here](#deployment-option
 | ---- | ---- |
 | `--admin`, `-a` | Gives admin to a created user. If `ignore_admin` is true in the YAML, this is ignored. |
 | `--skip-local`, `-s` | Skips the creation of the local user account, if configured in the YAML. |
-| `--create-local`, `-c` | Enables the local user account creation process. |
+| `--create-local`, `-c` | Enables the local user account creation process. Skips YAML account creation if true. |
 | `--remove-files` | Removes deployment files upon successful completion. |
 | `--verbose`, `-v` | Output info level logging to the terminal. |
 | `--debug` | Output debug level logging to the terminal, this includes info level logging. |
