@@ -100,6 +100,19 @@ func (l *Log) GetLogDirectory() string {
 	return l.logDirectory
 }
 
+// EnableInfoLog enables logging to the terminal for Info level.
+func (l *Log) EnableInfoLog() {
+	l.Info.silent = false
+}
+
+// EnableDebugLog enables logging to the terminal for Debug and Info level.
+func (l *Log) EnableDebugLog() {
+	l.Debug.silent = false
+	if l.Info.silent {
+		l.Info.silent = false
+	}
+}
+
 // Log prints the output to the terminal and logs the output.
 func (l *Logger) Log(msg string, v ...any) {
 	if len(v) > 0 {
