@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"macos-deployment/deploy-files/utils"
 	"os"
 	"slices"
@@ -86,9 +87,10 @@ func TestFormatImportantString(t *testing.T) {
 		"Message goes",
 		"Here, with padding of two",
 		"Another message goes here but longer than the other three",
+		fmt.Sprintf("String format test %d", 1),
 	}
 
-	msg := utils.FormatImportantString(baseLines, 2)
+	msg := utils.FormatBannerString(baseLines, 2)
 
 	msgLines := strings.Split(msg, "\n")
 	msgLines = msgLines[:len(msgLines)-2]

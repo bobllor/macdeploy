@@ -117,9 +117,9 @@ func RemoveFiles[T any](filesToRemove map[string]T, files []os.DirEntry) {
 	}
 }
 
-// FormatImportantString returns a formatted string between two lines of stars (*)
-// with padding the inner text. It creates the text based on the slice of strings given.
-func FormatImportantString(lineArr []string, padding int) string {
+// FormatBannerString returns a formatted string between two lines of stars (*)
+// with padding the inner text. It creates the banner text based on the slice of strings given.
+func FormatBannerString(lineArr []string, padding int) string {
 	longestLen := len(lineArr[0])
 	for i := 1; i < len(lineArr); i++ {
 		if len(lineArr[i]) > longestLen {
