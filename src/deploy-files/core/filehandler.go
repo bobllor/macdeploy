@@ -97,10 +97,13 @@ func (f *FileHandler) AddPackages(packagesToAdd []string) {
 func (f *FileHandler) RemovePackages(packagesToRemove []string) {
 	for _, excludedPkg := range packagesToRemove {
 		excludedPkgLow := strings.ToLower(excludedPkg)
-		_, ok := f.packagesToInstall[excludedPkgLow]
-		if ok {
-			f.log.Info.Log("Removed %s from installation list", excludedPkg)
-			delete(f.packagesToInstall, excludedPkg)
+
+		for key := range f.packagesToInstall {
+			keyLower := strings.ToLower(key)
+
+			if strings.Contains(keyLower, excludedPkgLow) {
+				delete(f.packagesToInstall, key)
+			}
 		}
 	}
 }
