@@ -102,6 +102,7 @@ func (f *FileHandler) RemovePackages(packagesToRemove []string) {
 			keyLower := strings.ToLower(key)
 
 			if strings.Contains(keyLower, excludedPkgLow) {
+				f.log.Info.Log("Removed package %s from installing packages list", excludedPkg)
 				delete(f.packagesToInstall, key)
 			}
 		}
