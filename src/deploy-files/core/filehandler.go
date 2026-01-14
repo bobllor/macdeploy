@@ -95,12 +95,17 @@ func (f *FileHandler) AddPackages(packagesToAdd []string) {
 // RemovePackages removes packages from the list of packages to install by removing the packages
 // given in the --exclude flag.
 func (f *FileHandler) RemovePackages(packagesToRemove []string) {
+	f.log.Debug.Log("Packages to remove: %v", packagesToRemove)
 	for _, excludedPkg := range packagesToRemove {
 		excludedPkgLow := strings.ToLower(excludedPkg)
-		_, ok := f.packagesToInstall[excludedPkgLow]
-		if ok {
-			f.log.Info.Log("Removed %s from installation list", excludedPkg)
-			delete(f.packagesToInstall, excludedPkg)
+
+		for key := range f.packagesToInstall {
+			keyLower := strings.ToLower(key)
+
+			if strings.Contains(keyLower, excludedPkgLow) {
+				f.log.Info.Log("Found package %s matching %s, removing from installation", key, excludedPkg)
+				delete(f.packagesToInstall, key)
+			}
 		}
 	}
 }
