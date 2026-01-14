@@ -92,6 +92,41 @@ func TestRemovePackages(t *testing.T) {
 	}
 }
 
+func TestFuzzyRemovePackages(t *testing.T) {
+	logger := GetLogger(t)
+	handler := core.NewFileHandler(packagesToInstall, logger.Log)
+
+	packagesCopy := make([]string, len(packagesToAdd))
+	packagesLength := copy(packagesCopy, packagesToAdd)
+
+	// cutting the packages string in half for fuzzy finding
+	for i := range packagesLength {
+		temp := []byte(packagesCopy[i])
+		halfWord := string(temp[0 : (len(temp))/2])
+
+		packagesCopy[i] = halfWord
+	}
+
+	handler.AddPackages(packagesToAdd)
+
+	expectedLen := len(handler.GetPackages())
+
+	randomSelection := strings.ToLower(packagesCopy[rand.Intn(packagesLength)])
+	handler.RemovePackages([]string{randomSelection})
+
+	newLen := len(handler.GetPackages())
+
+	if expectedLen == newLen {
+		t.Errorf("Got length %d, expected %d", newLen, expectedLen)
+	}
+
+	for _, pkg := range handler.GetPackages() {
+		if strings.Contains(pkg, randomSelection) {
+			t.Errorf("Failed to fuzzy remove %s with %s", pkg, randomSelection)
+		}
+	}
+}
+
 func TestInstalledPackages(t *testing.T) {
 	log := GetLogger(t)
 	handler := core.NewFileHandler(packagesToInstall, log.Log)
