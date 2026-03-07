@@ -55,6 +55,12 @@ type varData struct {
 	scriptFiles []string
 }
 
+const (
+	projectName   string = "macos-deployment"
+	distDirectory string = "dist"
+	zipFile       string = "deploy.zip"
+)
+
 var root RootData
 
 var paddingMsg int = 2
@@ -610,13 +616,10 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 
 // initialize initializes the data for RootData.
 //
-// skipProcess is used to skip certain processes in the initialization. It is only
-// used for sub commands.
-func (r *RootData) initialize(skipProcess bool) {
-	const projectName string = "macos-deployment"
-	const distDirectory string = "dist"
-	const zipFile string = "deploy.zip"
-
+// isSubProcess is a flag used to indicate that the method call is used
+// for a sub command. This will skip reading most values from the config file
+// and the hook lifecycle injection.
+func (r *RootData) initialize(isSubProcess bool) {
 	// not exiting, just in case mac fails somehow. but there are checks for non-mac devices.
 	serialTag, err := utils.GetSerialTag()
 	if err != nil {
@@ -703,7 +706,8 @@ func (r *RootData) initialize(skipProcess bool) {
 	r.dep.firewall = firewall
 	r.dep.filevault = filevault
 
-	if !skipProcess {
+	// script hooks, this is not applicable to sub commands.
+	if !isSubProcess {
 		// initialized for the lifecycle during pre, install, and post script stages
 		scriptFiles, err := r.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".sh")
 		if err != nil {
