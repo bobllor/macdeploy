@@ -98,8 +98,8 @@ func TestInstalledPackages(t *testing.T) {
 
 	alreadyInstalledCount := 0
 
-	for pkg, installedNames := range packagesToInstall {
-		if handler.IsInstalled(installedNames, strings.ToLower(pkg), searchDirectoryFiles) {
+	for _, installedNames := range packagesToInstall {
+		if handler.IsInstalled(installedNames, searchDirectoryFiles) {
 			alreadyInstalledCount += 1
 		}
 	}
@@ -119,7 +119,7 @@ func TestInstallPackages(t *testing.T) {
 	expectedLen := len(packagesToAdd)
 
 	for pkg, installedNames := range handler.GetAllPackages() {
-		isInstalled := handler.IsInstalled(installedNames, strings.ToLower(pkg), searchDirectoryFiles)
+		isInstalled := handler.IsInstalled(installedNames, searchDirectoryFiles)
 		if !isInstalled {
 			installedCount += 1
 
