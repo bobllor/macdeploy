@@ -20,6 +20,11 @@ type FileHandler struct {
 }
 
 // NewFileHandler creates a new Installer for package and app installations for macOS.
+//
+// packagesToInstall is a hash map containing the package to install as the key, and the
+// installation files of the package as the files. Both keys and values are lowercased.
+//
+// logger is the logging struct.
 func NewFileHandler(packagesToInstall map[string][]string, logger *logger.Log) *FileHandler {
 	packagesLowered := make(map[string][]string)
 
@@ -68,11 +73,17 @@ func (f *FileHandler) InstallRosetta() error {
 	return nil
 }
 
-// AddPKG adds new packages to the list of packages to install by adding packages
-// included in the --include flag. All package names are lowered.
+// AddPackages adds new packages to the packagesToInstall map. All package names
+// will be lowered.
+//
+// packagesToAdd is a slice of strings containing the .pkg file name to install.
+// The contents can be a substring of the .pkg file name, the full .pkg file name,
+// or a string with '/' delimiters that represents the structure: <file>/installed/installed.
+// The latter is used to check if the file is already installed prior to attempting the install.
 func (f *FileHandler) AddPackages(packagesToAdd []string) {
 	for _, includedPkg := range packagesToAdd {
 		// used to extract the package and its installed files from the flag argument.
+		// TODO: make this a comma instead, utilize string slice for include packages!
 		includeArgArr := strings.Split(includedPkg, "/")
 
 		f.toLowerArray(&includeArgArr)
@@ -93,7 +104,8 @@ func (f *FileHandler) AddPackages(packagesToAdd []string) {
 }
 
 // RemovePackages removes packages from the list of packages to install by removing the packages
-// given in the --exclude flag.
+// in the package maps from a slice of packages.
+// The names must match in order to remove the packages.
 func (f *FileHandler) RemovePackages(packagesToRemove []string) {
 	for _, excludedPkg := range packagesToRemove {
 		excludedPkgLow := strings.ToLower(excludedPkg)
@@ -105,8 +117,9 @@ func (f *FileHandler) RemovePackages(packagesToRemove []string) {
 	}
 }
 
-// ReadDir reads the directory and recursively matches the files to the search pattern.
-// The output array contains the full path to the files.
+// ReadDir reads the directory and recursively matches the files to a search pattern.
+// The output array contains the full path to the files from the relative path of the
+// program.
 //
 // If it fails to read the directory then it returns an error.
 func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]string, error) {
@@ -130,6 +143,7 @@ func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]str
 	}
 	err := fs.WalkDir(os.DirFS(directoryPath), ".", walk)
 	if err != nil {
+		err = fmt.Errorf("Directory path '%s' is not found", directoryPath)
 		return nil, err
 	}
 
@@ -144,10 +158,11 @@ func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]str
 // If a package fails to install, then it will be logged and skipped.
 func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFiles []string) {
 	for pkg, installedNames := range f.packagesToInstall {
-		isInstalled := f.IsInstalled(installedNames, pkg, searchDirectoryFiles)
+		isInstalled := f.IsInstalled(installedNames, searchDirectoryFiles)
 
 		if isInstalled {
-			f.log.Warn.Log(fmt.Sprintf("Package %s is already installed", pkg))
+			f.log.Info.Log(fmt.Sprintf("Found existing installation for package %s", pkg))
+			f.log.Debug.Log(fmt.Sprintf("Package: %s | Given package name: %s", pkg, installedNames))
 			continue
 		}
 
@@ -160,9 +175,12 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 		// are required to be in the same directory as the binary.
 		for _, file := range packagesPath {
 			relativePkgLow := strings.ToLower(file)
+
+			// this cannot be hard coded with the .pkg file, this allows for
+			// dynamic handling of long names (due to an edge case).
 			if strings.Contains(relativePkgLow, pkgLowered) {
 				f.log.Info.Log("Installing package %s", pkg)
-				fmt.Printf("Installing package %s\n", pkg)
+				fmt.Printf("Starting installation for %s\n", pkg)
 
 				cmd := fmt.Sprintf(`installer -pkg "%s" -target /`, file)
 				f.log.Debug.Log("Package: %s | Package path: %s | Command: %s", pkg, file, cmd)
@@ -170,7 +188,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 				out, err := exec.Command("sudo", "bash", "-c", cmd).Output()
 				if err != nil {
 					outStr := strings.TrimSpace(string(out))
-					f.log.Warn.Log(fmt.Sprintf("Failed to install %s: %s %v", pkg, outStr, err))
+					f.log.Warn.Log(fmt.Sprintf("Failed installation of %s: %s %v", pkg, outStr, err))
 					failedInstall = true
 					break
 				}
@@ -427,7 +445,7 @@ func (f *FileHandler) CopyFiles(paths []string, target string) {
 // the package being installed is already installed.
 // Otherwise, false is returned if no installed arguments are given or it doesn't exist in the search
 // directories.
-func (p *FileHandler) IsInstalled(installedNames []string, pkgToInstall string, searchDirectoryFiles []string) bool {
+func (p *FileHandler) IsInstalled(installedNames []string, searchDirectoryFiles []string) bool {
 	// installedName is the user given installed file
 	// installedFile is the installed file inside the directory files
 	for _, installedName := range installedNames {
@@ -446,8 +464,6 @@ func (p *FileHandler) IsInstalled(installedNames []string, pkgToInstall string, 
 			// if a generic name is given, there is a good possibility the wrong name will be matched.
 			// compares the files in the search directory, to the user defined package name for installation checks.
 			if strings.Contains(lowInstalledFile, lowInstalledName) {
-				p.log.Info.Log(fmt.Sprintf("Found existing installation for package %s", pkgToInstall))
-				p.log.Debug.Log(fmt.Sprintf("Package: %s | Given package name: %s", pkgToInstall, installedName))
 				return true
 			}
 		}
