@@ -178,6 +178,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 
 			// this cannot be hard coded with the .pkg file, this allows for
 			// dynamic handling of long names (due to an edge case).
+			// instead the .pkg extension is added after the package can be found.
 			if strings.Contains(relativePkgLow, pkgLowered) {
 				f.log.Info.Log("Installing package %s", pkg)
 				fmt.Printf("Starting installation for %s\n", pkg)
