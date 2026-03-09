@@ -10,11 +10,11 @@ import (
 )
 
 type Firewall struct {
-	log    *logger.Log
+	log    *logger.Logger
 	script *scripts.BashScripts
 }
 
-func NewFirewall(log *logger.Log, scripts *scripts.BashScripts) *Firewall {
+func NewFirewall(log *logger.Logger, scripts *scripts.BashScripts) *Firewall {
 	return &Firewall{
 		log:    log,
 		script: scripts,
@@ -29,7 +29,7 @@ func (f *Firewall) Enable() error {
 		return fmt.Errorf("failed to enable Firewall: %s | %v", string(out), err)
 	}
 
-	f.log.Info.Log("Firewall enabled")
+	f.log.Info("Firewall enabled")
 
 	return nil
 }
@@ -40,7 +40,7 @@ func (f *Firewall) Status() (bool, error) {
 	out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
 	if err != nil {
 		errMsg := strings.TrimSpace(fmt.Sprintf("Failed to check Firewall status: %s", string(out)))
-		f.log.Error.Log(errMsg)
+		f.log.Warn(errMsg)
 
 		return false, errors.New(string(out))
 	}

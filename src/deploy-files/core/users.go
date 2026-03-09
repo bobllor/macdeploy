@@ -16,12 +16,12 @@ import (
 
 type UserMaker struct {
 	adminInfo yaml.UserInfo
-	log       *logger.Log
+	log       *logger.Logger
 	script    *scripts.BashScripts
 }
 
 // NewUser creates a new UserMaker to handle user creation.
-func NewUser(adminInfo yaml.UserInfo, scripts *scripts.BashScripts, logger *logger.Log) *UserMaker {
+func NewUser(adminInfo yaml.UserInfo, scripts *scripts.BashScripts, logger *logger.Logger) *UserMaker {
 	user := UserMaker{
 		adminInfo: adminInfo,
 		log:       logger,
@@ -53,7 +53,7 @@ func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, er
 		input = input[:len(input)-1]
 
 		if input == "" {
-			u.log.Info.Log("User creation skipped")
+			u.log.Info("User creation skipped")
 			return "", errors.New("user creation skipped")
 		}
 
@@ -61,24 +61,24 @@ func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, er
 	}
 
 	if user.Password == "" {
-		u.log.Warn.Log("No user password was given for %s", username)
+		u.log.Warnf("No user password was given for %s", username)
 
 		err := user.SetPassword()
 		if err != nil {
 			return "", err
 		}
 
-		u.log.Info.Log("Updated user password, previously was empty")
+		u.log.Info("Updated user password, previously was empty")
 	}
 
 	// follows apple's naming convention
 	accountName := utils.FormatUsername(username)
 
-	u.log.Info.Log("Creating user %s with account name %s", username, accountName)
+	u.log.Infof("Creating user %s with account name %s", username, accountName)
 
 	admin := "false"
 	if isAdmin && !user.IgnoreAdmin {
-		u.log.Info.Log("Admin enabled for user %s", username)
+		u.log.Infof("Admin enabled for user %s", username)
 		admin = strconv.FormatBool(isAdmin)
 	}
 
@@ -94,12 +94,12 @@ func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, er
 	out, err := exec.Command("sudo", "bash", "-c",
 		u.script.CreateUser, username, accountName, user.Password, admin).CombinedOutput()
 	if err != nil {
-		u.log.Debug.Log(fmt.Sprintf("create user script error: %s", string(out)))
+		u.log.Debug(fmt.Sprintf("create user script error: %s", string(out)))
 		return "", fmt.Errorf("failed to create user %s: %v", username, err)
 	}
 
 	createdLog := fmt.Sprintf("User %s created", username)
-	u.log.Info.Log(createdLog)
+	u.log.Info(createdLog)
 
 	return accountName, nil
 }
@@ -116,7 +116,7 @@ func (u *UserMaker) DeleteAccount(username string) error {
 		return err
 	}
 
-	u.log.Info.Log(fmt.Sprintf("Removed user %s", username))
+	u.log.Info(fmt.Sprintf("Removed user %s", username))
 
 	return nil
 }
@@ -133,7 +133,7 @@ func (u *UserMaker) AddPasswordPolicy(username string) error {
 		return fmt.Errorf("failed to create user policy for %s: %v", username, err)
 	}
 
-	u.log.Info.Log(fmt.Sprintf("Added new password policy for %s", username))
+	u.log.Info(fmt.Sprintf("Added new password policy for %s", username))
 
 	return nil
 }
@@ -144,11 +144,11 @@ func (u *UserMaker) userExists(username string) (bool, error) {
 
 	dirs, err := os.ReadDir(usersPath)
 	if err != nil {
-		u.log.Error.Log(fmt.Sprintf("Error reading directory: %v", err))
+		u.log.Warn(fmt.Sprintf("Error reading directory: %v", err))
 		return false, err
 	}
 
-	u.log.Debug.Log(fmt.Sprintf("User directory content: %v", dirs))
+	u.log.Debug(fmt.Sprintf("User directory content: %v", dirs))
 
 	for _, dir := range dirs {
 		dirName := strings.ToLower(dir.Name())

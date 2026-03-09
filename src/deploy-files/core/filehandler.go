@@ -15,7 +15,7 @@ import (
 
 type FileHandler struct {
 	packagesToInstall map[string][]string
-	log               *logger.Log
+	log               *logger.Logger
 	scriptsPathCache  map[string]string // Cache for script paths, k:v <file name>:<file path>. The key is lowercase.
 }
 
@@ -25,7 +25,7 @@ type FileHandler struct {
 // installation files of the package as the files. Both keys and values are lowercased.
 //
 // logger is the logging struct.
-func NewFileHandler(packagesToInstall map[string][]string, logger *logger.Log) *FileHandler {
+func NewFileHandler(packagesToInstall map[string][]string, logger *logger.Logger) *FileHandler {
 	packagesLowered := make(map[string][]string)
 
 	for pkg, appNames := range packagesToInstall {
@@ -49,7 +49,7 @@ func NewFileHandler(packagesToInstall map[string][]string, logger *logger.Log) *
 // If the installation of Rosetta fails then an error will be returned.
 func (f *FileHandler) InstallRosetta() error {
 	if runtime.GOARCH == "amd64" {
-		f.log.Info.Log("Skipping Rosetta installation, architecture: %s", runtime.GOARCH)
+		f.log.Info(fmt.Sprintf("Skipping Rosetta installation, architecture: %s", runtime.GOARCH))
 		return nil
 	}
 
@@ -65,9 +65,9 @@ func (f *FileHandler) InstallRosetta() error {
 			return errors.New("rosetta failed to install")
 		}
 
-		f.log.Info.Log("Rosetta successfully installed")
+		f.log.Info("Rosetta successfully installed")
 	} else {
-		f.log.Warn.Log("Found existing Rosetta installation")
+		f.log.Warn("Found existing Rosetta installation")
 	}
 
 	return nil
@@ -97,10 +97,10 @@ func (f *FileHandler) AddPackages(packagesToAdd []string) {
 		}
 
 		f.packagesToInstall[pkg] = pkgInstalledArr
-		f.log.Info.Log("Added %s to the installation list", pkg)
+		f.log.Info(fmt.Sprintf("Added %s to the installation list", pkg))
 	}
 
-	f.log.Debug.Log("Packages: %v", f.packagesToInstall)
+	f.log.Debug(fmt.Sprintf("Packages: %v", f.packagesToInstall))
 }
 
 // RemovePackages removes packages from the list of packages to install by removing the packages
@@ -111,7 +111,7 @@ func (f *FileHandler) RemovePackages(packagesToRemove []string) {
 		excludedPkgLow := strings.ToLower(excludedPkg)
 		_, ok := f.packagesToInstall[excludedPkgLow]
 		if ok {
-			f.log.Info.Log("Removed %s from installation list", excludedPkg)
+			f.log.Info(fmt.Sprintf("Removed %s from installation list", excludedPkg))
 			delete(f.packagesToInstall, excludedPkg)
 		}
 	}
@@ -123,7 +123,7 @@ func (f *FileHandler) RemovePackages(packagesToRemove []string) {
 //
 // If it fails to read the directory then it returns an error.
 func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]string, error) {
-	f.log.Debug.Log("Directory: %s | Search pattern: %s", directoryPath, searchPattern)
+	f.log.Debug(fmt.Sprintf("Directory: %s | Search pattern: %s", directoryPath, searchPattern))
 
 	files := make([]string, 0)
 	walk := func(path string, d fs.DirEntry, err error) error {
@@ -147,8 +147,7 @@ func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]str
 		return nil, err
 	}
 
-	f.log.Debug.Log("%s Files: %v", searchPattern, files)
-
+	f.log.Debug(fmt.Sprintf("%s Files: %v", searchPattern, files))
 	return files, nil
 }
 
@@ -161,8 +160,8 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 		isInstalled := f.IsInstalled(installedNames, searchDirectoryFiles)
 
 		if isInstalled {
-			f.log.Info.Log(fmt.Sprintf("Found existing installation for package %s", pkg))
-			f.log.Debug.Log(fmt.Sprintf("Package: %s | Given package name: %s", pkg, installedNames))
+			f.log.Info(fmt.Sprintf("Found existing installation for package %s", pkg))
+			f.log.Debug(fmt.Sprintf("Package: %s | Given package name: %s", pkg, installedNames))
 			continue
 		}
 
@@ -180,16 +179,16 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 			// dynamic handling of long names (due to an edge case).
 			// instead the .pkg extension is added after the package can be found.
 			if strings.Contains(relativePkgLow, pkgLowered) {
-				f.log.Info.Log("Installing package %s", pkg)
+				f.log.Info(fmt.Sprintf("Installing package %s", pkg))
 				fmt.Printf("Starting installation for %s\n", pkg)
 
 				cmd := fmt.Sprintf(`installer -pkg "%s" -target /`, file)
-				f.log.Debug.Log("Package: %s | Package path: %s | Command: %s", pkg, file, cmd)
+				f.log.Debug(fmt.Sprintf("Package: %s | Package path: %s | Command: %s", pkg, file, cmd))
 
 				out, err := exec.Command("sudo", "bash", "-c", cmd).Output()
 				if err != nil {
 					outStr := strings.TrimSpace(string(out))
-					f.log.Warn.Log(fmt.Sprintf("Failed installation of %s: %s %v", pkg, outStr, err))
+					f.log.Warn(fmt.Sprintf("Failed installation of %s: %s %v", pkg, outStr, err))
 					failedInstall = true
 					break
 				}
@@ -200,7 +199,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 				} else {
 					outMsg = fmt.Sprintf("%s %s", outMsg, pkg)
 				}
-				f.log.Info.Log(outMsg)
+				f.log.Info(outMsg)
 
 				successfulInstall = true
 				break
@@ -208,7 +207,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 		}
 
 		if !successfulInstall && !failedInstall {
-			f.log.Warn.Log("Unable to find package %s", pkg)
+			f.log.Warn(fmt.Sprintf("Unable to find package %s", pkg))
 		}
 	}
 }
@@ -238,26 +237,26 @@ func (f *FileHandler) AddDmgPackages(volumePaths []string, pkgDirectory string) 
 
 	for _, volumePath := range volumePaths {
 		newCmd := fmt.Sprintf(cmd, volumePath, pkgDirectory)
-		f.log.Info.Log("Copying files in path %s", volumePath)
+		f.log.Info(fmt.Sprintf("Copying files in path %s", volumePath))
 
 		// no sudo unless you want root to own it (not tested)
 		_, err := exec.Command("bash", "-c", newCmd).Output()
 		if err != nil {
-			f.log.Error.Log("Failed to copy contents of %s: %v", volumePath, err)
+			f.log.Warn(fmt.Sprintf("Failed to copy contents of %s: %v", volumePath, err))
 			continue
 		}
 
-		f.log.Info.Log("Successfully copied %s to %s", volumePath, pkgDirectory)
+		f.log.Info(fmt.Sprintf("Successfully copied %s to %s", volumePath, pkgDirectory))
 	}
 
 	// error is ignored here as this is just debugging.
 	distDir, err := os.ReadDir(pkgDirectory)
 	if err != nil {
-		f.log.Warn.Log("Failed to read %s: %v", pkgDirectory, err)
+		f.log.Warn(fmt.Sprintf("Failed to read %s: %v", pkgDirectory, err))
 		return
 	}
 
-	f.log.Debug.Log("Distribution directory after adding DMG contents: %v", distDir)
+	f.log.Debug(fmt.Sprintf("Distribution directory after adding DMG contents: %v", distDir))
 }
 
 // AttachDmgs takes an array of paths and attaches it to the disk via hdiutil.
@@ -270,21 +269,21 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 	volumePaths := make([]string, 0)
 
 	for _, dmgPath := range dmgPaths {
-		f.log.Debug.Log("DMG path: %s", dmgPath)
+		f.log.Debug(fmt.Sprintf("DMG path: %s", dmgPath))
 
 		if strings.Contains(dmgPath, ".dmg") {
 			newCmd := fmt.Sprintf(cmd, dmgPath)
 
-			f.log.Info.Log("Mounting %s", dmgPath)
-			f.log.Debug.Log("Command: %s", newCmd)
+			f.log.Info(fmt.Sprintf("Mounting %s", dmgPath))
+			f.log.Debug(fmt.Sprintf("Command: %s", newCmd))
 
 			out, err := exec.Command("bash", "-c", newCmd).Output()
 			if err != nil {
-				f.log.Error.Log("failed to mount %s: %v", dmgPath, err)
+				f.log.Warn(fmt.Sprintf("failed to mount %s: %v", dmgPath, err))
 				continue
 			}
 
-			f.log.Debug.Log("Command output: %s", strings.TrimSpace(string(out)))
+			f.log.Debug(fmt.Sprintf("Command output: %s", strings.TrimSpace(string(out))))
 
 			outArr := strings.Split(string(out), "\t")
 			volumePath := strings.TrimSpace(outArr[len(outArr)-1])
@@ -293,7 +292,7 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 		}
 	}
 
-	f.log.Debug.Log("Mounted DMG volume paths: %v", volumePaths)
+	f.log.Debug(fmt.Sprintf("Mounted DMG volume paths: %v", volumePaths))
 
 	return volumePaths
 }
@@ -304,13 +303,13 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 // It returns a string and an error, depending on the exit status of the script.
 // If the script did not get executed, an error is returned.
 func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (string, error) {
-	f.log.Info.Log("Running %s", scriptName)
+	f.log.Info(fmt.Sprintf("Running %s", scriptName))
 	ogName := scriptName
 	scriptName = strings.TrimSpace(strings.ToLower(scriptName))
 
 	// cache is built inside the loop
 	if _, ok := f.scriptsPathCache[scriptName]; ok {
-		f.log.Info.Log("Found %s in cache", ogName)
+		f.log.Info(fmt.Sprintf("Found %s in cache", ogName))
 
 		scriptPath := f.scriptsPathCache[scriptName]
 		outMsg, err := f.execute(scriptPath)
@@ -338,7 +337,7 @@ func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (st
 			filename := strings.ToLower(filepath.Base(scriptPath))
 
 			f.scriptsPathCache[filename] = scriptPath
-			f.log.Debug.Log("Added %s to cache", filename)
+			f.log.Debug(fmt.Sprintf("Added %s to cache", filename))
 		}
 	}
 
@@ -370,19 +369,19 @@ func (f *FileHandler) DetachDmgs(volumePaths []string) {
 	cmd := "hdiutil detach '%s'"
 
 	for _, volumePath := range volumePaths {
-		f.log.Info.Log("Unmounting %s", volumePath)
-		f.log.Debug.Log("Mount: %s", volumePath)
+		f.log.Info(fmt.Sprintf("Unmounting %s", volumePath))
+		f.log.Debug(fmt.Sprintf("Mount: %s", volumePath))
 
 		newCmd := fmt.Sprintf(cmd, volumePath)
-		f.log.Debug.Log("Command: %s", newCmd)
+		f.log.Debug(fmt.Sprintf("Command: %s", newCmd))
 
 		out, err := exec.Command("bash", "-c", newCmd).Output()
 		if err != nil {
-			f.log.Error.Log("Manual interaction needed, failed to unmount %s: %v", volumePath, err)
+			f.log.Warn(fmt.Sprintf("Manual interaction needed, failed to unmount %s: %v", volumePath, err))
 			continue
 		}
 
-		f.log.Debug.Log("Command output: %s", strings.TrimSpace(string(out)))
+		f.log.Debug(fmt.Sprintf("Command output: %s", strings.TrimSpace(string(out))))
 	}
 }
 
@@ -390,45 +389,45 @@ func (f *FileHandler) DetachDmgs(volumePaths []string) {
 //
 // Errors during the copy operation are logged and skipped, requiring manual intervention.
 func (f *FileHandler) CopyFiles(paths []string, target string) {
-	f.log.Debug.Log("File paths: %v", paths)
-	f.log.Info.Log("Copying to %s", target)
+	f.log.Debug(fmt.Sprintf("File paths: %v", paths))
+	f.log.Info(fmt.Sprintf("Copying to %s", target))
 	// lowercase not needed as it is obtained from ReadDir
 	// case sensitivity doesn't matter on mac anyways (at least by default in sequoia+)
 	for _, path := range paths {
 		file, err := os.Stat(path)
 		if err != nil {
-			f.log.Error.Log("Failed to stat %s: %v", path, err)
+			f.log.Warn(fmt.Sprintf("Failed to stat %s: %v", path, err))
 			continue
 		}
 
 		targetFile := fmt.Sprintf("%s/%s", target, file.Name())
 
-		f.log.Debug.Log("Target file: %s", targetFile)
+		f.log.Debug(fmt.Sprintf("Target file: %s", targetFile))
 
 		if file.IsDir() {
 			// copyFS already creates the directories if missing
 			err = os.CopyFS(targetFile, os.DirFS(path))
 			if err != nil {
-				f.log.Error.Log("Failed to copy %s: %v", path, err)
+				f.log.Warn(fmt.Sprintf("Failed to copy %s: %v", path, err))
 				continue
 			}
 		} else {
 			fmt.Println(file.Size())
 			reader, err := os.Open(path)
 			if err != nil {
-				f.log.Error.Log("Failed to read %s: %v", path, err)
+				f.log.Warn(fmt.Sprintf("Failed to read %s: %v", path, err))
 				continue
 			}
 
 			newFile, err := os.OpenFile(targetFile, os.O_CREATE|os.O_WRONLY, file.Mode())
 			if err != nil {
-				f.log.Error.Log("Failed to write %s: %v", targetFile, err)
+				f.log.Warn(fmt.Sprintf("Failed to write %s: %v", targetFile, err))
 				continue
 			}
 
 			_, err = io.Copy(newFile, reader)
 			if err != nil {
-				f.log.Error.Log("Failed to write %s: %v", targetFile, err)
+				f.log.Warnf("Failed to write %s: %v", targetFile, err)
 				continue
 			}
 
@@ -436,7 +435,7 @@ func (f *FileHandler) CopyFiles(paths []string, target string) {
 			newFile.Close()
 		}
 
-		f.log.Info.Log("Copied %s to %s", path, target)
+		f.log.Infof("Copied %s to %s", path, target)
 	}
 }
 

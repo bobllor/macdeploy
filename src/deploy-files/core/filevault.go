@@ -12,10 +12,10 @@ import (
 type FileVault struct {
 	admin  yaml.UserInfo
 	script *scripts.BashScripts
-	log    *logger.Log
+	log    *logger.Logger
 }
 
-func NewFileVault(admin yaml.UserInfo, script *scripts.BashScripts, log *logger.Log) *FileVault {
+func NewFileVault(admin yaml.UserInfo, script *scripts.BashScripts, log *logger.Logger) *FileVault {
 	fv := FileVault{
 		admin:  admin,
 		script: script,
@@ -30,13 +30,13 @@ func NewFileVault(admin yaml.UserInfo, script *scripts.BashScripts, log *logger.
 func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 	key := ""
 
-	f.log.Info.Log("Starting FileVault process")
+	f.log.Info("Starting FileVault process")
 
 	out, err := exec.Command("sudo", "bash", "-c", f.script.EnableFileVault,
 		adminUser, adminPassword).CombinedOutput()
 	outText := string(out)
 	if err != nil {
-		f.log.Warn.Log("Failed to enable FileVault")
+		f.log.Warn("Failed to enable FileVault")
 		return ""
 	}
 
@@ -45,7 +45,7 @@ func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 	// TIL an empty string is added to the array if there is a delimiter at the end!
 	key = outArr[len(outArr)-2]
 
-	f.log.Info.Log("FileVault enabled")
+	f.log.Info("FileVault enabled")
 
 	return key
 }
@@ -66,10 +66,10 @@ func (f *FileVault) Status() (bool, error) {
 		return false, fmt.Errorf("%s", fileVaultStatus)
 	}
 
-	f.log.Debug.Log("FileVault status: %s", fileVaultStatus)
+	f.log.Debugf("FileVault status: %s", fileVaultStatus)
 
 	if strings.Contains(fileVaultStatus, "true") {
-		f.log.Info.Log("Filevault is already enabled")
+		f.log.Info("Filevault is already enabled")
 		return true, nil
 	}
 
@@ -86,7 +86,7 @@ func (f *FileVault) AddSecureToken(username string, userPassword string) error {
 		"sudo sysadminctl -secureTokenOn '%s' -password '%s' -adminUser '%s' -adminPassword '%s'",
 		username, userPassword, f.admin.Username, f.admin.Password)
 
-	f.log.Debug.Log("Ran secure token command for user %s", username)
+	f.log.Debugf("Ran secure token command for user %s", username)
 
 	// VERY IMPORTANT:
 	// sysadminctl outputs to tty and it always returns 0.
@@ -96,19 +96,19 @@ func (f *FileVault) AddSecureToken(username string, userPassword string) error {
 	// or the terminal input was wrong.
 	err := f.admin.ResetSudo()
 	if err != nil {
-		f.log.Error.Log("Failed to run sudo reset command: %v", err)
+		f.log.Warnf("Failed to run sudo reset command: %v", err)
 		return err
 	}
 
 	err = f.admin.InitializeSudo()
 	if err != nil {
-		f.log.Error.Log("Error enabling token for user, manual interaction needed: %v", err)
-		f.log.Error.Log("Admin password is likely incorrect")
+		f.log.Warnf("Error enabling token for user, manual interaction needed: %v", err)
+		f.log.Warn("Admin password is likely incorrect")
 		return err
 	}
 
 	_ = exec.Command("bash", "-c", secureTokenCmd).Run()
-	f.log.Info.Log("Secure token added for %s", username)
+	f.log.Infof("Secure token added for %s", username)
 
 	return nil
 }
