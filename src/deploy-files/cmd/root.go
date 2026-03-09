@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	embedhandler "macos-deployment/config"
 	"macos-deployment/deploy-files/core"
 	"macos-deployment/deploy-files/logger"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -29,7 +31,8 @@ type RootData struct {
 	ExcludePackages []string
 	IncludePackages []string
 	PlistPath       string
-	log             *logger.Log
+	logFile         string
+	log             *logger.Logger
 	config          *yaml.Config
 	script          *scripts.BashScripts
 	metadata        *utils.Metadata
@@ -86,7 +89,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := root.config.Admin.InitializeSudo()
 		if err != nil {
-			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
+			root.log.Warn(fmt.Sprintf("Failed to authenticate sudo: %v", err))
 		}
 
 		// skip local also skips YAML configured accounts
@@ -95,37 +98,33 @@ var rootCmd = &cobra.Command{
 			root.startAccountCreation(root.AdminStatus)
 		}
 
-		err = root.log.WriteFile()
-		if err != nil {
-			fmt.Printf("Failed to write to log file: %v\n", err)
-		}
-
 		// creating the files found in the search directories, it is flattened.
 		searchDirectoryFiles := make([]string, 0)
 		for _, searchDir := range root.config.SearchDirectories {
 			searchFiles, err := utils.GetFiles(searchDir)
 			if err != nil {
-				root.log.Warn.Log("Path %s does not exist, skipping path", searchDir)
+				root.log.Warn(fmt.Sprintf("Path %s does not exist, skipping path", searchDir))
 				continue
 			}
 
 			searchDirectoryFiles = append(searchDirectoryFiles, searchFiles...)
 		}
 
-		root.log.Debug.Log("File amount: %d | Directories: %v", len(searchDirectoryFiles), root.config.SearchDirectories)
+		root.log.Debug(fmt.Sprintf("File amount: %d | Directories: %v", len(searchDirectoryFiles), root.config.SearchDirectories))
 
 		if len(searchDirectoryFiles) < 1 {
-			root.log.Warn.Log("No files found with search directories, all packages will be installed")
+			root.log.Warn("No files found in search directories, all packages will be installed")
+			fmt.Println("No files found in search directories, all packages will be installed")
 		}
 
 		// NOTE: can make the pkg/dmg/app process efficient by searching once.
 		// something to note in the future if needed.
 
 		// automatically mount, extract, and dismount DMG files if they exist.
-		root.log.Info.Log("Searching for DMG files")
+		root.log.Info("Searching for DMG files")
 		dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".dmg")
 		if err != nil {
-			root.log.Error.Log("Failed to search directory: %v", err)
+			root.log.Warn(fmt.Sprintf("Failed to search directory: %v", err))
 		} else {
 			// this requires the use of --include to install properly.
 			volumeMounts := root.dep.filehandler.AttachDmgs(dmgFiles)
@@ -140,7 +139,7 @@ var rootCmd = &cobra.Command{
 		// app files will automatically get placed into the Applications folder
 		appFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".app")
 		if err != nil {
-			root.log.Error.Log("Failed to search directory: %v", err)
+			root.log.Warn(fmt.Sprintf("Failed to search directory: %v", err))
 		}
 		if len(appFiles) > 0 {
 			applicationDir := "/Applications"
@@ -149,35 +148,28 @@ var rootCmd = &cobra.Command{
 
 		// inter script execution
 		if len(root.config.Scripts.Inter) > 0 && !root.errors.ScriptsFailed {
-			root.log.Debug.Log("Inter script files: %v", root.config.Scripts.Inter)
+			root.log.Debug(fmt.Sprintf("Inter script files: %v", root.config.Scripts.Inter))
 
 			root.executeScripts(root.config.Scripts.Inter, root.data.scriptFiles)
 		}
 
-		err = root.log.WriteFile()
-		if err != nil {
-			fmt.Printf("Failed to write to log file: %v\n", err)
-		}
-
 		err = root.config.Admin.InitializeSudo()
 		if err != nil {
-			root.log.Warn.Log("Failed to authenticate sudo: %v", err)
+			root.log.Warn(fmt.Sprintf("Failed to authenticate sudo: %v", err))
 		}
 
 		// payload for sending to the server
 		// initialized with an empty key, Key gets updated below.
 		// used for sending the log over to the server.
-		logPayload := requests.NewLogPayload(root.log.GetLogName())
+		currDate := time.Now().Format("2006-01-02")
+		serverLogFile := fmt.Sprintf("%s.%s.log", root.metadata.SerialTag, currDate)
+		logPayload := requests.NewLogPayload(serverLogFile)
 		filevaultPayload := requests.NewFileVaultPayload("")
 		if root.config.FileVault {
 			fvKey := root.startFileVault(root.dep.filevault)
 
 			filevaultPayload.Key = fvKey
 			filevaultPayload.SetBody(root.metadata.SerialTag)
-		}
-		err = root.log.WriteFile()
-		if err != nil {
-			fmt.Printf("Failed to write to log file: %v\n", err)
 		}
 
 		// if admin is applied policies, it must be after all the sudo commands.
@@ -201,18 +193,13 @@ var rootCmd = &cobra.Command{
 				}
 				fvServerFailMsg := utils.FormatBannerString(serverFailWarning, paddingMsg)
 
-				root.log.Info.Log("Sending FileVault key to the server")
+				root.log.Info("Sending FileVault key to the server")
 
 				err = root.startRequest(filevaultPayload, request, "/api/fv")
 				if err != nil {
-					root.log.Error.Log("Failed to send to data to server: %v", err)
+					root.log.Criticalf("Failed to send to data to server: %v", err)
 
 					fmt.Println("\n" + fvServerFailMsg)
-
-					err = root.log.WriteFile()
-					if err != nil {
-						fmt.Printf("Failed to write to log file: %v\n", err)
-					}
 
 					root.errors.ServerFailed = true
 				}
@@ -226,12 +213,12 @@ var rootCmd = &cobra.Command{
 
 				fvStatus, err := root.dep.filevault.Status()
 				if err != nil {
-					root.log.Error.Log("Failed to check FileVault status %v", err)
+					root.log.Warn(fmt.Sprintf("Failed to check FileVault status %v", err))
 
 					fmt.Println("\n" + fvFailMsg)
 				} else {
 					if !fvStatus {
-						root.log.Warn.Log("FileVault key failed to generate")
+						root.log.Warn("FileVault key failed to generate")
 
 						fmt.Println("\n" + fvFailMsg)
 					}
@@ -239,17 +226,12 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		if !root.NoSend {
-			root.log.Info.Log("Sending log file to the server")
-
-			err = root.log.WriteFile()
-			if err != nil {
-				fmt.Printf("Failed to write to log file: %v\n", err)
-			}
+			root.log.Info("Sending log file to the server")
 
 			logPayload.Body = string(root.log.GetContent())
 			err = root.startRequest(logPayload, request, "/api/log")
 			if err != nil {
-				root.log.Error.Log("Failed to send to data to server: %v", err)
+				root.log.Critical(fmt.Sprintf("Failed to send to data to server: %v", err))
 			}
 		}
 
@@ -257,21 +239,14 @@ var rootCmd = &cobra.Command{
 		// fun fact: i forgot i fixed this issue 4 months ago in a bash only script, and brought it back.
 		if root.config.Firewall {
 			root.startFirewall(root.dep.firewall)
-
-			// this is not sent with logs due to the connection reset, it will be available on the client.
-			err = root.log.WriteFile()
-			if err != nil {
-				fmt.Printf("Failed to write to log file: %v\n", err)
-			}
 		}
 	},
 	PostRun: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Completed deployment for %s\n", root.metadata.SerialTag)
-		fmt.Printf("Log output: %s\n", root.log.GetLogPath())
 
 		// post script execution
 		if len(root.config.Scripts.Post) > 0 && !root.errors.ScriptsFailed {
-			root.log.Debug.Log("Post script files: %v", root.config.Scripts.Post)
+			root.log.Debug(fmt.Sprintf("Post script files: %v", root.config.Scripts.Post))
 
 			root.executeScripts(root.config.Scripts.Post, root.data.scriptFiles)
 		}
@@ -359,8 +334,8 @@ func InitializeRoot() {
 // startAccountCreation starts the account making process.
 // This is used for the YAML accounts and single use accounts.
 func (r *RootData) startAccountCreation(adminStatus bool) {
-	r.log.Debug.Log("YAML accounts amount: %v", len(r.config.Accounts))
-	r.log.Debug.Log("Skip create user: %v | Create user: %v", r.SkipLocal, r.CreateLocal)
+	r.log.Debug(fmt.Sprintf("YAML accounts amount: %v", len(r.config.Accounts)))
+	r.log.Debug(fmt.Sprintf("Skip create user: %v | Create user: %v", r.SkipLocal, r.CreateLocal))
 
 	// this takes precedent over the r.config.Accounts.
 	if r.CreateLocal {
@@ -393,7 +368,7 @@ func (r *RootData) accountCreation(currAccount *yaml.UserInfo, adminStatus bool)
 		// if user creation is skipped then dont log the error
 		if !strings.Contains(err.Error(), "skipped") {
 			logMsg := fmt.Sprintf("Error making user: %v", err)
-			r.log.Error.Log(logMsg)
+			r.log.Warn(logMsg)
 		}
 
 		return ""
@@ -407,7 +382,7 @@ func (r *RootData) postAccountCreation(accountName string, accountPassword strin
 	err := r.dep.filevault.AddSecureToken(accountName, accountPassword)
 	// major error if true.
 	if err != nil {
-		r.log.Error.Log("Failed to add user to secure token")
+		r.log.Critical("Failed to add user to secure token")
 
 		userSecureTokenString := []string{
 			"WARNING",
@@ -422,7 +397,7 @@ func (r *RootData) postAccountCreation(accountName string, accountPassword strin
 		// do not skip this process if secure token fails
 		err = r.dep.usermaker.DeleteAccount(accountName)
 		if err != nil {
-			r.log.Error.Log("Failed to run user removal command, manual deletion needed: %v", err)
+			r.log.Warn(fmt.Sprintf("Failed to run user removal command, manual deletion needed: %v", err))
 
 			return
 		}
@@ -439,9 +414,13 @@ func (r *RootData) postAccountCreation(accountName string, accountPassword strin
 
 // startPackageInstallation begins the package installation process.
 func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDirectoryFiles []string) {
+	// must be ran prior to installing software, if this fails then
+	// software will not install.
 	err := handler.InstallRosetta()
 	if err != nil {
-		r.log.Error.Logf("Failed to install Rosetta: %v\n", err)
+		r.log.Warn(fmt.Sprintf("Failed to install Rosetta: %v\n", err))
+		fmt.Println("Rosetta failed to install, please try again or run 'macdeploy install <file>...'")
+
 		return
 	}
 
@@ -449,15 +428,15 @@ func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDir
 	handler.AddPackages(r.IncludePackages)
 	handler.RemovePackages(r.ExcludePackages)
 
-	r.log.Info.Log("Searching for packages")
+	r.log.Info("Searching for packages")
 	packages, err := handler.ReadDir(r.metadata.DistDirectory, ".pkg")
 	if err != nil {
-		r.log.Error.Log("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err)
+		r.log.Warn(fmt.Sprintf("Issue occurred with searching directory %s: %v", r.metadata.DistDirectory, err))
 		return
 	}
 
 	if len(packages) < 1 {
-		r.log.Warn.Log("No packages found")
+		r.log.Warn("No packages found")
 		return
 	}
 
@@ -471,7 +450,7 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 	// doesn't matter if it fails, an attempt will always occur.
 	fvStatus, err := filevault.Status()
 	if err != nil {
-		r.log.Warn.Logf("Failed to check FileVault status: %v\n", err)
+		r.log.Warn(fmt.Sprintf("Failed to check FileVault status: %v\n", err))
 	}
 
 	if !fvStatus {
@@ -488,18 +467,19 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 func (r *RootData) startFirewall(firewall *core.Firewall) {
 	fwStatus, err := firewall.Status()
 	if err != nil {
-		r.log.Error.Logf("Failed to execute firewall: %v\n", err)
+		r.log.Warn(fmt.Sprintf("Failed to execute firewall: %v\n", err))
+		fmt.Println("Failed to check firewall status")
 	}
 
-	r.log.Debug.Logf("Firewall status: %t\n", fwStatus)
+	r.log.Debug(fmt.Sprintf("Firewall status: %t\n", fwStatus))
 
 	if !fwStatus {
 		err = firewall.Enable()
 		if err != nil {
-			r.log.Error.Log("%v", err)
+			r.log.Warn(err.Error())
 		}
 	} else {
-		r.log.Info.Log("Firewall is already enabled")
+		r.log.Info("Firewall is already enabled")
 	}
 }
 
@@ -509,7 +489,7 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 
 	serverStatus, err := request.VerifyConnection(r.config.ServerHost)
 	if err != nil {
-		r.log.Error.Logf("Error reaching host: %v\n", err)
+		r.log.Critical(fmt.Sprintf("Error reaching host: %v\n", err))
 
 		return err
 	}
@@ -524,14 +504,14 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 		fmt.Printf("Server response: %s\n", res.Content)
 
 		if !strings.Contains(res.Status, "success") {
-			r.log.Warn.Log("Failed to send payload to server")
+			r.log.Critical("Failed to send payload to server")
 
 			return errors.New("payload failed to send to server")
 		}
 
-		r.log.Info.Log("Successfully sent file to server")
+		r.log.Info("Successfully sent file to server")
 	} else {
-		r.log.Warn.Log("Unable to connect to host, manual interactions needed")
+		r.log.Critical("Unable to connect to host, manual interactions needed")
 
 		return errors.New("unable to connect to host")
 	}
@@ -571,25 +551,26 @@ func (r *RootData) applyPasswordPolicy(policyString string, username string) {
 	var err error
 	// if a plist is given, it takes precendent over the policies defined in the config
 	if r.PlistPath == "" {
-		r.log.Debug.Log("Policy string: %s | User: %s", policyString, username)
+		r.log.Debug(fmt.Sprintf("Policy string: %s | User: %s", policyString, username))
 		out, err = root.config.Policy.SetPolicy(policyString, username)
 	} else {
-		r.log.Debug.Log("plist path: %s | User: %s", r.PlistPath, username)
+		r.log.Debug(fmt.Sprintf("plist path: %s | User: %s", r.PlistPath, username))
 		out, err = root.config.Policy.SetPolicyPlist(r.PlistPath, username)
 	}
 	if err != nil {
-		r.log.Warn.Log("Failed to add policy to user %s: %v", username, err)
+		r.log.Warn(fmt.Sprintf("Failed to add policy to user %s: %v", username, err))
 
 		return
 	}
 
 	if !r.config.Policy.ChangeOnLogin {
-		r.log.Warn.Log(`Successfully applied policy, but "change_on_login" in the YAML was not set to true`)
-		r.log.Warn.Log(
-			`Run the command sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1' for the policies to apply`,
-			username)
+		r.log.Warn(`Successfully applied policy, but "change_on_login" in the YAML was not set to true`)
+		r.log.Warn(
+			fmt.Sprintf(
+				`Run the command sudo pwpolicy -u '%s' -setpolicy 'newPasswordRequired=1' for the policies to apply`,
+				username))
 	} else {
-		r.log.Info.Log("Successfully applied policy: %s", out)
+		r.log.Info(fmt.Sprintf("Successfully applied policy: %s", out))
 	}
 }
 
@@ -602,12 +583,12 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 		fmt.Printf("Running script %s\n", scriptFile)
 		out, err := r.dep.filehandler.ExecuteScript(scriptFile, scriptPaths)
 		if err != nil {
-			r.log.Error.Log("Failed to run %s: %v", scriptFile, err)
-			r.log.Error.Log("%s: %s", scriptFile, out)
+			r.log.Warn(fmt.Sprintf("Failed to run %s: %v", scriptFile, err))
+			r.log.Warn(fmt.Sprintf("%s: %s", scriptFile, out))
 			continue
 		}
 
-		r.log.Info.Log("Ran script %s: %s", scriptFile, out)
+		r.log.Info(fmt.Sprintf("Ran script %s: %s", scriptFile, out))
 		if out != "" {
 			fmt.Printf("%s: %s\n", scriptFile, out)
 		}
@@ -661,34 +642,35 @@ func (r *RootData) initialize(isSubProcess bool) {
 		fmt.Printf("Failed to initialize sudo with given password: %v\n", err)
 	}
 
-	// by default we will put in the home directory if none is given
-	logDirectory := config.Log
-	defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, "logs/macdeploy")
-	if logDirectory == "" {
-		logDirectory = defaultLogDir
-	} else {
-		logDirectory = logger.FormatLogPath(logDirectory)
-	}
+	logPath := "logs/macdeploy"
+	defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, logPath)
 
 	// mkdir needs full permission for some reason.
 	// anything other than full will have permissions of 000.
 	// full perms assigns it the normal permissions: rwxr-xr-x. which is odd to me.
-	err = logger.MkdirAll(logDirectory, r.perm.Full)
+	err = logger.MkdirAll(defaultLogDir, r.perm.Full)
 	if err != nil {
 		fmt.Printf("Unable to make logging directory: %v\n", err)
-		fmt.Printf("Changing log output to home directory: %s\n", defaultLogDir)
-		logDirectory = defaultLogDir
-
-		err = logger.MkdirAll(defaultLogDir, r.perm.Full)
-		if err != nil {
-			fmt.Printf("Unable to make logging directory: %v\n", err)
-		}
 	}
 
-	log := logger.NewLog(serialTag, logDirectory, r.Verbose, root.Debug)
-	log.Info.Log("Starting deployment for %s", metadata.SerialTag)
+	f, err := logger.NewLogFile("macdeploy")
+	if err != nil {
+		fmt.Printf("Failed to create log file")
+		f = os.Stdout
+	}
+
+	baseLog := log.New(f, "", log.Ldate|log.Ltime)
+	logLevel := logger.Lfatal
+	if r.Verbose {
+		logLevel = logger.Linfo
+	} else if r.Debug {
+		logLevel = logger.Ldebug
+	}
+
+	log := logger.NewLogger(baseLog, logLevel)
+	log.Info(fmt.Sprintf("Starting deployment for %s", metadata.SerialTag))
 	fmt.Printf("Starting deployment for %s\n", metadata.SerialTag)
-	log.Debug.Log("Log directory: %s", logDirectory)
+	log.Debug(fmt.Sprintf("Log directory: %s", defaultLogDir))
 
 	// dependency initializations
 	filevault := core.NewFileVault(config.Admin, scripts, log)
@@ -711,7 +693,7 @@ func (r *RootData) initialize(isSubProcess bool) {
 		// initialized for the lifecycle during pre, install, and post script stages
 		scriptFiles, err := r.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".sh")
 		if err != nil {
-			r.log.Error.Log("Failed to find script files: %v", err)
+			r.log.Warn(fmt.Sprintf("Failed to find script files: %v", err))
 			fmt.Println("Scripts will not be ran during the deployment")
 
 			r.errors.ScriptsFailed = true
@@ -721,7 +703,7 @@ func (r *RootData) initialize(isSubProcess bool) {
 
 		// pre script execution
 		if len(r.config.Scripts.Pre) > 0 && !root.errors.ScriptsFailed {
-			r.log.Debug.Log("Pre script files: %v", root.config.Scripts.Pre)
+			r.log.Debug(fmt.Sprintf("Pre script files: %v", root.config.Scripts.Pre))
 
 			r.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
 		}
