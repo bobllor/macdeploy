@@ -57,7 +57,7 @@ func NewLogFile(fileStr string) (*os.File, error) {
 
 	logFileName := fmt.Sprintf("%s%s.log", fileName, currDate)
 
-	f, err := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE, 0o666)
+	f, err := os.OpenFile(logFileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o666)
 
 	return f, err
 }
