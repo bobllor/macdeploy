@@ -38,6 +38,7 @@ const (
 
 // NewLogFile creates a new log file with the current date as the file name.
 // It will return the open file, the file name, and an error, if not nil.
+// The default file name is "<fileStr>{.}2006-01-02.log".
 //
 // fileStr can be used to add a file name to the log. If no name is preferred,
 // then an empty string can be used. This is added to the front of the file log.
