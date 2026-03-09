@@ -20,10 +20,10 @@ type Response struct {
 
 type Request struct {
 	client *http.Client
-	log    *logger.Log
+	log    *logger.Logger
 }
 
-func NewRequest(log *logger.Log) *Request {
+func NewRequest(log *logger.Logger) *Request {
 	// used to bypass the unverified check due to no CA
 	tls := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -67,7 +67,7 @@ func (r *Request) POSTData(host string, payload Payload) (*Response, error) {
 		return nil, err
 	}
 
-	r.log.Debug.Log("Response: %v", response)
+	r.log.Debugf("Response: %v", response)
 
 	return &response, nil
 }
@@ -76,7 +76,7 @@ func (r *Request) POSTData(host string, payload Payload) (*Response, error) {
 //
 // A GET request is sent, if any issues occur an error will be returned.
 func (r *Request) VerifyConnection(host string) (bool, error) {
-	r.log.Debug.Log("Host: %s", host)
+	r.log.Debugf("Host: %s", host)
 
 	resp, err := r.client.Get(host)
 	if err != nil {
@@ -85,7 +85,7 @@ func (r *Request) VerifyConnection(host string) (bool, error) {
 
 	defer resp.Body.Close()
 
-	r.log.Debug.Log("Response status: %s", resp.Status)
+	r.log.Debugf("Response status: %s", resp.Status)
 
 	return resp.StatusCode == 200, nil
 }
