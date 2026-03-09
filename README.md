@@ -145,8 +145,8 @@ The binary supports *flags* options which can be found [here](#deployment-option
 | `--skip-local`, `-s` | Skips the creation of the local user account, if configured in the YAML. |
 | `--create-local`, `-c` | Enables the local user account creation process. Skips YAML account creation if true. |
 | `--remove-files` | Removes deployment files upon successful completion. |
-| `--verbose`, `-v` | Output info level logging to the terminal. |
-| `--debug` | Output debug level logging to the terminal, this includes info level logging. |
+| `--verbose`, `-v` | Output log levels INFO or above to the terminal. |
+| `--debug` | Include debug logging to the terminal. |
 | `--no-send` | Prevents the log from being sent to the server. |
 | `--pwlist "/path/to/plist"` | Apply password policies using a plist path. |
 | `--exclude "file"` | Excludes a package from installation. |
@@ -231,9 +231,6 @@ Each section is an array of script names, it is *case insensitive* and *looks fo
 
 `server_host`: The IP or domain of the server, used for client-server communication. *This is required* for the
 deployment to work.
-
-`log`: The path to the directory of the log files. By default, it is stored at `~/logs/macdeploy` if omitted or an error
-occurs.
 
 `filevault`: Enable or disable FileVault activation in the deployment.
 
