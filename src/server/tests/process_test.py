@@ -61,11 +61,11 @@ def test_add_existing_log(tmp_path: Path):
     assert log_file is not None
 
     with open(log_file, "r") as file:
-        content: str = file.read().strip()
+        file_content: str = file.read().strip()
 
-        assert content != ""
+        assert file_content != ""
     
-    assert first_content in content
+    assert first_content in file_content
 
     second_content: str = "new content to existing log"
     res = process.add_log({"body": second_content, "logFileName": log_file_name}, tmp_path)
@@ -73,9 +73,9 @@ def test_add_existing_log(tmp_path: Path):
     assert res["status"] == "success"
 
     with open(log_file, "r") as file:
-        content = file.read().strip()
+        file_content = file.read().strip()
 
-    assert first_content in content and second_content in content
+    assert first_content in file_content and second_content in file_content
 
 def test_multiple_keys_log(tmp_path: Path):
     log: Log = ttils.get_log(tmp_path)
