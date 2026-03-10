@@ -34,6 +34,7 @@ const (
 	Lwarn     = 3
 	Lcritical = 4
 	Lfatal    = 5
+	Lsilent   = 6
 )
 
 // NewLogFile creates a new log file with the current date as the file name.
@@ -68,14 +69,8 @@ func NewLogFile(fileStr string) (*os.File, error) {
 // The printer variable is any type that can print.
 //
 // The logLevel variable is an integer used as a flag for the minimum
-// logging level. If this logLevel is not within a range, then it will
-// default to FATAL.
+// logging level.
 func NewLogger(printer Printer, logLevel int) *Logger {
-	// default to
-	if logLevel < Ldebug || logLevel > Lfatal {
-		logLevel = Lfatal
-	}
-
 	logger := Logger{
 		log: printer,
 		prefix: Prefix{
