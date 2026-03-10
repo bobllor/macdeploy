@@ -38,6 +38,45 @@ def test_add_log(tmp_path: Path):
 
     assert content == body
 
+def test_add_existing_log(tmp_path: Path):
+    log: Log = ttils.get_log(tmp_path) 
+    process: Process = Process(log=log)
+
+    log_file_name: str = "ST12345.3-10-2026.log"
+    first_content: str = "random content goes here"
+
+    res: dict[str, Any] = process.add_log({"body": first_content, "logFileName": log_file_name}, tmp_path)
+
+    assert res["status"] == "success"
+
+    files: list[str] = utils.get_dir_list(tmp_path)
+
+    log_file: Path = None
+
+    for file in files:
+        if file.endswith(".log"):
+            log_file = Path(file)
+            break
+    
+    assert log_file is not None
+
+    with open(log_file, "r") as file:
+        content: str = file.read().strip()
+
+        assert content != ""
+    
+    assert first_content in content
+
+    second_content: str = "new content to existing log"
+    res = process.add_log({"body": second_content, "logFileName": log_file_name}, tmp_path)
+
+    assert res["status"] == "success"
+
+    with open(log_file, "r") as file:
+        content = file.read().strip()
+
+    assert first_content in content and second_content in content
+
 def test_multiple_keys_log(tmp_path: Path):
     log: Log = ttils.get_log(tmp_path)
     process: Process = Process(log=log)
