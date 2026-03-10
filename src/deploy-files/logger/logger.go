@@ -96,22 +96,26 @@ func NewLogger(printer Printer, logLevel int) *Logger {
 func (l *Logger) Debug(v ...any) {
 	vMsg := fmt.Sprint(v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.debug, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Ldebug {
-		l.log.Print(msg)
+		l.stdout(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Debugf sends a message at the DEBUG level with formatting.
 func (l *Logger) Debugf(format string, v ...any) {
 	vMsg := fmt.Sprintf(format, v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.debug, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Ldebug {
-		l.log.Print(msg)
+		l.stdout(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Info sends a message at the INFO level.
@@ -121,8 +125,11 @@ func (l *Logger) Info(v ...any) {
 	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Linfo {
-		l.log.Print(msg)
+		l.stdout(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Infof sends a message at the INFO level with formatting.
@@ -132,8 +139,11 @@ func (l *Logger) Infof(format string, v ...any) {
 	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Linfo {
-		l.log.Print(msg)
+		l.stdout(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Warn sends a message at the WARN level.
@@ -143,8 +153,11 @@ func (l *Logger) Warn(v ...any) {
 	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lwarn {
-		l.log.Print(msg)
+		l.stdout(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Warnf sends a message at the WARN level with formatting.
@@ -154,8 +167,11 @@ func (l *Logger) Warnf(format string, v ...any) {
 	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lwarn {
-		l.log.Print(msg)
+		l.stdout(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Critical sends a message at the CRITICAL level.
@@ -165,8 +181,11 @@ func (l *Logger) Critical(v ...any) {
 	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lcritical {
-		l.log.Print(msg)
+		l.stderr(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Criticalf sends a message at the CRITICAL level with formatting.
@@ -176,8 +195,11 @@ func (l *Logger) Criticalf(format string, v ...any) {
 	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lcritical {
-		l.log.Print(msg)
+		l.stderr(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Fatal sends a message at the FATAL level.
@@ -187,8 +209,11 @@ func (l *Logger) Fatal(v ...any) {
 	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lfatal {
-		l.log.Print(msg)
+		l.stderr(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // Fatalf sends a message at the FATAL level with formatting.
@@ -198,12 +223,25 @@ func (l *Logger) Fatalf(format string, v ...any) {
 	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lfatal {
-		l.log.Print(msg)
+		l.stderr(msg)
 	}
+
+	l.content = append(l.content, []byte(msg)...)
+	l.log.Print(msg)
 }
 
 // GetContent gets the bytes of Logger, it contains
 // the print output of Logger.
 func (l *Logger) GetContent() []byte {
 	return l.content
+}
+
+// stdout writes any argument to the standard output stream.
+func (l *Logger) stdout(v ...any) {
+	fmt.Fprintln(os.Stdout, v...)
+}
+
+// stderr writes any argument to the standard error stream.
+func (l *Logger) stderr(v ...any) {
+	fmt.Fprintln(os.Stderr, v...)
 }

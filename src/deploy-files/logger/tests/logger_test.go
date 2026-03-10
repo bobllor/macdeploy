@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"macos-deployment/deploy-files/logger"
 	"macos-deployment/tests"
@@ -57,5 +59,93 @@ func TestLogFormattingMethod(t *testing.T) {
 
 	if !strings.Contains(content, fmt.Sprintf(formatString, argString)) {
 		t.Fatalf("Formatted log failed to match base log format: %s", fmt.Sprintf(formatString, argString))
+	}
+}
+
+func TestLogToTerminalStdout(t *testing.T) {
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", logFlag), logger.Ldebug)
+
+	msg := "This is a test message"
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	log.Debug(msg)
+	log.Info(msg)
+	log.Warn(msg)
+	log.Critical(msg)
+	log.Fatalf("ignore me %s", msg)
+
+	out := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		out <- buf.String()
+	}()
+
+	w.Close()
+	os.Stdout = old
+
+	capturedOut := <-out
+
+	expectedLogLevels := []string{"INFO", "WARN", "DEBUG"}
+
+	for _, level := range expectedLogLevels {
+		if !strings.Contains(capturedOut, level) {
+			t.Fatalf("unable to find %s in output: %s", level, capturedOut)
+		}
+	}
+
+	unexpectedLogLevels := []string{"CRITICAL", "FATAL"}
+
+	for _, level := range unexpectedLogLevels {
+		if strings.Contains(capturedOut, level) {
+			t.Fatalf("found unexpected level %s in output: %s", level, capturedOut)
+		}
+	}
+}
+
+func TestLogToTerminalStderr(t *testing.T) {
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", logFlag), logger.Lwarn)
+
+	msg := "This is a test message"
+
+	old := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	log.Debug(msg)
+	log.Info(msg)
+	log.Warn(msg)
+	log.Critical(msg)
+	log.Fatalf("ignore me %s", msg)
+
+	out := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		out <- buf.String()
+	}()
+
+	w.Close()
+	os.Stderr = old
+
+	capturedOut := <-out
+
+	expectedLogLevels := []string{"FATAL", "CRITICAL"}
+
+	for _, level := range expectedLogLevels {
+		if !strings.Contains(capturedOut, level) {
+			t.Fatalf("unable to find %s in output: %s", level, capturedOut)
+		}
+	}
+
+	unexpectedLogLevels := []string{"INFO", "WARN", "DEBUG"}
+
+	for _, level := range unexpectedLogLevels {
+		if strings.Contains(capturedOut, level) {
+			t.Fatalf("found unexpected level %s in output: %s", level, capturedOut)
+		}
 	}
 }
