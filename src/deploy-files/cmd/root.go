@@ -87,6 +87,9 @@ var rootCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		root.log.Infof("Deployment started for %s", root.metadata.SerialTag)
+		fmt.Printf("Starting deployment for %s\n", root.metadata.SerialTag)
+
 		err := root.config.Admin.InitializeSudo()
 		if err != nil {
 			root.log.Warn(fmt.Sprintf("Failed to authenticate sudo: %v", err))
@@ -648,19 +651,22 @@ func (r *RootData) initialize(isSubProcess bool) {
 	// mkdir needs full permission for some reason.
 	// anything other than full will have permissions of 000.
 	// full perms assigns it the normal permissions: rwxr-xr-x. which is odd to me.
-	err = logger.MkdirAll(defaultLogDir, r.perm.Full)
+	err = os.MkdirAll(defaultLogDir, r.perm.Full)
 	if err != nil {
 		fmt.Printf("Unable to make logging directory: %v\n", err)
 	}
 
-	f, err := logger.NewLogFile("macdeploy")
+	f, err := logger.NewLogFile(fmt.Sprintf("%s/%s", defaultLogDir, "macdeploy"))
+	// logger will has a content field, this will contain the logging data.
 	if err != nil {
-		fmt.Printf("Failed to create log file")
+		fmt.Printf("Failed to create log file: %s\n", err.Error())
 		f = os.Stdout
+	} else {
+		defer f.Close()
 	}
 
 	baseLog := log.New(f, "", log.Ldate|log.Ltime)
-	logLevel := logger.Lfatal
+	logLevel := logger.Ldebug
 	if r.Verbose {
 		logLevel = logger.Linfo
 	} else if r.Debug {
@@ -668,9 +674,6 @@ func (r *RootData) initialize(isSubProcess bool) {
 	}
 
 	log := logger.NewLogger(baseLog, logLevel)
-	log.Info(fmt.Sprintf("Starting deployment for %s", metadata.SerialTag))
-	fmt.Printf("Starting deployment for %s\n", metadata.SerialTag)
-	log.Debug(fmt.Sprintf("Log directory: %s", defaultLogDir))
 
 	// dependency initializations
 	filevault := core.NewFileVault(config.Admin, scripts, log)
