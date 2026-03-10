@@ -99,13 +99,12 @@ class Process:
         '''Adds the log file from the client device to the server.
         It returns a dictionary response indicating its status and message.
 
+        If the file already exists, then it will append the incoming data to the existing
+        file.
+
         The response contains the status, content, and status code of the method.
         '''
-        log_path: Path = None
-        if isinstance(log_dir, str):
-            log_path = Path(log_dir)
-        elif isinstance(log_dir, Path):
-            log_path = log_dir
+        log_path: Path = Path(log_dir)
 
         validation_res: dict[str, Any] = self._validate_info(self._log_info_keys, log_info)
         if validation_res["status"] == "error":
@@ -120,9 +119,15 @@ class Process:
 
             if not log_file_path.parent.exists():
                 log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            mode: str = "w" if not log_file_path.exists() else "a"
+            with open(log_file_path, mode) as file:
+                data: str = log_info["body"]
 
-            with open(log_file_path, "w") as file:
-                file.write(log_info["body"])
+                if mode == "a":
+                    data = "\n" + data
+
+                file.write(data)
         except Exception:
             self.log.exception("Failed to write log to the server")
 
@@ -131,9 +136,11 @@ class Process:
                 content="An unknown error occurred on the server",
                 statusCode=500
             )
-        
-        self.log.info(f"Added log {log_info['logFileName']}")
-        self.log.debug(f"Log location: {log_file_path}")
+
+        if mode == "w":
+            self.log.info(f"Added log file {log_info['logFileName']}")
+        elif mode == "a":
+            self.log.info(f"Appended new data to {log_info['logFileName']}")
 
         return utils.generate_response(
             content="Successfully added logs to server",
