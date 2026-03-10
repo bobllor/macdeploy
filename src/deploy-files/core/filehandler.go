@@ -304,40 +304,42 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 // If the script did not get executed, an error is returned.
 func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (string, error) {
 	f.log.Info(fmt.Sprintf("Running %s", scriptName))
-	ogName := scriptName
+
+	ogName := scriptName // only used for logging
 	scriptName = strings.TrimSpace(strings.ToLower(scriptName))
 
-	// cache is built inside the loop
-	if _, ok := f.scriptsPathCache[scriptName]; ok {
-		f.log.Info(fmt.Sprintf("Found %s in cache", ogName))
-
-		scriptPath := f.scriptsPathCache[scriptName]
-		outMsg, err := f.execute(scriptPath)
-		outMsg = strings.TrimSpace(outMsg)
-		if err != nil {
-			return outMsg, err
-		}
-
-		return outMsg, nil
-	}
-
 	for _, scriptPath := range scriptPaths {
-		scriptPathLow := strings.ToLower(scriptPath)
+		scriptPathLow := strings.TrimSpace(strings.ToLower(scriptPath))
 
-		if strings.Contains(scriptPathLow, scriptName) {
+		// only the path's case should be left alone for execution
+		filename := strings.ToLower(filepath.Base(scriptPath))
+
+		// cache is used to rerun scripts in case the same script is reused
+		if _, ok := f.scriptsPathCache[scriptName]; ok {
+			f.log.Info(fmt.Sprintf("Found %s in cache", ogName))
+
+			scriptPath := f.scriptsPathCache[scriptName]
 			outMsg, err := f.execute(scriptPath)
-			outMsg = strings.TrimSpace(outMsg)
 			if err != nil {
 				return outMsg, err
 			}
 
 			return outMsg, nil
 		} else {
-			// only the path's case should be left alone for execution
-			filename := strings.ToLower(filepath.Base(scriptPath))
-
 			f.scriptsPathCache[filename] = scriptPath
 			f.log.Debug(fmt.Sprintf("Added %s to cache", filename))
+		}
+
+		// substring match
+		if strings.Contains(scriptPathLow, scriptName) {
+			outMsg, err := f.execute(scriptPath)
+
+			f.log.Debugf("Script %s output: %s, error: %v", ogName, outMsg, err)
+			if err != nil {
+				return outMsg, err
+			}
+
+			return outMsg, nil
 		}
 	}
 
@@ -389,8 +391,8 @@ func (f *FileHandler) DetachDmgs(volumePaths []string) {
 //
 // Errors during the copy operation are logged and skipped, requiring manual intervention.
 func (f *FileHandler) CopyFiles(paths []string, target string) {
+	f.log.Info(fmt.Sprintf("Copying %d paths to %s", len(paths), target))
 	f.log.Debug(fmt.Sprintf("File paths: %v", paths))
-	f.log.Info(fmt.Sprintf("Copying to %s", target))
 	// lowercase not needed as it is obtained from ReadDir
 	// case sensitivity doesn't matter on mac anyways (at least by default in sequoia+)
 	for _, path := range paths {
