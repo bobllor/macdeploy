@@ -38,12 +38,13 @@ const (
 
 // NewLogFile creates a new log file with the current date as the file name.
 // It will return the open file, the file name, and an error, if not nil.
-// The default file name is "<fileStr>{.}2006-01-02.log".
+// The default file name is "{<fileStr>.}2006-01-02.log".
+// The parent directories must exist prior to the function call.
 //
 // fileStr can be used to add a file name to the log. If no name is preferred,
 // then an empty string can be used. This is added to the front of the file log.
 //
-// This only creates and returns the File, it will not be responsible for closing after usage.
+// This only creates and returns the File, the caller is responsible for closing.
 func NewLogFile(fileStr string) (*os.File, error) {
 	time := time.Now()
 
@@ -205,19 +206,4 @@ func (l *Logger) Fatalf(format string, v ...any) {
 // the print output of Logger.
 func (l *Logger) GetContent() []byte {
 	return l.content
-}
-
-// MkdirAll creates all the folders of the given path. If the folders
-// already exists, then return nil. Otherwise, return an error if
-// an error occurs.
-//
-// The path is always assumed to be a folder. If it ends in an extension,
-// then
-func MkdirAll(path string, perm os.FileMode) error {
-	err := os.MkdirAll(path, perm)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
