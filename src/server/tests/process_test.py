@@ -54,7 +54,7 @@ def test_add_existing_log(tmp_path: Path):
     log_file: Path = None
 
     for file in files:
-        if file.endswith(".log"):
+        if file.endswith(log_file_name):
             log_file = Path(file)
             break
     
