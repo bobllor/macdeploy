@@ -1,0 +1,354 @@
+package core
+
+import (
+	"fmt"
+	"log"
+	"macos-deployment/deploy-files/core"
+	"macos-deployment/deploy-files/logger"
+	"macos-deployment/tests"
+	"math/rand"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+var packagesToAdd = []string{
+	"some thing.pkg",
+	"AnoTherCaseSenSITIVE.pkg",
+	"no pkg here",
+}
+
+var packagesToInstall = map[string][]string{
+	"TeamViewer.pkg":   {"teamviewer"},
+	"Test packAGe.PkG": {"test.package"},
+}
+
+var searchDirectoryFiles = []string{
+	"teamviewer", "test.package",
+	"example 1", "example 2",
+}
+
+var baseLenPkgInstall int = len(packagesToInstall)
+
+func TestArrayLowerCase(t *testing.T) {
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	handler.AddPackages(packagesToAdd)
+
+	loweredPackages := make(map[string]struct{}, 0)
+
+	for pkg := range packagesToInstall {
+		pkgLow := strings.ToLower(pkg)
+
+		loweredPackages[pkgLow] = struct{}{}
+	}
+	for _, pkg := range packagesToAdd {
+		pkgLow := strings.ToLower(pkg)
+
+		loweredPackages[pkgLow] = struct{}{}
+	}
+
+	// should already be lowered here during the constructor and add packages.
+	for _, pkg := range handler.GetPackages() {
+		if _, ok := loweredPackages[pkg]; !ok {
+			t.Errorf("value %s does not exist", pkg)
+		}
+	}
+}
+
+func TestAddPackages(t *testing.T) {
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	handler.AddPackages(packagesToAdd)
+
+	packages := handler.GetPackages()
+	newLen := len(packages)
+
+	if newLen != baseLenPkgInstall+len(packagesToAdd) {
+		t.Errorf(
+			"starting length: %d does not match ending length of add packages: %d",
+			baseLenPkgInstall, newLen,
+		)
+	}
+}
+
+func TestRemovePackages(t *testing.T) {
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	expectedLength := len(append(packagesToAdd, handler.GetPackages()...)) - 1
+
+	handler.AddPackages(packagesToAdd)
+
+	randomSelection := strings.ToLower(packagesToAdd[rand.Intn(len(packagesToAdd))])
+
+	handler.RemovePackages([]string{randomSelection})
+
+	newLen := len(handler.GetPackages())
+
+	if newLen != expectedLength {
+		t.Errorf("failed to remove package, got %d instead of %d", newLen, expectedLength)
+	}
+}
+
+func TestInstalledPackages(t *testing.T) {
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	alreadyInstalledCount := 0
+
+	for _, installedNames := range packagesToInstall {
+		if handler.IsInstalled(installedNames, searchDirectoryFiles) {
+			alreadyInstalledCount += 1
+		}
+	}
+
+	if alreadyInstalledCount != baseLenPkgInstall {
+		t.Error("packages failed to install")
+	}
+}
+
+func TestInstallPackages(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	handler.AddPackages(packagesToAdd)
+
+	installedCount := 0
+	expectedLen := len(packagesToAdd)
+
+	// creating the pkg files in the temp folder
+	for pkg, installedNames := range handler.GetAllPackages() {
+		isInstalled := handler.IsInstalled(installedNames, searchDirectoryFiles)
+		if !isInstalled {
+			installedCount += 1
+
+			err := os.WriteFile(strings.ReplaceAll(projectDirectory+"/"+pkg, ".pkg", ""), []byte{}, 0o644)
+			if err != nil {
+				continue
+			}
+		}
+	}
+
+	if installedCount != expectedLen {
+		t.Errorf("packages failed to install, %d != %d", installedCount, baseLenPkgInstall)
+	}
+
+	files, err := os.ReadDir(projectDirectory)
+	// just an extra check, to be honest the statement above is good enough.
+	if err != nil {
+		tests.Fatal(t, err, fmt.Sprintf("Failed to read directory %s: %v", projectDirectory, err))
+	}
+
+	if installedCount != len(files) {
+		t.Errorf("packages failed to write, got packages: %v", files)
+	}
+}
+
+func TestReadDmg(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+
+	testDmgs := []string{
+		"test.dmg", "another one.dmg",
+	}
+	baseLenDmg := len(testDmgs)
+
+	// creating dmg files in the temp folder
+	for _, dmgFile := range testDmgs {
+		err := os.WriteFile(projectDirectory+"/"+dmgFile, []byte{}, 0o744)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	dmg := core.NewFileHandler(packagesToInstall, log)
+
+	dmgFiles, err := dmg.ReadDir(projectDirectory, ".dmg")
+	if err != nil {
+		t.Errorf("failed to read directory: %v", err)
+	}
+
+	newLen := len(dmgFiles)
+
+	if newLen != baseLenDmg {
+		t.Fatalf("got %d, did not match the baseline %d", newLen, baseLenDmg)
+	}
+}
+
+func TestCopyApp(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	appBundle := "a program bundle.app"
+	appDirectory := "Applications"
+
+	appBundleContentDir := "contents"
+	directories := []string{projectDirectory + "/" + appBundle + "/" + appBundleContentDir}
+
+	for _, dir := range directories {
+		err := os.MkdirAll(dir, 0o777)
+		tests.Fatal(t, err, fmt.Sprintf("Failed to create folder %s: %v", dir, err))
+	}
+
+	err := os.WriteFile(projectDirectory+"/"+appBundle+"/"+"file.ini", []byte("text goes here"), 0o744)
+	tests.Fatal(t, err, fmt.Sprintf("Failed to write file: %v", err))
+
+	files, err := handler.ReadDir(projectDirectory, ".app")
+	tests.Fatal(t, err, fmt.Sprintf("Failed to read folder %s: %v", projectDirectory, err))
+
+	handler.CopyFiles(files, projectDirectory+"/"+appDirectory)
+
+	files, err = handler.ReadDir(projectDirectory+"/"+appDirectory, ".app")
+	tests.Fatal(t, err, fmt.Sprintf("Failed to read folder %s: %v", projectDirectory+"/"+appDirectory, err))
+
+	if len(files) != 1 {
+		t.Fatal("Failed to read directory")
+	}
+
+	files, err = handler.ReadDir(projectDirectory+"/"+appDirectory, ".ini")
+	tests.Fatal(t, err, fmt.Sprintf("Failed to read folder %s: %v", projectDirectory+"/"+appDirectory, err))
+
+	for _, file := range files {
+		out, err := os.ReadFile(file)
+		tests.Fatal(t, err, fmt.Sprintf("Failed to read file %s: %v", file, err))
+
+		if string(out) == "" {
+			t.Fatal("failed to copy and write files")
+		}
+	}
+}
+
+func TestCopyFile(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	newTestDir := projectDirectory + "/" + "test-dir"
+
+	err := os.MkdirAll(newTestDir, 0o777)
+	tests.Fatal(t, err, fmt.Sprintf("Failed to create folder %s: %v", newTestDir, err))
+
+	fileNames := []string{
+		"test.txt", "sample.txt", "ok.txt",
+	}
+	textContent := "some text here"
+
+	for i, fileName := range fileNames {
+		err := os.WriteFile(newTestDir+"/"+fileName, []byte(textContent+strconv.Itoa(i)), 0o744)
+		tests.Fatal(t, err, fmt.Sprintf("Failed to write file %s: %v", fileName, err))
+	}
+
+	files, err := handler.ReadDir(projectDirectory, ".txt")
+	tests.Fatal(t, err, fmt.Sprintf("Failed to read folder %s: %v", projectDirectory, err))
+
+	if len(files) != len(fileNames) {
+		t.Fatalf("expected %d got %d", len(fileNames), len(files))
+	}
+
+	handler.CopyFiles(files, newTestDir)
+
+	for _, filePath := range files {
+		outBytes, err := os.ReadFile(filePath)
+		tests.Fatal(t, err, fmt.Sprintf("Failed to read file %s: %v", filePath, err))
+
+		if !strings.Contains(string(outBytes), textContent) {
+			t.Fatalf("Got content %s expected %s", string(outBytes), textContent)
+		}
+	}
+}
+
+func TestScriptCacheAddition(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	fakeScriptFiles := []string{
+		"file1.sh", "file2.sh",
+	}
+
+	for _, file := range fakeScriptFiles {
+		err := os.WriteFile(projectDirectory+"/"+file, []byte{}, 0o744)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	scriptPaths, err := handler.ReadDir(projectDirectory, ".sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, file := range fakeScriptFiles {
+		_, err := handler.ExecuteScript(file, scriptPaths)
+		tests.Fatal(t, err, fmt.Sprintf("Script %s failed: %v", file, err))
+	}
+
+	cache := handler.GetScriptCache()
+	if len(cache) != len(fakeScriptFiles) {
+		t.Fatalf("got %d from cache expected %d", len(cache), len(fakeScriptFiles))
+	}
+
+	indx := rand.Intn(len(fakeScriptFiles))
+
+	if _, ok := cache[strings.ToLower(fakeScriptFiles[indx])]; !ok {
+		t.Fatalf("could not find %s in cache", fakeScriptFiles[indx])
+	}
+}
+
+func TestScriptExecution(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	handler := core.NewFileHandler(packagesToInstall, log)
+
+	baseScriptNames := []string{
+		"file1.sh",
+	}
+
+	msg := "A test message here"
+	cmd := fmt.Sprintf(`echo "%s"`, msg)
+
+	env := "#/usr/bin/env bash"
+	scriptContent := fmt.Sprintf("%s\n%s", env, cmd)
+
+	for _, path := range baseScriptNames {
+		err := os.WriteFile(projectDirectory+"/"+path, []byte(scriptContent), 0o755)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	executingScripts := []string{
+		"file1.sh",
+	}
+
+	scriptPaths, err := handler.ReadDir(projectDirectory, ".sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, execScript := range executingScripts {
+		out, err := handler.ExecuteScript(execScript, scriptPaths)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if out != msg {
+			t.Fatalf("got %s expected %s", out, msg)
+		}
+	}
+}
