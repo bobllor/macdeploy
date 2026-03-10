@@ -87,6 +87,13 @@ func NewLogger(printer Printer, logLevel int) *Logger {
 	return &logger
 }
 
+// SetLogLevel sets the log level for outputting to the stream.
+//
+// The logging level has no effect on the actual logging.
+func (l *Logger) SetLogLevel(logLevel int) {
+	l.logLevel = logLevel
+}
+
 // Debug sends a message at the DEBUG level.
 func (l *Logger) Debug(v ...any) {
 	vMsg := fmt.Sprint(v...)
@@ -117,7 +124,6 @@ func (l *Logger) Debugf(format string, v ...any) {
 func (l *Logger) Info(v ...any) {
 	vMsg := fmt.Sprint(v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.info, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Linfo {
 		l.stdout(msg)
@@ -131,7 +137,6 @@ func (l *Logger) Info(v ...any) {
 func (l *Logger) Infof(format string, v ...any) {
 	vMsg := fmt.Sprintf(format, v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.info, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Linfo {
 		l.stdout(msg)
@@ -145,7 +150,6 @@ func (l *Logger) Infof(format string, v ...any) {
 func (l *Logger) Warn(v ...any) {
 	vMsg := fmt.Sprint(v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.warn, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lwarn {
 		l.stdout(msg)
@@ -159,7 +163,6 @@ func (l *Logger) Warn(v ...any) {
 func (l *Logger) Warnf(format string, v ...any) {
 	vMsg := fmt.Sprintf(format, v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.warn, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lwarn {
 		l.stdout(msg)
@@ -173,7 +176,6 @@ func (l *Logger) Warnf(format string, v ...any) {
 func (l *Logger) Critical(v ...any) {
 	vMsg := fmt.Sprint(v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.critical, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lcritical {
 		l.stderr(msg)
@@ -187,7 +189,6 @@ func (l *Logger) Critical(v ...any) {
 func (l *Logger) Criticalf(format string, v ...any) {
 	vMsg := fmt.Sprintf(format, v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.critical, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lcritical {
 		l.stderr(msg)
@@ -201,7 +202,6 @@ func (l *Logger) Criticalf(format string, v ...any) {
 func (l *Logger) Fatal(v ...any) {
 	vMsg := fmt.Sprint(v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.fatal, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lfatal {
 		l.stderr(msg)
@@ -215,7 +215,6 @@ func (l *Logger) Fatal(v ...any) {
 func (l *Logger) Fatalf(format string, v ...any) {
 	vMsg := fmt.Sprintf(format, v...)
 	msg := fmt.Sprintf("%s %s", l.prefix.fatal, vMsg)
-	l.content = append(l.content, []byte(msg)...)
 
 	if l.logLevel <= Lfatal {
 		l.stderr(msg)
