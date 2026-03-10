@@ -666,7 +666,7 @@ func (r *RootData) initialize(isSubProcess bool) {
 	}
 
 	baseLog := log.New(f, "", log.Ldate|log.Ltime)
-	logLevel := logger.Ldebug
+	logLevel := logger.Lfatal
 	if r.Verbose {
 		logLevel = logger.Linfo
 	} else if r.Debug {
