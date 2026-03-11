@@ -57,6 +57,7 @@ var installCmd = &cobra.Command{
 
 		// yes i know. i didnt want to rewrite a good chunk of my project so
 		// why not just do it this way lol.
+		root.log.Info("Removing listed config packages")
 		root.dep.filehandler.RemovePackages(root.dep.filehandler.GetPackages())
 		root.dep.filehandler.AddPackages(installCobra.packages)
 
@@ -67,8 +68,8 @@ var installCmd = &cobra.Command{
 			dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".dmg")
 			if err != nil {
 				root.log.Warn(err.Error())
+				fmt.Printf("Could not find folder '%s' for DMG files\n", root.metadata.DistDirectory)
 			} else {
-
 				if len(dmgFiles) > 0 {
 					volumeMounts := root.dep.filehandler.AttachDmgs(dmgFiles)
 
@@ -83,6 +84,7 @@ var installCmd = &cobra.Command{
 		data, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".pkg")
 		if err != nil {
 			root.log.Warn(err.Error())
+			fmt.Printf("Could not find folder '%s' for PKG files\n", root.metadata.DistDirectory)
 		} else {
 			root.dep.filehandler.InstallPackages(data, []string{})
 		}
