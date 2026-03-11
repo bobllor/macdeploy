@@ -40,6 +40,7 @@ type RootData struct {
 	data            varData
 	dep             dependencies
 	perm            *utils.Perms
+	osFile          *os.File
 }
 
 type errorFlags struct {
@@ -295,6 +296,7 @@ var rootCmd = &cobra.Command{
 			}
 
 			root.startCleanup(filesToRemove)
+			defer root.osFile.Close()
 		}
 	},
 }
@@ -662,7 +664,8 @@ func (r *RootData) initialize(isSubProcess bool) {
 		fmt.Printf("Failed to create log file: %s\n", err.Error())
 		f = os.Stdout
 	} else {
-		defer f.Close()
+		// IMPORTANT: this must be closed later and in any other subcommands!
+		r.osFile = f
 	}
 
 	baseLog := log.New(f, "", log.Ldate|log.Ltime)
