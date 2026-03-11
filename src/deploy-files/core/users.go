@@ -32,7 +32,8 @@ func NewUser(adminInfo yaml.UserInfo, scripts *scripts.BashScripts, logger *logg
 }
 
 // CreateAccount creates the local user account on the device.
-// Empty usernames and passwords will have a prompt, with the password being set if empty.
+// Empty usernames and passwords will have a prompt, with the password being set for
+// UserInfo if empty.
 //
 // It will return the internal username of the macOS account upon success.
 // If there are any errors then an error is returned.
@@ -59,6 +60,8 @@ func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, er
 
 		username = input
 	}
+
+	u.log.Debugf("User: %s", username)
 
 	if user.Password == "" {
 		u.log.Warnf("No user password was given for %s", username)
