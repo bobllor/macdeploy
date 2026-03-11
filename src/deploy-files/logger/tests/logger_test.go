@@ -9,6 +9,7 @@ import (
 	"macos-deployment/tests"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -48,14 +49,90 @@ func TestLogFileCreation(t *testing.T) {
 	}
 }
 
+func TestLogContent(t *testing.T) {
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", logFlag), logger.Ldebug)
+
+	logMsgs := []string{}
+
+	for i := range 5 {
+		logMsgs = append(logMsgs, "test"+strconv.Itoa(i))
+	}
+
+	logFunctions := []func(v ...any){
+		log.Debug,
+		log.Info,
+		log.Warn,
+		log.Critical,
+		log.Fatal,
+	}
+
+	for i, fn := range logFunctions {
+		fn(logMsgs[i])
+	}
+
+	content := log.GetContent()
+
+	if len(content) != len(logMsgs) {
+		t.Fatalf("failed to write log messages to content, got %d instead of %d", len(content), len(logMsgs))
+	}
+
+	for i := range len(content) {
+		baseMsg := logMsgs[i]
+		contentMsg := content[i]
+
+		if !strings.Contains(contentMsg, baseMsg) {
+			t.Fatalf("logged content message '%s' does not contain base string '%s'", contentMsg, baseMsg)
+		}
+	}
+}
+
+func TestLogContentString(t *testing.T) {
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", logFlag), logger.Ldebug)
+
+	logMsgs := []string{}
+
+	for i := range 5 {
+		logMsgs = append(logMsgs, "test"+strconv.Itoa(i))
+	}
+
+	logFunctions := []func(v ...any){
+		log.Debug,
+		log.Info,
+		log.Warn,
+		log.Critical,
+		log.Fatal,
+	}
+
+	for i, fn := range logFunctions {
+		fn(logMsgs[i])
+	}
+
+	content := log.GetContentString()
+
+	contentArr := strings.Split(content, "\n")
+
+	if len(contentArr) != len(logMsgs) {
+		t.Fatalf("logged contents does not match baseline log messages: %d != %d", len(contentArr), len(logMsgs))
+	}
+
+	for i := range len(contentArr) {
+		baseMsg := logMsgs[i]
+		contentMsg := contentArr[i]
+
+		if !strings.Contains(contentMsg, baseMsg) {
+			t.Fatalf("logged content message '%s' does not contain base string '%s'", contentMsg, baseMsg)
+		}
+	}
+}
+
 func TestLogFormattingMethod(t *testing.T) {
-	log := logger.NewLogger(log.New(os.Stdout, "", logFlag), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", logFlag), logger.Ldebug)
 
 	formatString := "This is a test %s"
 	argString := "log"
 	log.Criticalf(formatString, argString)
 
-	content := string(log.GetContent())
+	content := strings.Join(log.GetContent(), "\n")
 
 	if !strings.Contains(content, fmt.Sprintf(formatString, argString)) {
 		t.Fatalf("Formatted log failed to match base log format: %s", fmt.Sprintf(formatString, argString))
