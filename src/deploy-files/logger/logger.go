@@ -23,7 +23,7 @@ type Prefix struct {
 
 type Logger struct {
 	log      Printer
-	content  []byte
+	content  []string
 	prefix   Prefix
 	logLevel int
 }
@@ -81,7 +81,7 @@ func NewLogger(printer Printer, logLevel int) *Logger {
 			fatal:    "[FATAL]",
 		},
 		logLevel: logLevel,
-		content:  make([]byte, 0),
+		content:  make([]string, 0),
 	}
 
 	return &logger
@@ -103,7 +103,7 @@ func (l *Logger) Debug(v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -116,7 +116,7 @@ func (l *Logger) Debugf(format string, v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -129,7 +129,7 @@ func (l *Logger) Info(v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -142,7 +142,7 @@ func (l *Logger) Infof(format string, v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -155,7 +155,7 @@ func (l *Logger) Warn(v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -168,7 +168,7 @@ func (l *Logger) Warnf(format string, v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -181,7 +181,7 @@ func (l *Logger) Critical(v ...any) {
 		l.stderr(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -194,7 +194,7 @@ func (l *Logger) Criticalf(format string, v ...any) {
 		l.stderr(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -207,7 +207,7 @@ func (l *Logger) Fatal(v ...any) {
 		l.stderr(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
@@ -220,14 +220,20 @@ func (l *Logger) Fatalf(format string, v ...any) {
 		l.stderr(msg)
 	}
 
-	l.content = append(l.content, []byte(msg)...)
+	l.content = append(l.content, msg)
 	l.log.Print(msg)
 }
 
-// GetContent gets the bytes of Logger, it contains
-// the print output of Logger.
-func (l *Logger) GetContent() []byte {
+// GetContent gets the output of the Logger in a slice
+// of strings.
+func (l *Logger) GetContent() []string {
 	return l.content
+}
+
+// GetContentString gets the output of the logger in a
+// string.
+func (l *Logger) GetContentString() string {
+	return strings.Join(l.content, "\n")
 }
 
 // stdout writes any argument to the standard output stream.
