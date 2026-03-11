@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"macos-deployment/deploy-files/core"
@@ -32,7 +33,7 @@ var searchDirectoryFiles = []string{
 var baseLenPkgInstall int = len(packagesToInstall)
 
 func TestArrayLowerCase(t *testing.T) {
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 
 	handler := core.NewFileHandler(packagesToInstall, log)
 
@@ -60,7 +61,7 @@ func TestArrayLowerCase(t *testing.T) {
 }
 
 func TestAddPackages(t *testing.T) {
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 	handler := core.NewFileHandler(packagesToInstall, log)
 
 	handler.AddPackages(packagesToAdd)
@@ -77,7 +78,7 @@ func TestAddPackages(t *testing.T) {
 }
 
 func TestRemovePackages(t *testing.T) {
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 	handler := core.NewFileHandler(packagesToInstall, log)
 
 	expectedLength := len(append(packagesToAdd, handler.GetPackages()...)) - 1
@@ -95,8 +96,8 @@ func TestRemovePackages(t *testing.T) {
 	}
 }
 
-func TestInstalledPackages(t *testing.T) {
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+func TestInstalledPackagesNormal(t *testing.T) {
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 	handler := core.NewFileHandler(packagesToInstall, log)
 
 	alreadyInstalledCount := 0
@@ -112,10 +113,10 @@ func TestInstalledPackages(t *testing.T) {
 	}
 }
 
-func TestInstallPackages(t *testing.T) {
+func TestInstallPackagesAddNewPackages(t *testing.T) {
 	projectDirectory := t.TempDir()
 
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 	handler := core.NewFileHandler(packagesToInstall, log)
 
 	handler.AddPackages(packagesToAdd)
@@ -154,7 +155,7 @@ func TestInstallPackages(t *testing.T) {
 func TestReadDmg(t *testing.T) {
 	projectDirectory := t.TempDir()
 
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 
 	testDmgs := []string{
 		"test.dmg", "another one.dmg",
@@ -186,7 +187,7 @@ func TestReadDmg(t *testing.T) {
 func TestCopyApp(t *testing.T) {
 	projectDirectory := t.TempDir()
 
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 
 	handler := core.NewFileHandler(packagesToInstall, log)
 
@@ -232,7 +233,7 @@ func TestCopyApp(t *testing.T) {
 func TestCopyFile(t *testing.T) {
 	projectDirectory := t.TempDir()
 
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 
 	handler := core.NewFileHandler(packagesToInstall, log)
 
@@ -273,7 +274,7 @@ func TestCopyFile(t *testing.T) {
 func TestScriptCacheAddition(t *testing.T) {
 	projectDirectory := t.TempDir()
 
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 	handler := core.NewFileHandler(packagesToInstall, log)
 
 	fakeScriptFiles := []string{
@@ -312,7 +313,7 @@ func TestScriptCacheAddition(t *testing.T) {
 func TestScriptExecution(t *testing.T) {
 	projectDirectory := t.TempDir()
 
-	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 	handler := core.NewFileHandler(packagesToInstall, log)
 
 	baseScriptNames := []string{
