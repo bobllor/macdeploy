@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"macos-deployment/deploy-files/logger"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -42,12 +43,16 @@ var installCmd = &cobra.Command{
 		root.initialize(true)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		if root.osFile != nil {
+			defer root.osFile.Close()
+		}
+
 		// have to use the root from root.go, there is an
 		// invalid memory address if using a new RootData.
 		if installCobra.logvars.Verbose {
-			root.log.EnableInfoLog()
+			root.log.SetLogLevel(logger.Linfo)
 		} else if installCobra.logvars.Debug {
-			root.log.EnableDebugLog()
+			root.log.SetLogLevel(logger.Ldebug)
 		}
 
 		// yes i know. i didnt want to rewrite a good chunk of my project so
@@ -61,7 +66,7 @@ var installCmd = &cobra.Command{
 		if installCobra.dmg {
 			dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".dmg")
 			if err != nil {
-				root.log.Error.Log(err.Error())
+				root.log.Warn(err.Error())
 			} else {
 
 				if len(dmgFiles) > 0 {
@@ -70,18 +75,17 @@ var installCmd = &cobra.Command{
 					root.dep.filehandler.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
 					root.dep.filehandler.DetachDmgs(volumeMounts)
 				} else {
-					root.log.Warn.Log("No DMG files found in %s", root.metadata.DistDirectory)
+					root.log.Warn(fmt.Sprintf("No DMG files found in %s", root.metadata.DistDirectory))
 				}
 			}
 		}
 
 		data, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".pkg")
 		if err != nil {
-			root.log.Error.Log(err.Error())
+			root.log.Warn(err.Error())
 		} else {
 			root.dep.filehandler.InstallPackages(data, []string{})
 		}
-
 	},
 }
 

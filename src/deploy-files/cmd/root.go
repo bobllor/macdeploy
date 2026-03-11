@@ -88,7 +88,9 @@ var rootCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		defer root.osFile.Close()
+		if root.osFile != nil {
+			defer root.osFile.Close()
+		}
 		root.log.Infof("Deployment started for %s", root.metadata.SerialTag)
 		fmt.Printf("Starting deployment for %s\n", root.metadata.SerialTag)
 

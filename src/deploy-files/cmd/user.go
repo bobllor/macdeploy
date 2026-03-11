@@ -28,7 +28,10 @@ var userCmd = &cobra.Command{
 		root.initialize(true)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		defer root.osFile.Close()
+		if root.osFile != nil {
+			defer root.osFile.Close()
+		}
+
 		// have to use the root from root.go, there is an
 		// invalid memory address if using a new RootData.
 		if userCobra.logvars.Verbose {
