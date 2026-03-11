@@ -88,6 +88,7 @@ var rootCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		defer root.osFile.Close()
 		root.log.Infof("Deployment started for %s", root.metadata.SerialTag)
 		fmt.Printf("Starting deployment for %s\n", root.metadata.SerialTag)
 
@@ -296,7 +297,6 @@ var rootCmd = &cobra.Command{
 			}
 
 			root.startCleanup(filesToRemove)
-			defer root.osFile.Close()
 		}
 	},
 }
@@ -472,7 +472,7 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 func (r *RootData) startFirewall(firewall *core.Firewall) {
 	fwStatus, err := firewall.Status()
 	if err != nil {
-		r.log.Warn(fmt.Sprintf("Failed to execute firewall: %v\n", err))
+		r.log.Warn(fmt.Sprintf("Failed to execute firewall: %v", err))
 		fmt.Println("Failed to check firewall status")
 	}
 
