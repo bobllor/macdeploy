@@ -78,7 +78,7 @@ func (f *FileHandler) InstallRosetta() error {
 //
 // packagesToAdd is a slice of strings containing the .pkg file name to install.
 // The contents can be a substring of the .pkg file name, the full .pkg file name,
-// or a string with '/' delimiters that represents the structure: <file>/installed/installed.
+// or a string with '/' delimiters that represents the structure: <file>,installed,installed.
 // The latter is used to check if the file is already installed prior to attempting the install.
 func (f *FileHandler) AddPackages(packagesToAdd []string) {
 	for _, includedPkg := range packagesToAdd {
@@ -177,7 +177,6 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 
 			// this cannot be hard coded with the .pkg file, this allows for
 			// dynamic handling of long names (due to an edge case).
-			// instead the .pkg extension is added after the package can be found.
 			if strings.Contains(relativePkgLow, pkgLowered) {
 				f.log.Info(fmt.Sprintf("Installing package %s", pkg))
 				fmt.Printf("Starting installation for %s\n", pkg)
@@ -194,7 +193,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 				}
 
 				outMsg := "Successfully installed"
-				if !strings.Contains(pkgLowered, ".pkg") {
+				if !strings.HasSuffix(pkgLowered, ".pkg") {
 					outMsg = fmt.Sprintf("%s %s.pkg", outMsg, pkg)
 				} else {
 					outMsg = fmt.Sprintf("%s %s", outMsg, pkg)
