@@ -235,7 +235,7 @@ var rootCmd = &cobra.Command{
 		if !root.NoSend {
 			root.log.Info("Sending log file to the server")
 
-			logPayload.Body = string(root.log.GetContent())
+			logPayload.Body = root.log.GetContentString()
 			err = root.startRequest(logPayload, request, "/api/log")
 			if err != nil {
 				root.log.Critical(fmt.Sprintf("Failed to send to data to server: %v", err))
