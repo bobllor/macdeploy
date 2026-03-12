@@ -37,14 +37,11 @@ dest_config="config.yml"
 # copies the YAML config into src for embedding
 ln "$config" "./src/config/$dest_config" -f
 
-curr_wd=$(pwd)
-validatego_path="./deploy-files/yaml/validator"
+validatego_path="./src/deploy-files/yaml/validator"
 validatego_file="validate.go"
 
-cd "./src"
 # validate file, it will output the errors.
 go run "$validatego_path/$validatego_file" || exit 1
-cd "$curr_wd"
 
 zip_var="ZIP_NAME"
 zip_name=$(filename "$zip_var")
