@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -13,6 +15,13 @@ type Printer interface {
 	Printf(format string, v ...any)
 }
 
+// Buffer is an interface that writes to a buffer
+// in order to get its contents.
+type Buffer interface {
+	Write(p []byte) (int, error)
+	String() string
+}
+
 type Prefix struct {
 	debug    string
 	info     string
@@ -22,10 +31,11 @@ type Prefix struct {
 }
 
 type Logger struct {
-	log      Printer
-	content  []string
-	prefix   Prefix
-	logLevel int
+	log       Printer
+	prefix    Prefix
+	logLevel  int
+	bufWriter Printer
+	buf       Buffer
 }
 
 const (
@@ -71,6 +81,11 @@ func NewLogFile(fileStr string) (*os.File, error) {
 // The logLevel variable is an integer used as a flag for the minimum
 // logging level.
 func NewLogger(printer Printer, logLevel int) *Logger {
+	buf := make([]byte, 0)
+	buffer := bytes.NewBuffer(buf)
+
+	bufLogger := log.New(buffer, "", log.Ldate|log.Ltime)
+
 	logger := Logger{
 		log: printer,
 		prefix: Prefix{
@@ -80,8 +95,9 @@ func NewLogger(printer Printer, logLevel int) *Logger {
 			critical: "[CRITICAL]",
 			fatal:    "[FATAL]",
 		},
-		logLevel: logLevel,
-		content:  make([]string, 0),
+		logLevel:  logLevel,
+		bufWriter: bufLogger,
+		buf:       buffer,
 	}
 
 	return &logger
@@ -103,7 +119,7 @@ func (l *Logger) Debug(v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -116,7 +132,7 @@ func (l *Logger) Debugf(format string, v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -129,7 +145,7 @@ func (l *Logger) Info(v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -142,7 +158,7 @@ func (l *Logger) Infof(format string, v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -155,7 +171,7 @@ func (l *Logger) Warn(v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -168,7 +184,7 @@ func (l *Logger) Warnf(format string, v ...any) {
 		l.stdout(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -181,7 +197,7 @@ func (l *Logger) Critical(v ...any) {
 		l.stderr(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -194,7 +210,7 @@ func (l *Logger) Criticalf(format string, v ...any) {
 		l.stderr(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -207,7 +223,7 @@ func (l *Logger) Fatal(v ...any) {
 		l.stderr(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
@@ -220,20 +236,13 @@ func (l *Logger) Fatalf(format string, v ...any) {
 		l.stderr(msg)
 	}
 
-	l.content = append(l.content, msg)
+	l.bufWriter.Print(msg)
 	l.log.Print(msg)
 }
 
-// GetContent gets the output of the Logger in a slice
-// of strings.
-func (l *Logger) GetContent() []string {
-	return l.content
-}
-
-// GetContentString gets the output of the logger in a
-// string.
-func (l *Logger) GetContentString() string {
-	return strings.Join(l.content, "\n")
+// String gets the output of the logger as a string.
+func (l *Logger) String() string {
+	return l.buf.String()
 }
 
 // stdout writes any argument to the standard output stream.
