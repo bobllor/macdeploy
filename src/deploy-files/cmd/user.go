@@ -24,7 +24,7 @@ var userCobra UserData
 
 var userCmd = &cobra.Command{
 	Use:   "user",
-	Short: "Create a user",
+	Short: "Create a local user",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		root.initialize(true)
 	},
@@ -64,6 +64,4 @@ func InitializeUserCmd() {
 	userCmd.Flags().BoolVarP(&userCobra.Admin, "admin", "a", false, "Grants admin to the user")
 	userCmd.Flags().BoolVarP(&userCobra.logvars.Verbose, "verbose", "v", false, "Enables info logging")
 	userCmd.Flags().BoolVar(&userCobra.logvars.Debug, "debug", false, "Enables debug and info logging")
-
-	rootCmd.AddCommand(userCmd)
 }
