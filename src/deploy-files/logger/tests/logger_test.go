@@ -51,7 +51,7 @@ func TestLogFileCreation(t *testing.T) {
 }
 
 func TestLogContent(t *testing.T) {
-	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", logFlag), logger.Ldebug)
+	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", logFlag), logger.Lsilent)
 
 	logMsgs := []string{}
 
@@ -71,13 +71,14 @@ func TestLogContent(t *testing.T) {
 		fn(logMsgs[i])
 	}
 
-	content := log.GetContent()
+	content := strings.Split(log.String(), "\n")
 
-	if len(content) != len(logMsgs) {
+	// have to subtract by one due to content containing an extra newline
+	if len(content)-1 != len(logMsgs) {
 		t.Fatalf("failed to write log messages to content, got %d instead of %d", len(content), len(logMsgs))
 	}
 
-	for i := range len(content) {
+	for i := range len(logMsgs) {
 		baseMsg := logMsgs[i]
 		contentMsg := content[i]
 
@@ -108,15 +109,15 @@ func TestLogContentString(t *testing.T) {
 		fn(logMsgs[i])
 	}
 
-	content := log.GetContentString()
-
+	content := log.String()
 	contentArr := strings.Split(content, "\n")
 
-	if len(contentArr) != len(logMsgs) {
+	// have to subtract by one due to contentArr containing an extra newline
+	if len(contentArr)-1 != len(logMsgs) {
 		t.Fatalf("logged contents does not match baseline log messages: %d != %d", len(contentArr), len(logMsgs))
 	}
 
-	for i := range len(contentArr) {
+	for i := range len(logMsgs) {
 		baseMsg := logMsgs[i]
 		contentMsg := contentArr[i]
 
@@ -133,7 +134,7 @@ func TestLogFormattingMethod(t *testing.T) {
 	argString := "log"
 	log.Criticalf(formatString, argString)
 
-	content := strings.Join(log.GetContent(), "\n")
+	content := log.String()
 
 	if !strings.Contains(content, fmt.Sprintf(formatString, argString)) {
 		t.Fatalf("Formatted log failed to match base log format: %s", fmt.Sprintf(formatString, argString))
