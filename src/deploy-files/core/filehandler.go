@@ -84,8 +84,7 @@ func (f *FileHandler) InstallRosetta() error {
 func (f *FileHandler) AddPackages(packagesToAdd []string) {
 	for _, includedPkg := range packagesToAdd {
 		// used to extract the package and its installed files from the flag argument.
-		// TODO: make this a comma instead, utilize string slice for include packages!
-		includeArgArr := strings.Split(includedPkg, "/")
+		includeArgArr := strings.Split(includedPkg, ",")
 
 		f.toLowerArray(&includeArgArr)
 
@@ -106,6 +105,7 @@ func (f *FileHandler) AddPackages(packagesToAdd []string) {
 
 // RemovePackages removes packages from the list of packages to install by removing the packages
 // in the package maps from a slice of packages.
+//
 // The names must match in order to remove the packages.
 func (f *FileHandler) RemovePackages(packagesToRemove []string) {
 	for _, excludedPkg := range packagesToRemove {
