@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"macos-deployment/deploy-files/logger"
 	"os"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
 
 	"github.com/spf13/cobra"
 )
@@ -65,26 +66,26 @@ var installCmd = &cobra.Command{
 		// for all .pkg files.
 		// DMG mounts are an option flag.
 		if installCobra.dmg {
-			dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".dmg")
+			dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.Files.DistDirectory, ".dmg")
 			if err != nil {
 				root.log.Warn(err.Error())
-				fmt.Printf("Could not find folder '%s' for DMG files\n", root.metadata.DistDirectory)
+				fmt.Printf("Could not find folder '%s' for DMG files\n", root.metadata.Files.DistDirectory)
 			} else {
 				if len(dmgFiles) > 0 {
 					volumeMounts := root.dep.filehandler.AttachDmgs(dmgFiles)
 
-					root.dep.filehandler.AddDmgPackages(volumeMounts, root.metadata.DistDirectory)
+					root.dep.filehandler.AddDmgPackages(volumeMounts, root.metadata.Files.DistDirectory)
 					root.dep.filehandler.DetachDmgs(volumeMounts)
 				} else {
-					root.log.Warn(fmt.Sprintf("No DMG files found in %s", root.metadata.DistDirectory))
+					root.log.Warn(fmt.Sprintf("No DMG files found in %s", root.metadata.Files.DistDirectory))
 				}
 			}
 		}
 
-		data, err := root.dep.filehandler.ReadDir(root.metadata.DistDirectory, ".pkg")
+		data, err := root.dep.filehandler.ReadDir(root.metadata.Files.DistDirectory, ".pkg")
 		if err != nil {
 			root.log.Warn(err.Error())
-			fmt.Printf("Could not find folder '%s' for PKG files\n", root.metadata.DistDirectory)
+			fmt.Printf("Could not find folder '%s' for PKG files\n", root.metadata.Files.DistDirectory)
 		} else {
 			root.dep.filehandler.InstallPackages(data, []string{})
 		}
