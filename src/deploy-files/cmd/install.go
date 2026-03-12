@@ -31,7 +31,7 @@ deployment files.
 `
 
 var installCmd = &cobra.Command{
-	Use:   "install <file> [<file>...]",
+	Use:   "install <file> [<file>...] [flags]",
 	Long:  longDescription,
 	Short: "Installs packages from the 'dist' folder",
 	PreRun: func(cmd *cobra.Command, args []string) {
@@ -93,9 +93,7 @@ var installCmd = &cobra.Command{
 }
 
 func InitializeInstallCmd() {
-	installCmd.Flags().BoolVar(&installCobra.dmg, "mount-dmg", false, "Mounts and extracts the contents of DMG files automatically")
+	installCmd.Flags().BoolVar(&installCobra.dmg, "mountdmg", false, "Mounts and extracts the contents of DMG files")
 	installCmd.Flags().BoolVarP(&installCobra.logvars.Verbose, "verbose", "v", false, "Enables info logging")
-	installCmd.Flags().BoolVar(&installCobra.logvars.Debug, "debug", false, "Enables debug and info logging")
-
-	rootCmd.AddCommand(installCmd)
+	installCmd.Flags().BoolVar(&installCobra.logvars.Debug, "debug", false, "Enables debug logging")
 }
