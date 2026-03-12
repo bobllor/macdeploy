@@ -59,7 +59,12 @@ func InitializeUserCmd() {
 	userCmd.Flags().StringVarP(&userCobra.UserInfo.Username, "username", "u", "", "The username of the user")
 	// not recommended due to it being plain text, this is best left empty. but its an option!
 	userCmd.Flags().StringVarP(&userCobra.UserInfo.Password, "password", "p", "", "The password of the user")
-	userCmd.Flags().BoolVar(&userCobra.UserInfo.ApplyPolicy, "policy", false, "Applies a password reset policy on login")
+	userCmd.Flags().BoolVar(
+		&userCobra.UserInfo.ApplyPolicy,
+		"applypolicy",
+		false,
+		"Applies a password policy on login, requires options in config defined",
+	)
 
 	userCmd.Flags().BoolVarP(&userCobra.Admin, "admin", "a", false, "Grants admin to the user")
 	userCmd.Flags().BoolVarP(&userCobra.logvars.Verbose, "verbose", "v", false, "Enables info logging")
