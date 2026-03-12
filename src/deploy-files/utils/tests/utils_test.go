@@ -2,11 +2,13 @@ package utils
 
 import (
 	"fmt"
-	"macos-deployment/deploy-files/utils"
 	"os"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/utils"
+	"github.com/bobllor/macdeploy/src/tests"
 )
 
 func TestGetFiles(t *testing.T) {
@@ -43,41 +45,100 @@ func TestGetFiles(t *testing.T) {
 }
 
 func TestRemoveFiles(t *testing.T) {
-	fakeFiles := []string{
+	rootDir := t.TempDir()
+	fileNames := []string{
 		"test1.txt", "test2.txt",
 		"test3.go", "test4.py",
+		"test5.py", "test6.py",
 	}
 
-	tempDir := t.TempDir()
-	filesToRemove := map[string]any{}
+	// this does not get removed here
+	pyDir := rootDir + "/python"
 
-	for _, file := range fakeFiles {
-		_, err := os.Create(tempDir + "/" + file)
-		if err != nil {
-			t.Fatalf("Failed to create files: %v", err)
+	err := os.MkdirAll(pyDir, 0o777)
+	tests.Checkf(t, err != nil, "failed to create dir %s: %v", pyDir, err)
+
+	pathsToRemove := []string{}
+
+	for _, file := range fileNames {
+		path := rootDir + "/" + file
+		if strings.HasSuffix(file, ".py") {
+			path = pyDir + "/" + file
 		}
-		filesToRemove[file] = false
+
+		err = os.WriteFile(path, []byte{}, 0o666)
+		tests.Checkf(t, err != nil, "failed to write file %s: %v", path, err)
+
+		pathsToRemove = append(pathsToRemove, path)
 	}
 
-	files, err := os.ReadDir(tempDir)
-	if err != nil {
-		t.Fatal("Failed to read directory")
+	utils.RemoveFiles(pathsToRemove)
+
+	for _, path := range pathsToRemove {
+		_, err := os.Stat(path)
+		tests.Checkf(t, err == nil, "failed to remove %s, file exists", path)
 	}
 
-	err = os.Chdir(tempDir)
-	if err != nil {
-		t.Fatal("Failed to change directories")
+	_, err = os.Stat(pyDir)
+	tests.Checkf(t, err != nil, "failed to stat %s: %v", pyDir, err)
+}
+
+func TestRemoveFilesDir(t *testing.T) {
+	rootDir := t.TempDir()
+	fileNames := []string{
+		"test1.txt", "test2.txt",
+		"test3.go", "test4.py",
+		"test5.py", "test6.py",
 	}
 
-	utils.RemoveFiles(filesToRemove, files)
+	// this is removed
+	pyDir := rootDir + "/python"
 
-	files, err = os.ReadDir(tempDir)
-	if err != nil {
-		t.Fatal("Failed to read directory")
+	err := os.MkdirAll(pyDir, 0o777)
+	tests.Checkf(t, err != nil, "failed to create dir %s: %v", pyDir, err)
+
+	pathsToRemove := []string{pyDir}
+
+	for _, file := range fileNames {
+		path := rootDir + "/" + file
+		isPyFile := strings.HasSuffix(file, ".py")
+		if isPyFile {
+			path = pyDir + "/" + file
+		}
+
+		err = os.WriteFile(path, []byte{}, 0o666)
+		tests.Checkf(t, err != nil, "failed to write file %s: %v", path, err)
+
+		if !isPyFile {
+			pathsToRemove = append(pathsToRemove, path)
+		}
 	}
 
-	if len(files) != 0 {
-		t.Fatal("Failed to remove files")
+	utils.RemoveFiles(pathsToRemove)
+
+	files, err := os.ReadDir(rootDir)
+	tests.Checkf(t, err != nil, "failed to read directory %s: %v", rootDir, err)
+
+	tests.Checkf(t, len(files) != 0, "failed to remove files '%s'", strings.Join(pathsToRemove, ","))
+}
+
+func TestMetaToString(t *testing.T) {
+	root := t.TempDir()
+	zipName := "deploy.zip"
+	st := "12345"
+
+	meta := utils.NewMetadata(st, root, root+"/"+zipName)
+
+	baseData := []string{
+		root,
+		zipName,
+		st,
+	}
+
+	str := meta.ToString()
+
+	for _, v := range baseData {
+		tests.Checkf(t, strings.Contains(str, v) == false, "Failed to find %s in meta string %s", v, str)
 	}
 }
 
