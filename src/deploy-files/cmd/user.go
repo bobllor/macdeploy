@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"macos-deployment/deploy-files/logger"
-	"macos-deployment/deploy-files/yaml"
 	"os"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
+	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
 
 	"github.com/spf13/cobra"
 )

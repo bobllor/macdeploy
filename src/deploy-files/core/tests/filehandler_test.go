@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"macos-deployment/deploy-files/core"
-	"macos-deployment/deploy-files/logger"
-	"macos-deployment/tests"
 	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/core"
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
+	"github.com/bobllor/macdeploy/src/tests"
 )
 
 var packagesToAdd = []string{

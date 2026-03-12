@@ -5,8 +5,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"io"
-	"macos-deployment/deploy-files/logger"
 	"net/http"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
 )
 
 type Payload interface {

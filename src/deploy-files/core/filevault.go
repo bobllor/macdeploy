@@ -2,11 +2,12 @@ package core
 
 import (
 	"fmt"
-	"macos-deployment/deploy-files/logger"
-	"macos-deployment/deploy-files/scripts"
-	"macos-deployment/deploy-files/yaml"
 	"os/exec"
 	"strings"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
+	"github.com/bobllor/macdeploy/src/deploy-files/scripts"
+	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
 )
 
 type FileVault struct {

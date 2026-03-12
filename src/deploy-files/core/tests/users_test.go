@@ -2,13 +2,14 @@ package core
 
 import (
 	"log"
-	"macos-deployment/deploy-files/core"
-	"macos-deployment/deploy-files/logger"
-	"macos-deployment/deploy-files/scripts"
-	"macos-deployment/deploy-files/utils"
-	"macos-deployment/deploy-files/yaml"
 	"os"
 	"testing"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/core"
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
+	"github.com/bobllor/macdeploy/src/deploy-files/scripts"
+	"github.com/bobllor/macdeploy/src/deploy-files/utils"
+	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
 )
 
 func TestUsernameFormatting(t *testing.T) {

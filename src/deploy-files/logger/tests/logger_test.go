@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"macos-deployment/deploy-files/logger"
-	"macos-deployment/tests"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
+	"github.com/bobllor/macdeploy/src/tests"
 )
 
 var logFlag = log.Ldate | log.Ltime

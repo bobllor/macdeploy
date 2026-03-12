@@ -2,11 +2,12 @@ package scripts
 
 import (
 	_ "embed"
-	"macos-deployment/deploy-files/scripts"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/scripts"
 )
 
 var script *scripts.BashScripts = scripts.NewScript()

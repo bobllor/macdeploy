@@ -4,14 +4,15 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"macos-deployment/deploy-files/logger"
-	"macos-deployment/deploy-files/scripts"
-	"macos-deployment/deploy-files/utils"
-	"macos-deployment/deploy-files/yaml"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
+	"github.com/bobllor/macdeploy/src/deploy-files/scripts"
+	"github.com/bobllor/macdeploy/src/deploy-files/utils"
+	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
 )
 
 type UserMaker struct {

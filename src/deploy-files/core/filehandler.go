@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"macos-deployment/deploy-files/logger"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
 )
 
 type FileHandler struct {

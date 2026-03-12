@@ -3,10 +3,11 @@ package core
 import (
 	"errors"
 	"fmt"
-	"macos-deployment/deploy-files/logger"
-	"macos-deployment/deploy-files/scripts"
 	"os/exec"
 	"strings"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
+	"github.com/bobllor/macdeploy/src/deploy-files/scripts"
 )
 
 type Firewall struct {
