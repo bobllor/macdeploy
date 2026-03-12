@@ -2,10 +2,14 @@ package main
 
 import (
 	_ "embed"
-	"macos-deployment/deploy-files/cmd"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/cmd"
 )
 
 func main() {
 	cmd.InitializeRoot()
+	cmd.InitializeUserCmd()
+	cmd.InitializeInstallCmd()
+
 	cmd.Execute()
 }

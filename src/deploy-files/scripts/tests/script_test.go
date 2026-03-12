@@ -1,17 +1,18 @@
-package tests
+package scripts
 
 import (
 	_ "embed"
-	"macos-deployment/deploy-files/scripts"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/scripts"
 )
 
 var script *scripts.BashScripts = scripts.NewScript()
 
-func TestFindFiles(t *testing.T) {
+func TestExecuteHelperScriptFindFiles(t *testing.T) {
 	dir := t.TempDir()
 
 	filesToWrite := []string{

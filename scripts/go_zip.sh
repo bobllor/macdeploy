@@ -35,7 +35,13 @@ mkdir -p $dist_dir
 dest_config="config.yml"
 
 # copies the YAML config into src for embedding
-cp "$config" "./src/config/$dest_config"
+ln "$config" "./src/config/$dest_config" -f
+
+validatego_path="./src/deploy-files/yaml/validator"
+validatego_file="validate.go"
+
+# validate file, it will output the errors.
+go run "$validatego_path/$validatego_file" || exit 1
 
 zip_var="ZIP_NAME"
 zip_name=$(filename "$zip_var")

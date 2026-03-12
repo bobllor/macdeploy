@@ -1,14 +1,18 @@
-package tests
+package core
 
 import (
-	"macos-deployment/deploy-files/core"
-	"macos-deployment/deploy-files/scripts"
-	"macos-deployment/deploy-files/utils"
-	"macos-deployment/deploy-files/yaml"
+	"log"
+	"os"
 	"testing"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/core"
+	"github.com/bobllor/macdeploy/src/deploy-files/logger"
+	"github.com/bobllor/macdeploy/src/deploy-files/scripts"
+	"github.com/bobllor/macdeploy/src/deploy-files/utils"
+	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
 )
 
-func TestFormatUsername(t *testing.T) {
+func TestUsernameFormatting(t *testing.T) {
 	names := []string{
 		"...john ..-doe",
 		"!@#$%^&*()lebron.   !~`:\"?<>,;'|\\{[]]}james!!++==",
@@ -40,18 +44,18 @@ func TestFormatUsername(t *testing.T) {
 	}
 }
 
-func TestUserNoPassword(t *testing.T) {
+func TestFailUserNoPassword(t *testing.T) {
 	userInfo := yaml.UserInfo{
 		Username: "sample",
 		Password: "",
 	}
 
-	logger := GetLogger(t)
+	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
 
 	user := core.NewUser(yaml.UserInfo{
 		Username: "admin",
 		Password: "admin",
-	}, scripts.NewScript(), logger.Log)
+	}, scripts.NewScript(), log)
 
 	_, err := user.CreateAccount(&userInfo, false)
 	if err == nil {
@@ -59,7 +63,7 @@ func TestUserNoPassword(t *testing.T) {
 	}
 }
 
-func TestAdminNoPassword(t *testing.T) {
+func TestFailAdminNoPassword(t *testing.T) {
 	config := &yaml.Config{}
 
 	// expects to fail due to the input terminal requirement

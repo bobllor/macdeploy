@@ -91,35 +91,31 @@ func GetSerialTag() (string, error) {
 	return serialTag, nil
 }
 
-// RemoveFiles removes the files based on a given map. It searches for the files in the map
-// of the directory the execution process started in.
-func RemoveFiles[T any](filesToRemove map[string]T, files []os.DirEntry) {
-	for _, file := range files {
-		fileName := strings.ToLower(file.Name())
+// RemoveFiles removes a slice of string paths.
+// If the path is a directory then it will remove all of its contents.
+func RemoveFiles(paths []string) {
+	for _, path := range paths {
+		file, err := os.Stat(path)
+		if err != nil {
+			fmt.Printf("Failed to stat %s: %v\n", path, err)
+			continue
+		}
 
-		if _, ok := filesToRemove[fileName]; ok {
-			if file.IsDir() {
-				err := os.RemoveAll(fileName)
-				if err != nil {
-					fmt.Printf("Error removing directory %v\n", err)
-					continue
-				}
-			} else {
-				err := os.Remove(fileName)
-				if err != nil {
-					fmt.Printf("Error removing file %v\n", err)
-					continue
-				}
-			}
+		if file.IsDir() {
+			err = os.RemoveAll(path)
+		} else {
+			err = os.Remove(path)
+		}
 
-			fmt.Printf("Removed file %s\n", fileName)
+		if err != nil {
+			fmt.Printf("Failed to remove %s: %v\n", path, err)
 		}
 	}
 }
 
-// FormatImportantString returns a formatted string between two lines of stars (*)
-// with padding the inner text. It creates the text based on the slice of strings given.
-func FormatImportantString(lineArr []string, padding int) string {
+// FormatBannerString returns a formatted string between two lines of stars (*)
+// with padding the inner text. It creates the banner text based on the slice of strings given.
+func FormatBannerString(lineArr []string, padding int) string {
 	longestLen := len(lineArr[0])
 	for i := 1; i < len(lineArr); i++ {
 		if len(lineArr[i]) > longestLen {

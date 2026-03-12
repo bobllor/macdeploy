@@ -142,22 +142,22 @@ The binary supports *flags* options which can be found [here](#deployment-option
 | Options | Description |
 | ---- | ---- |
 | `--admin`, `-a` | Gives admin to a created user. If `ignore_admin` is true in the YAML, this is ignored. |
-| `--skip-local`, `-s` | Skips the creation of the local user account, if configured in the YAML. |
-| `--create-local`, `-c` | Enables the local user account creation process. |
-| `--remove-files` | Removes deployment files upon successful completion. |
-| `--verbose`, `-v` | Output info level logging to the terminal. |
-| `--debug` | Output debug level logging to the terminal, this includes info level logging. |
-| `--no-send` | Prevents the log from being sent to the server. |
+| `--skiplocal`, `-s` | Skips the creation of the local user account, if configured in the YAML. |
+| `--createlocal`, `-c` | Enables the local user account creation process. Skips YAML account creation if true. |
+| `--cleanup` | Removes deployment files upon successful completion. |
+| `--verbose`, `-v` | Output log levels INFO or above to the terminal. |
+| `--debug` | Include debug logging to the terminal. |
+| `--nosend` | Prevents the log from being sent to the server. |
 | `--pwlist "/path/to/plist"` | Apply password policies using a plist path. |
 | `--exclude "file"` | Excludes a package from installation. |
-| `--include "<file/installed_file_1/installed_file_2>"` | Include a package to install. |
+| `--include "<file,installed_file_1,installed_file_2>"` | Include a package to install. |
 
-The `installed_file_1/installed_file_2` arguments of the`--include` flag is the installed file name, 
+The `installed_file_1,installed_file_2` arguments of the`--include` flag is the installed file name, 
 i.e. the files on the device after installing the package.
 - For example, if `Chrome.pkg` is installed a file will be created named `Google Chrome.app` 
 found inside `/Applications`. 
 - To install the package and check if it is already installed: 
-`--include "chrome.pkg/Google Chrome"`.
+`--include "chrome.pkg,Google Chrome"`.
 
 ### Updating
 
@@ -231,9 +231,6 @@ Each section is an array of script names, it is *case insensitive* and *looks fo
 
 `server_host`: The IP or domain of the server, used for client-server communication. *This is required* for the
 deployment to work.
-
-`log`: The path to the directory of the log files. By default, it is stored at `~/logs/macdeploy` if omitted or an error
-occurs.
 
 `filevault`: Enable or disable FileVault activation in the deployment.
 

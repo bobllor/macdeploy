@@ -9,6 +9,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-yaml"
 	"golang.org/x/term"
 )
@@ -20,10 +21,9 @@ type Config struct {
 	Scripts           ScriptTypes         `yaml:"scripts"`
 	Admin             UserInfo
 	Policy            Policies `yaml:"policies"`
-	ServerHost        string   `yaml:"server_host"`
+	ServerHost        string   `yaml:"server_host" validate:"url,required"`
 	FileVault         bool
 	Firewall          bool
-	Log               string `yaml:"log"`
 }
 
 type UserInfo struct {
@@ -33,6 +33,8 @@ type UserInfo struct {
 	ApplyPolicy bool   `yaml:"apply_policy"`
 }
 
+// ScriptTypes contains fields with string slices representing the
+// script file names used to execute during the lifecycle of the process.
 type ScriptTypes struct {
 	Pre   []string `yaml:"pre"`
 	Inter []string `yaml:"inter"`
@@ -52,6 +54,35 @@ func NewConfig(data []byte) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+// Validate validates the required fields. If it fails, it will return an error.
+func Validate(config *Config) error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	err := validate.Struct(config)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Marshal serializes an interface into a bytes value.
+func Marshal(v any) ([]byte, error) {
+	return yaml.Marshal(v)
+}
+
+// Unmarshal serializes a bytes value into an interface.
+func Unmarshal(data []byte) (any, error) {
+	var v any
+
+	err := yaml.Unmarshal(data, &v)
+	if err != nil {
+		return nil, err
+	}
+
+	return v, nil
 }
 
 // SetUsername is used to set the username if one was not given.

@@ -31,7 +31,6 @@ class Zip:
         self.log: Log = log
 
         self.arm_binary: str = binary_args.get("arm", ARM_BINARY_NAME)
-        self.x86_binary: str = binary_args.get("x86_64", X86_BINARY_NAME)
 
         # cache for recursive parent creation when appending new files in the ZIP
         self._created_files: set[str] = {".", "./", ""}
@@ -52,7 +51,7 @@ class Zip:
         if not dist_path.exists():
             dist_path.mkdir()
         
-        binary_names: list[str] = [self.arm_binary, self.x86_binary]
+        binary_names: list[str] = [self.arm_binary]
         for binary in binary_names:
             if not (dist_path / binary).exists():
                 self.log.critical("Binary %s not found in %s", binary, dist_path_str)

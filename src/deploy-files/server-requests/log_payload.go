@@ -5,6 +5,10 @@ type LogPayload struct {
 	Body        string `json:"body"`
 }
 
+// NewLogPayload creates a new LogPayload.
+//
+// fileName represents the log file name to be used for storing
+// on the server.
 func NewLogPayload(fileName string) *LogPayload {
 	payload := LogPayload{
 		LogFileName: fileName,
