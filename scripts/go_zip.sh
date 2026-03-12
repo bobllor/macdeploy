@@ -35,7 +35,7 @@ mkdir -p $dist_dir
 dest_config="config.yml"
 
 # copies the YAML config into src for embedding
-ln "$config" "./src/config/$dest_config" -f
+ln -f "$config" "./src/config/$dest_config"
 
 validatego_path="./src/deploy-files/yaml/validator"
 validatego_file="validate.go"
