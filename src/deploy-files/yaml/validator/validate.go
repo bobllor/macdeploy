@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	embedhandler "macos-deployment/config"
-	"macos-deployment/deploy-files/yaml"
 	"os"
+
+	embedhandler "github.com/bobllor/macdeploy/src/config"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
 )
 
 // main is used to read a config file from a given path and validate it.

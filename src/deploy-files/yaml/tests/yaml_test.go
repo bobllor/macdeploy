@@ -2,10 +2,11 @@ package yaml
 
 import (
 	"fmt"
-	"macos-deployment/deploy-files/yaml"
-	"macos-deployment/tests"
 	"strings"
 	"testing"
+
+	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
+	"github.com/bobllor/macdeploy/src/tests"
 )
 
 // getConfig returns a test Config struct with all fields
