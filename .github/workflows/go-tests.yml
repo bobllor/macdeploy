@@ -25,5 +25,6 @@ jobs:
           cache: true
       - name: Build and test Go
         run: |
+          cp "sample-config.yml" "./src/config/config.yml"
           go mod download
           go test ./...
