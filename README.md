@@ -41,13 +41,11 @@ There is *no additional security* implemented to handle a public facing server.
 
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
-  - [Installation and Setup](#installation-and-setup)
+  - [Additional Information](#additional-information)
 - [Usage](#usage)
   - [Deployment](#deployment) 
-  - [Deployment options](#deployment-options)
   - [Updating](#updating)
-- [YAML Configuration File](#yaml-configuration-file)
-  - [YAML Reference](#yaml-reference)
+- [YAML Configuration](#yaml-configuration)
 - [Server and Deployment](#server-and-deployment)
   - [Gunicorn Configuration](#gunicorn-configuration)
   - [Zipping](#zipping)
@@ -59,6 +57,26 @@ There is *no additional security* implemented to handle a public facing server.
 - [Acknowledgements](#acknowledgements)
 
 ## Getting Started
+
+The following code block sets up the server, Docker containers, and 
+*if a valid config YAML file* exists in the root, create the deployment files
+(ZIP file of `dist` including the binary creation `macdeploy`).
+
+```bash
+git clone https://github.com/bobllor/MacDeploy
+cd macdeploy
+
+# checks out the latest release tag
+git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+
+bash build.sh -z
+```
+
+Do not use `build.sh` when trying to *create a new ZIP file or updating the repository*. The following scripts
+are for these two use cases respectively:
+1. `go_zip.sh`: Creates the ZIP file of `dist`. This requires a valid config YAML file in the root. 
+2. `update.sh`: Updates the repository, checks out the latest tag release, rebuilds the Docker containers,
+creates a new binary, and starts the Docker containers.
 
 ### Prerequisites
 
@@ -74,26 +92,7 @@ Below are the tools and software required on the server before starting the depl
 
 `zip`, `unzip`, and `curl` are required on the clients. MacBook devices have these installed by default.
 
-### Installation and Setup
-
-For the latest release you can use `git checkout $(git describe --tags $(git rev-list --tags --max-count=1))`.
-- If you need a specific version: `git checkout <TAG_VERSION>`.
-
-Ensure to run `bash build.sh`, which creates the required directories and creates the containers prior to setup.
-This is required to prevent permission issues with bind mounts.
-
-This creates the server setup, but *not the deployment binaries*:
-```shell
-git clone https://github.com/bobllor/MacDeploy && \
-cd macdeploy && \
-git checkout $(git describe --tags $(git rev-list --tags --max-count=1)) && \
-bash build.sh
-```
-
-To start the containers and server:
-```shell
-docker compose up -d
-```
+### Additional Information
 
 About the script `build.sh`:
 - Flag `-z` to generate the ZIP file. This *requires the YAML configuration file* to be present.
@@ -117,126 +116,55 @@ commands will be the same if the *Intel* version is used.
 
 ## Usage
 
-The client devices *must be connected to the same network* as the server.
-All commands will be used on the terminal of the device.
+Before starting, the client devices *must be connected to the same network* as the server.
+This tool was built in mind of being on the same local network.
 
 ### Deployment
 
-Replace `SERVER_IP_DOMAIN` with the IP or domain name to the server.
+All commands will be entered on the terminal of the deploying device.
+
+Replace `SERVER_IP_DOMAIN` with the IP or domain name of your server. Do note that this *must
+be reachable* through the Docker container.
+
 ```shell
 curl https://SERVER_IP_DOMAIN:5000/api/packages/deploy.zip -o deploy.zip --insecure && \
 unzip deploy.zip
-```
-This downloads the ZIP file from the server and unzips the contents of the `dist` directory into the 
-working directory of the client, by default it is where the terminal opens: the home directory.
 
-To start the deployment process (no flags):
-```shell
 ./dist/macdeploy
 ```
 
-The binary supports *flags* options which can be found [here](#deployment-options).
-
-### Deployment Options
-
-| Options | Description |
-| ---- | ---- |
-| `--admin`, `-a` | Gives admin to a created user. If `ignore_admin` is true in the YAML, this is ignored. |
-| `--skiplocal`, `-s` | Skips the creation of the local user account, if configured in the YAML. |
-| `--createlocal`, `-c` | Enables the local user account creation process. Skips YAML account creation if true. |
-| `--cleanup` | Removes deployment files upon successful completion. |
-| `--verbose`, `-v` | Output log levels INFO or above to the terminal. |
-| `--debug` | Include debug logging to the terminal. |
-| `--nosend` | Prevents the log from being sent to the server. |
-| `--pwlist "/path/to/plist"` | Apply password policies using a plist path. |
-| `--exclude "file"` | Excludes a package from installation. |
-| `--include "<file,installed_file_1,installed_file_2>"` | Include a package to install. |
-
-The `installed_file_1,installed_file_2` arguments of the`--include` flag is the installed file name, 
-i.e. the files on the device after installing the package.
-- For example, if `Chrome.pkg` is installed a file will be created named `Google Chrome.app` 
-found inside `/Applications`. 
-- To install the package and check if it is already installed: 
-`--include "chrome.pkg,Google Chrome"`.
+The binary supports *flags* and has sub-commands which can be found [here](#deployment-options).
 
 ### Updating
 
-```shell
-git fetch origin && \
-git checkout $(git describe --tags $(git rev-list --tags --max-count=1)) && \
-docker down -v && \
-docker compose build && docker compose up -d
-```
+There is a script called `update.sh` that automatically updates the repository,
+checks out the latest tag, and recreates the binary, Docker containers, and
+starts the containers. This is *only available for release v1.2.3 and above*:
 
-Alternatively, there is a script for updating in the scripts directory. 
-However, this is *only available for release v1.2.3 and above*:
 ```shell
-bash scripts/update.sh
+bash update.sh
 ``` 
 
 ## YAML Configuration
 
-The YAML configuration file is used for configuration of the binary, and must be 
-***configured prior to building the binary***.
-It is *embedded into the binary*, meaning any new updates will require a new binary to be generated
-via `bash scripts/go_zip.sh`. 
+The YAML configuration file is used for configuring the binary and must be 
+***configured prior to compiling the binary***.
+This file is *embedded into the binary*, meaning any new updates will require a new binary to be generated
+via `bash go_zip.sh`. 
 
 The YAML file *must be named `config`* and can end in `.yaml`, `.yml`, `.YAML`, or `.YML`. 
+A *hard link* will be created from the root file into the embeded folder for the binary to load
+in memory.
 
-A sample file can be found in the repository.
-
-### YAML Reference
-
-`accounts`: Creates the users on the client device. Can be omitted if no users need to be created.
-- `account_name`: It can be named anything but *must be unique*.
-    - `username`: This value *must be unique*. If omitted, an input prompt for a
-    username will be displayed.
-    - `password`: Can be omitted, a password input prompt will appear.
-    - `apply_policy`: Apply password policies to the user from the given values.
-    - `ignore_admin`: Ignores giving admin to the user if the *admin flag* is used. 
-    This applies only for accounts defined in the YAML config.
-
-`admin`: A user info map for the main account. 
-  - `username`: It must match the same internal username during the initial account creation.
-  For example, if the display name is `Admin User` the *internal username* is `adminuser`. Can be omitted.
-  - `password`: It can be omitted, but will prompt for the password. If it fails to validate then the program will exit.
-  - `apply_policy`: Apply password policies to the admin account. Must be `true` if the admin account requires
-  policies applied.
-
-`packages`: Packages that are being installed from the distribution directory.
-  - `package_name`: The package name ending in `.pkg`. Used to execute scripts found in the distribution directory. 
-  It is *case insensitive* and *looks for a name match*. 
-    - `installed_file_name`: The directory added after installing a `.pkg` file. It is not case sensitive, 
-    and matches the file name in the search directories. 
-    Example: `Microsoft Word.app` can be found by `"microsoft word"` or `"Word.app"`.
-    If omitted then the package will be installed on every attempt.
-
-`scripts`: Scripts to be executed on the client device. It executes in three deployment stages: before, during, and after.
-The script files *must have the correct permission* prior to being compressed into the ZIP file. 
-Each section is an array of script names, it is *case insensitive* and *looks for a name match*.
-  - `pre`: Scripts to be executed before deployment.
-  - `inter`: Scripts to be executed during deployment, this is executed after installation of packages. 
-  - `post`: Scripts to be executed after deployment.
-  
-`policies`: A map of password policies applied to chosen accounts in the config.
-  - `reuse_password`: Determines if the user can reuse a password. Ranges from 0 to 15, with 1 being the default. 
-  - `require_alpha`: Requires the password to have at least one letter.
-  - `require_numeric`: Requires the password to have at least one number.
-  - `min_characters`: Minimum characters for the password.
-  - `max_characters`: Maxmimum characters for the password. 
-  - `change_on_login`: Requires a password change before logging in. This is **required** in order 
-  to apply the password policies.
-
-`search_directories`: Array of paths that are used for `installed_file_name` to search for applications.
-
-`server_host`: The IP or domain of the server, used for client-server communication. *This is required* for the
-deployment to work.
-
-`filevault`: Enable or disable FileVault activation in the deployment.
-
-`firewall`: Enable or disable Firewall activation in the deployment.
+A sample file can be found in the repository. To read more about the YAML requirements,
+[click here](./docs/config-yaml.md).
 
 ## Server and Deployment
+
+The server is ran with Flask over an HTTPS connection on a Docker container. 
+It uses a self-signed certificate and automatically trusts the connection upon using `curl`.
+
+Due to the devices being wiped and reused, the CA certificate *is not added to the devices*.
 
 ### Gunicorn Configuration
 
@@ -254,15 +182,16 @@ Any changes to the configuration *will require a reset of the server*, but does 
 
 When generated, the ZIP file is placed inside the `zip-build` directory in the project's root directory.
 
-The *deployment binary reads all files* in the `dist` directory.
-- This is the directory for all packages, scripts, DMGs, etc. that need to be on the client device.
+The *deployment binary reads all files* in the `dist` directory, which is the directory containing
+deployment files. These files include packages, scripts, and DMG files, which
+are needed to be on the client device for preparation.
 
-Directory structure does not matter in `dist`. It is recommended to create separate directories in order
-to prevent naming conflicts. Some *packages may require config files* alongside the installer, which the directorys
-ensure separation.
-- During deployment, all files are obtained recursively.
+Directory structure does not matter in `dist`, the search and download process is 
+done recursively. It is recommended to create separate directories in order
+to prevent naming conflicts. Some *packages may require config files* alongside the installer, which separate
+directories resolves this conflict.
 
-It is *important to update the ZIP file after any changes*, running `bash scripts/go_zip.sh` will generate a new ZIP file
+It is *important to update the ZIP file after any changes*, running `bash go_zip.sh` will generate a new ZIP file
 and deployment binaries.
 
 ### Server Zipping
@@ -304,19 +233,15 @@ If this process fails in any way, the key *must be saved* manually.
 
 ### Logging
 
-The log output location can be defined inside the YAML configuration with the field `log`.
+When the binary is ran on the client device, all logs will be stored at `~/logs/macdeploy`.
+The log file follows the format: `<SERIAL>.YYYY-MM-DD.log`.
 
-The value to the log path is expected to be *a directory*, and if a `.log` extension is attached to the
-the file will be dropped, taking the parent directory instead.
-- All parent directories are created automatically.
+When the deployment finishes, the log file is sent over to the server and stored in the
+`logs` folder in the project root. When the server receives the data, it will create
+a new folder under `logs` with the folder naming style *`YYYY-MM-DD-logs`*.
 
-In the event of a failure, the default log output will be set to the client's home directory: `~/logs/macdeploy`.
-
-The log name follows the format: `2006-01-02T-15-04-05.<SERIAL>.log`.
-- The permissions are 0600 by default.
-
-Logs from the client and server are found in the `logs` directory in the project's root directory. 
-The server logs are located in the subdirectory `server-logs`.
+If there is *an existing log file* for a serial tag, then the *data will be appended* to the file.
+Otherwise, a new file will be created under this folder respective to the current date.
 
 ## Supported MacBook Versions
 
