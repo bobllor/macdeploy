@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"maps"
 	"math/rand"
 	"os"
 	"strconv"
@@ -15,10 +16,9 @@ import (
 	"github.com/bobllor/macdeploy/src/tests"
 )
 
-var packagesToAdd = []string{
+var packagesToAdd []string = []string{
 	"some thing.pkg",
 	"AnoTherCaseSenSITIVE.pkg",
-	"no pkg here",
 }
 
 var packagesToInstall = map[string][]string{
@@ -31,12 +31,10 @@ var searchDirectoryFiles = []string{
 	"example 1", "example 2",
 }
 
-var baseLenPkgInstall int = len(packagesToInstall)
+var baseLenPkgInstall int = len(packagesToAdd)
 
 func TestArrayLowerCase(t *testing.T) {
-	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-
-	handler := core.NewFileHandler(packagesToInstall, log)
+	handler := core.NewFileHandler(tests.TestLogger)
 
 	handler.AddPackages(packagesToAdd)
 
@@ -62,29 +60,29 @@ func TestArrayLowerCase(t *testing.T) {
 }
 
 func TestAddPackages(t *testing.T) {
-	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(packagesToInstall, log)
+	handler := core.NewFileHandler(tests.TestLogger)
 
 	handler.AddPackages(packagesToAdd)
 
 	packages := handler.GetPackages()
 	newLen := len(packages)
 
-	if newLen != baseLenPkgInstall+len(packagesToAdd) {
+	if newLen != baseLenPkgInstall {
 		t.Errorf(
 			"starting length: %d does not match ending length of add packages: %d",
-			baseLenPkgInstall, newLen,
+			baseLenPkgInstall,
+			newLen,
 		)
 	}
 }
 
 func TestRemovePackages(t *testing.T) {
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(packagesToInstall, log)
-
-	expectedLength := len(append(packagesToAdd, handler.GetPackages()...)) - 1
+	handler := core.NewFileHandler(log)
 
 	handler.AddPackages(packagesToAdd)
+
+	expectedLength := len(handler.GetPackages())
 
 	randomSelection := strings.ToLower(packagesToAdd[rand.Intn(len(packagesToAdd))])
 
@@ -92,17 +90,19 @@ func TestRemovePackages(t *testing.T) {
 
 	newLen := len(handler.GetPackages())
 
-	if newLen != expectedLength {
+	// removing 1 file, so it should be 1 less
+	if newLen != expectedLength-1 {
 		t.Errorf("failed to remove package, got %d instead of %d", newLen, expectedLength)
 	}
 }
 
 func TestInstalledPackagesNormal(t *testing.T) {
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(packagesToInstall, log)
+	handler := core.NewFileHandler(log)
 
 	alreadyInstalledCount := 0
 
+	handler.AddMapPackages(packagesToInstall)
 	for _, installedNames := range packagesToInstall {
 		if handler.IsInstalled(installedNames, searchDirectoryFiles) {
 			alreadyInstalledCount += 1
@@ -118,8 +118,9 @@ func TestInstallPackagesAddNewPackages(t *testing.T) {
 	projectDirectory := t.TempDir()
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(packagesToInstall, log)
+	handler := core.NewFileHandler(log)
 
+	handler.AddMapPackages(packagesToInstall)
 	handler.AddPackages(packagesToAdd)
 
 	installedCount := 0
@@ -171,8 +172,9 @@ func TestReadDmg(t *testing.T) {
 		}
 	}
 
-	dmg := core.NewFileHandler(packagesToInstall, log)
+	dmg := core.NewFileHandler(log)
 
+	dmg.AddMapPackages(packagesToInstall)
 	dmgFiles, err := dmg.ReadDir(projectDirectory, ".dmg")
 	if err != nil {
 		t.Errorf("failed to read directory: %v", err)
@@ -190,8 +192,9 @@ func TestCopyApp(t *testing.T) {
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 
-	handler := core.NewFileHandler(packagesToInstall, log)
+	handler := core.NewFileHandler(log)
 
+	handler.AddMapPackages(packagesToInstall)
 	appBundle := "a program bundle.app"
 	appDirectory := "Applications"
 
@@ -236,8 +239,9 @@ func TestCopyFile(t *testing.T) {
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 
-	handler := core.NewFileHandler(packagesToInstall, log)
+	handler := core.NewFileHandler(log)
 
+	handler.AddMapPackages(packagesToInstall)
 	newTestDir := projectDirectory + "/" + "test-dir"
 
 	err := os.MkdirAll(newTestDir, 0o777)
@@ -276,8 +280,9 @@ func TestScriptCacheAddition(t *testing.T) {
 	projectDirectory := t.TempDir()
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(packagesToInstall, log)
+	handler := core.NewFileHandler(log)
 
+	handler.AddMapPackages(packagesToInstall)
 	fakeScriptFiles := []string{
 		"file1.sh", "file2.sh",
 	}
@@ -315,8 +320,9 @@ func TestScriptExecution(t *testing.T) {
 	projectDirectory := t.TempDir()
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(packagesToInstall, log)
+	handler := core.NewFileHandler(log)
 
+	handler.AddMapPackages(packagesToInstall)
 	baseScriptNames := []string{
 		"file1.sh",
 	}
@@ -352,5 +358,49 @@ func TestScriptExecution(t *testing.T) {
 		if out != msg {
 			t.Fatalf("got %s expected %s", out, msg)
 		}
+	}
+}
+
+func TestPackageString(t *testing.T) {
+	handler := core.NewFileHandler(tests.TestLogger)
+
+	pkg := "chrome.pkg"
+	installFiles := "chrome.app,google chrome.app"
+
+	copyPkgToInstall := maps.Clone(packagesToInstall)
+
+	copyPkgToInstall[pkg] = strings.Split(installFiles, ",")
+
+	handler.AddMapPackages(copyPkgToInstall)
+
+	str := handler.PackageString()
+
+	for key, val := range copyPkgToInstall {
+		// installation packages are separated by a comma
+		valStr := strings.ToLower(strings.Join(val, ","))
+		key = strings.ToLower(key)
+
+		tests.Checkf(t, strings.Contains(str, key) == false, "failed to find %s in %s", key, str)
+		tests.Checkf(t, strings.Contains(str, valStr) == false, "failed to find %s in %s", valStr, str)
+	}
+}
+
+func TestPackageStringNoInstallFiles(t *testing.T) {
+	handler := core.NewFileHandler(tests.TestLogger)
+
+	pkg := "chrome.pkg"
+
+	pkgCopy := make([]string, len(packagesToAdd))
+	copy(pkgCopy, packagesToAdd)
+	pkgCopy = append(pkgCopy, pkg)
+
+	handler.AddPackages(pkgCopy)
+
+	str := handler.PackageString()
+
+	for _, val := range pkgCopy {
+		val = strings.ToLower(val)
+
+		tests.Checkf(t, strings.Contains(str, val) == false, "string %s not found in %s", val, str)
 	}
 }
