@@ -157,13 +157,20 @@ func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]str
 }
 
 // InstallPackages installs the keys of the map of packages to install.
-// The argument takes an array of relative paths read from the project package directory.
+// It will return a number of packages that were successfully installed. If a package failed to install,
+// then this will be skipped and logged.
 //
-// If a package fails to install, then it will be logged and skipped.
-func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFiles []string) {
+// packagesPath is a slice of paths of the .pkg file.
+//
+// searchDirectoryFiles is a slice of files that represent the installed .pkg file. The elements are
+// used to check if the file is already installed before attempting an install.
+func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFiles []string) int {
+	installedFiles := 0
 	if len(f.packagesToInstall) == 0 {
 		f.log.Warn("No packages to install")
 		fmt.Println("No packages to install")
+
+		return installedFiles
 	}
 
 	for pkg, installedNames := range f.packagesToInstall {
@@ -172,6 +179,9 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 		if isInstalled {
 			f.log.Info(fmt.Sprintf("Found existing installation for package %s", pkg))
 			f.log.Debug(fmt.Sprintf("Package: %s | Given package name: %s", pkg, installedNames))
+			fmt.Printf("%s is already installed\n", pkg)
+
+			installedFiles += 1
 			continue
 		}
 
@@ -211,6 +221,8 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 				f.log.Info(outMsg)
 
 				successfulInstall = true
+				installedFiles += 1
+				fmt.Printf("Installed %s\n", pkg)
 				break
 			}
 		}
@@ -219,6 +231,8 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 			f.log.Warn(fmt.Sprintf("Unable to find package %s", pkg))
 		}
 	}
+
+	return installedFiles
 }
 
 // GetPackages returns the packages that are being installed.
