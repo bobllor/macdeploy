@@ -10,7 +10,7 @@ packages:
     - "package 1.app"
   package 2:
     - "package_2"
-search_directories:
+install_directories:
   - "/Applications" 
   - "/Library/Application Support" 
 scripts:
