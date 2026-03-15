@@ -327,7 +327,7 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 // It returns a string and an error, depending on the exit status of the script.
 // If the script did not get executed, an error is returned.
 func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (string, error) {
-	f.log.Info(fmt.Sprintf("Running %s", scriptName))
+	f.log.Infof("Starting script execution for %s", scriptName)
 
 	ogName := scriptName // only used for logging
 	scriptName = strings.TrimSpace(strings.ToLower(scriptName))
