@@ -97,8 +97,7 @@ func TestRemovePackages(t *testing.T) {
 }
 
 func TestInstalledPackagesNormal(t *testing.T) {
-	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(log)
+	handler := core.NewFileHandler(tests.TestLogger)
 
 	alreadyInstalledCount := 0
 
@@ -152,6 +151,14 @@ func TestInstallPackagesAddNewPackages(t *testing.T) {
 	if installedCount != len(files) {
 		t.Errorf("packages failed to write, got packages: %v", files)
 	}
+}
+
+func TestInstallPackagesNoPackages(t *testing.T) {
+	handler := core.NewFileHandler(tests.TestLogger)
+
+	count := handler.InstallPackages([]string{}, []string{})
+
+	tests.Checkf(t, count != 0, "installed count expected to be 0, got %d", count)
 }
 
 func TestReadDmg(t *testing.T) {
