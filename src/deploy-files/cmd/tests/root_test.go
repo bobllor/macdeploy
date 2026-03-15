@@ -79,14 +79,14 @@ func TestAddMapPackages(t *testing.T) {
 	handler := core.NewFileHandler(tests.TestLogger)
 
 	handler.AddMapPackages(configPkgs)
-	i := 0
 
-	for key, val := range handler.GetAllPackages() {
-		baseKey := strings.ToLower(includeFiles[i])
+	packagesMap := handler.GetAllPackages()
 
-		tests.Checkf(t, strings.Contains(baseKey, key) == false, "did not find %s in %s", baseKey, key)
-		tests.Checkf(t, len(val) != 0, "expected install files for %s to be 0, got %d", key, len(val))
+	for key, val := range configPkgs {
+		key = strings.ToLower(key)
+		pkgVal, ok := packagesMap[key]
 
-		i += 1
+		tests.Checkf(t, ok == false, "key %s not found in packages %v", val, packagesMap)
+		tests.Checkf(t, len(val) != len(pkgVal), "expected %s to be len 0, got %d", key, len(val))
 	}
 }
