@@ -35,9 +35,9 @@ func getConfig() *yaml.Config {
 	}
 
 	scripts := yaml.ScriptTypes{
-		Pre:   []string{"run-before-process.sh"},
-		Inter: []string{"run-during-process.sh"},
-		Post:  []string{"run-after-process.sh"},
+		Pre:  []string{"run-before-process.sh"},
+		Mid:  []string{"run-during-process.sh"},
+		Post: []string{"run-after-process.sh"},
 	}
 
 	admin := yaml.UserInfo{

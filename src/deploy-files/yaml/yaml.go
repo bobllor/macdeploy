@@ -36,9 +36,9 @@ type UserInfo struct {
 // ScriptTypes contains fields with string slices representing the
 // script file names used to execute during the lifecycle of the process.
 type ScriptTypes struct {
-	Pre   []string `yaml:"pre"`
-	Inter []string `yaml:"inter"`
-	Post  []string `yaml:"post"`
+	Pre  []string `yaml:"pre"`
+	Mid  []string `yaml:"mid"`
+	Post []string `yaml:"post"`
 }
 
 // NewConfig returns a struct containing data read from the YAML file. The file is read
