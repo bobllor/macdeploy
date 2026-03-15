@@ -108,21 +108,21 @@ var rootCmd = &cobra.Command{
 			root.startAccountCreation(root.AdminStatus)
 		}
 
-		// creating the files found in the search directories, it is flattened.
-		searchDirectoryFiles := make([]string, 0)
-		for _, searchDir := range root.config.SearchDirectories {
+		// creating the files found in the install directories, it is flattened.
+		installDirectoryFiles := make([]string, 0)
+		for _, searchDir := range root.config.InstallDirectories {
 			searchFiles, err := utils.GetFiles(searchDir)
 			if err != nil {
 				root.log.Warn(fmt.Sprintf("Path %s does not exist, skipping path", searchDir))
 				continue
 			}
 
-			searchDirectoryFiles = append(searchDirectoryFiles, searchFiles...)
+			installDirectoryFiles = append(installDirectoryFiles, searchFiles...)
 		}
 
-		root.log.Debugf("File amount: %d | Directories: %v", len(searchDirectoryFiles), root.config.SearchDirectories)
+		root.log.Debugf("File amount: %d | Directories: %v", len(installDirectoryFiles), root.config.InstallDirectories)
 
-		if len(searchDirectoryFiles) < 1 {
+		if len(installDirectoryFiles) < 1 {
 			srcPkgMsg := "No files found in search directories, packages will always be attempted to isntall"
 			root.log.Warn(srcPkgMsg)
 			fmt.Println(srcPkgMsg)
@@ -145,7 +145,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		root.startPackageInstallation(root.dep.filehandler, searchDirectoryFiles)
+		root.startPackageInstallation(root.dep.filehandler, installDirectoryFiles)
 
 		// app files will automatically get placed into the Applications folder
 		appFiles, err := root.dep.filehandler.ReadDir(root.metadata.Files.DistDirectory, ".app")
@@ -430,7 +430,11 @@ func (r *RootData) postAccountCreation(accountName string, accountPassword strin
 }
 
 // startPackageInstallation begins the package installation process.
-func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDirectoryFiles []string) {
+//
+// handler is the FileHandler.
+//
+// installDirectoryFiles is a slice of strings that contain the files of installation directories.
+func (r *RootData) startPackageInstallation(handler *core.FileHandler, installDirectoryFiles []string) {
 	fmt.Println("Starting application installation")
 	// must be ran prior to installing software, if this fails then
 	// software will not install.
@@ -459,7 +463,7 @@ func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDir
 		return
 	}
 
-	installCount := handler.InstallPackages(packages, searchDirectoryFiles)
+	installCount := handler.InstallPackages(packages, installDirectoryFiles)
 	msg := fmt.Sprintf("Installed %d/%d files", installCount, len(handler.GetPackages()))
 
 	r.log.Debug(msg)

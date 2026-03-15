@@ -29,7 +29,7 @@ func getConfig() *yaml.Config {
 		"pkg_file_no_ext":   {},
 	}
 
-	searchDirectories := []string{
+	installDirectories := []string{
 		"/Applications",
 		"/Library/Application Support",
 	}
@@ -55,15 +55,15 @@ func getConfig() *yaml.Config {
 	}
 
 	config := &yaml.Config{
-		Accounts:          accounts,
-		Packages:          packages,
-		SearchDirectories: searchDirectories,
-		Scripts:           scripts,
-		Admin:             admin,
-		Policy:            policy,
-		ServerHost:        "https://169.254.1.5:5000",
-		Firewall:          true,
-		FileVault:         true,
+		Accounts:           accounts,
+		Packages:           packages,
+		InstallDirectories: installDirectories,
+		Scripts:            scripts,
+		Admin:              admin,
+		Policy:             policy,
+		ServerHost:         "https://169.254.1.5:5000",
+		Firewall:           true,
+		FileVault:          true,
 	}
 
 	return config

@@ -162,9 +162,9 @@ func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]str
 //
 // packagesPath is a slice of paths of the .pkg file.
 //
-// searchDirectoryFiles is a slice of files that represent the installed .pkg file. The elements are
+// installDirectoryFiles is a slice of file paths that represent the installed .pkg file. The elements are
 // used to check if the file is already installed before attempting an install.
-func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFiles []string) int {
+func (f *FileHandler) InstallPackages(packagesPath []string, installDirectoryFiles []string) int {
 	installedFiles := 0
 	if len(f.packagesToInstall) == 0 {
 		f.log.Warn("No packages to install")
@@ -174,7 +174,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 	}
 
 	for pkg, installedNames := range f.packagesToInstall {
-		isInstalled := f.IsInstalled(installedNames, searchDirectoryFiles)
+		isInstalled := f.IsInstalled(installedNames, installDirectoryFiles)
 
 		if isInstalled {
 			f.log.Info(fmt.Sprintf("Found existing installation for package %s", pkg))
