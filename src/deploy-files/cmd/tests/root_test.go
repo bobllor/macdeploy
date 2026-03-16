@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -42,29 +43,19 @@ func TestAddPackageCSV(t *testing.T) {
 	handler := core.NewFileHandler(tests.TestLogger)
 
 	handler.AddPackages(newIncludeFiles)
-	i := 0
 
-	for dPkg, dVal := range handler.GetAllPackages() {
-		pkgFile := strings.ToLower(includeFiles[i])
+	packages := handler.GetAllPackages()
+
+	for i := range len(installFiles) {
 		installFile := installFiles[i]
+		includeFile := strings.ToLower(includeFiles[i])
 
-		installArr := strings.Split(installFile, ",")
+		dVal, ok := packages[includeFile]
+		tests.Checkf(t, ok == false, "package %s not found in %v", includeFile, packages)
 
-		tests.Checkf(t,
-			len(installArr) != len(dVal),
-			"installed files %v (%d) does not match baseline %v (%d)",
-			dVal,
-			len(dVal),
-			installArr,
-			len(installArr),
-		)
+		dInstallFile := strings.Join(dVal, ",")
 
-		val := strings.Join(dVal, ",")
-
-		tests.Checkf(t, strings.Contains(dPkg, pkgFile) == false, "string %s not found in %s", pkgFile, dPkg)
-		tests.Checkf(t, strings.Contains(val, installFile) == false, "string %s not found in %s", installFile, val)
-
-		i += 1
+		tests.Checkf(t, installFile != dInstallFile, "install file %s does not match baseline %s", dInstallFile, installFile)
 	}
 }
 
@@ -88,5 +79,34 @@ func TestAddMapPackages(t *testing.T) {
 
 		tests.Checkf(t, ok == false, "key %s not found in packages %v", val, packagesMap)
 		tests.Checkf(t, len(val) != len(pkgVal), "expected %s to be len 0, got %d", key, len(val))
+	}
+}
+
+func TestAddMapPackagesWithInstallFiles(t *testing.T) {
+	// mimics the packages added via config
+	configPkgs := make(map[string][]string)
+
+	installFiles := [][]string{
+		{"chrome.app", "chrome enterprise.app"},
+		{"av.app"},
+	}
+
+	for i, file := range includeFiles {
+		configPkgs[file] = installFiles[i]
+	}
+
+	handler := core.NewFileHandler(tests.TestLogger)
+
+	handler.AddMapPackages(configPkgs)
+
+	parsedPackages := handler.GetAllPackages()
+
+	for bKey, bVal := range configPkgs {
+		bKey = strings.ToLower(bKey)
+
+		pVal, ok := parsedPackages[bKey]
+		tests.Checkf(t, ok == false, "key %s not found in packages %v", bKey, parsedPackages)
+
+		tests.Checkf(t, reflect.DeepEqual(bVal, pVal) == false, "install files %v does not meet baseline %v", pVal, bVal)
 	}
 }
