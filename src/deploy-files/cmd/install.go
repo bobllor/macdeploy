@@ -36,7 +36,7 @@ var installCmd = &cobra.Command{
 	Short: "Installs packages from the 'dist' folder",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			fmt.Println("Missing file argument")
+			fmt.Println("Missing file operand\nTry 'macdeploy install -h' for more information")
 			os.Exit(1)
 		}
 
@@ -58,7 +58,6 @@ var installCmd = &cobra.Command{
 
 		// yes i know. i didnt want to rewrite a good chunk of my project so
 		// why not just do it this way lol.
-		root.log.Info("Removing listed config packages")
 		root.dep.filehandler.RemovePackages(root.dep.filehandler.GetPackages())
 		root.dep.filehandler.AddPackages(installCobra.packages)
 
@@ -77,7 +76,9 @@ var installCmd = &cobra.Command{
 					root.dep.filehandler.AddDmgPackages(volumeMounts, root.metadata.Files.DistDirectory)
 					root.dep.filehandler.DetachDmgs(volumeMounts)
 				} else {
-					root.log.Warn(fmt.Sprintf("No DMG files found in %s", root.metadata.Files.DistDirectory))
+					noDmgMsg := fmt.Sprintf("No DMG files found in %s", root.metadata.Files.DistDirectory)
+					root.log.Warn(noDmgMsg)
+					fmt.Println(noDmgMsg)
 				}
 			}
 		}

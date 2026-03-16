@@ -10,13 +10,13 @@ packages:
     - "package 1.app"
   package 2:
     - "package_2"
-search_directories:
+install_directories:
   - "/Applications" 
   - "/Library/Application Support" 
 scripts:
   pre: # execute scripts before the deployment starts
     - "change_timezone.sh"
-  inter: # execute scripts during the deployment, right after packages installation.
+  mid: # execute scripts during the deployment, right after packages installation.
     - "add_all_users.sh"
   post: # execute scripts after the deployment finishes
     - "custom_remove_files.sh"

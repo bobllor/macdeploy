@@ -20,23 +20,10 @@ type FileHandler struct {
 	scriptsPathCache  map[string]string // Cache for script paths, k:v <file name>:<file path>. The key is lowercase.
 }
 
-// NewFileHandler creates a new Installer for package and app installations for macOS.
-//
-// packagesToInstall is a hash map containing the package to install as the key, and the
-// installation files of the package as the files. Both keys and values are lowercased.
-//
-// logger is the logging struct.
-func NewFileHandler(packagesToInstall map[string][]string, logger *logger.Logger) *FileHandler {
-	packagesLowered := make(map[string][]string)
-
-	for pkg, appNames := range packagesToInstall {
-		lowPkg := strings.ToLower(pkg)
-
-		packagesLowered[lowPkg] = appNames
-	}
-
+// NewFileHandler creates a new FileHandler to handle package installations.
+func NewFileHandler(logger *logger.Logger) *FileHandler {
 	handler := FileHandler{
-		packagesToInstall: packagesLowered,
+		packagesToInstall: make(map[string][]string),
 		log:               logger,
 		scriptsPathCache:  make(map[string]string),
 	}
@@ -74,13 +61,13 @@ func (f *FileHandler) InstallRosetta() error {
 	return nil
 }
 
-// AddPackages adds new packages to the packagesToInstall map. All package names
+// AddPackages adds new packages to the file handler. All package names
 // will be lowered.
 //
 // packagesToAdd is a slice of strings containing the .pkg file name to install.
-// The contents can be a substring of the .pkg file name, the full .pkg file name,
-// or a string with '/' delimiters that represents the structure: <file>,installed,installed.
-// The latter is used to check if the file is already installed prior to attempting the install.
+// The contents can be a string of the .pkg file name, the full .pkg file name,
+// or a string with ',' delimiters that represents the structure: "<file>,<install files>,<install files>".
+// The delimiters are used to indicate its installation files used to prevent reinstalls.
 func (f *FileHandler) AddPackages(packagesToAdd []string) {
 	for _, includedPkg := range packagesToAdd {
 		// used to extract the package and its installed files from the flag argument.
@@ -92,15 +79,32 @@ func (f *FileHandler) AddPackages(packagesToAdd []string) {
 
 		// the installed files from the pkg, f.e. the installed package name.
 		pkgInstalledArr := make([]string, 0)
+		// checks if there are any empty strings
 		if len(includeArgArr) > 1 {
-			pkgInstalledArr = includeArgArr[1:]
+			for _, v := range includeArgArr[1:] {
+				if strings.TrimSpace(v) != "" {
+					pkgInstalledArr = append(pkgInstalledArr, v)
+				}
+			}
 		}
 
 		f.packagesToInstall[pkg] = pkgInstalledArr
 		f.log.Info(fmt.Sprintf("Added %s to the installation list", pkg))
 	}
+}
 
-	f.log.Debug(fmt.Sprintf("Packages: %v", f.packagesToInstall))
+// AddMapPackages adds new packages to the file handler using a map. All package names
+// will be lowered.
+//
+// packagesToAdd is a map of a string with a slice of strings.
+// The key represents the package to install, while its slice values are
+// the installation files of the package.
+func (f *FileHandler) AddMapPackages(packagesToAdd map[string][]string) {
+	for key, val := range packagesToAdd {
+		key = strings.ToLower(key)
+
+		f.packagesToInstall[key] = val
+	}
 }
 
 // RemovePackages removes packages from the list of packages to install by removing the packages
@@ -153,16 +157,31 @@ func (f *FileHandler) ReadDir(directoryPath string, searchPattern string) ([]str
 }
 
 // InstallPackages installs the keys of the map of packages to install.
-// The argument takes an array of relative paths read from the project package directory.
+// It will return a number of packages that were successfully installed. If a package failed to install,
+// then this will be skipped and logged.
 //
-// If a package fails to install, then it will be logged and skipped.
-func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFiles []string) {
+// packagesPath is a slice of paths of the .pkg file.
+//
+// installDirectoryFiles is a slice of file paths that represent the installed .pkg file. The elements are
+// used to check if the file is already installed before attempting an install.
+func (f *FileHandler) InstallPackages(packagesPath []string, installDirectoryFiles []string) int {
+	installedFiles := 0
+	if len(f.packagesToInstall) == 0 {
+		f.log.Warn("No packages to install")
+		fmt.Println("No packages to install")
+
+		return installedFiles
+	}
+
 	for pkg, installedNames := range f.packagesToInstall {
-		isInstalled := f.IsInstalled(installedNames, searchDirectoryFiles)
+		isInstalled := f.IsInstalled(installedNames, installDirectoryFiles)
 
 		if isInstalled {
 			f.log.Info(fmt.Sprintf("Found existing installation for package %s", pkg))
 			f.log.Debug(fmt.Sprintf("Package: %s | Given package name: %s", pkg, installedNames))
+			fmt.Printf("%s is already installed\n", pkg)
+
+			installedFiles += 1
 			continue
 		}
 
@@ -189,6 +208,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 				if err != nil {
 					outStr := strings.TrimSpace(string(out))
 					f.log.Warn(fmt.Sprintf("Failed installation of %s: %s %v", pkg, outStr, err))
+					fmt.Printf("Failed to install %s", pkg)
 					failedInstall = true
 					break
 				}
@@ -202,17 +222,24 @@ func (f *FileHandler) InstallPackages(packagesPath []string, searchDirectoryFile
 				f.log.Info(outMsg)
 
 				successfulInstall = true
+				installedFiles += 1
+				fmt.Printf("Installed %s\n", pkg)
 				break
 			}
 		}
 
 		if !successfulInstall && !failedInstall {
-			f.log.Warn(fmt.Sprintf("Unable to find package %s", pkg))
+			fullFailMsg := fmt.Sprintf("Unable to find package %s to install", pkg)
+			f.log.Warn(fullFailMsg)
+			fmt.Println(fullFailMsg)
 		}
 	}
+
+	return installedFiles
 }
 
 // GetPackages returns the packages that are being installed.
+// This does not include the installed files.
 func (f *FileHandler) GetPackages() []string {
 	packages := make([]string, 0, len(f.packagesToInstall))
 
@@ -279,7 +306,7 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 
 			out, err := exec.Command("bash", "-c", newCmd).Output()
 			if err != nil {
-				f.log.Warn(fmt.Sprintf("failed to mount %s: %v", dmgPath, err))
+				f.log.Warn(fmt.Sprintf("Failed to mount %s: %v", dmgPath, err))
 				continue
 			}
 
@@ -303,7 +330,7 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 // It returns a string and an error, depending on the exit status of the script.
 // If the script did not get executed, an error is returned.
 func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (string, error) {
-	f.log.Info(fmt.Sprintf("Running %s", scriptName))
+	f.log.Infof("Starting script execution for %s", scriptName)
 
 	ogName := scriptName // only used for logging
 	scriptName = strings.TrimSpace(strings.ToLower(scriptName))
@@ -482,4 +509,25 @@ func (f *FileHandler) toLowerArray(arr *[]string) {
 	for i, str := range *arr {
 		(*arr)[i] = strings.ToLower(str)
 	}
+}
+
+// PackageString returns a string representation of the packages to install
+// and any installation file names for the package.
+func (p *FileHandler) PackageString() string {
+	strSlice := []string{}
+
+	for key, val := range p.packagesToInstall {
+		installationFiles := "No installed files given"
+		if len(val) > 0 {
+			installationFiles = strings.Join(val, ",")
+		}
+
+		str := fmt.Sprintf("%s+%s", key, installationFiles)
+
+		strSlice = append(strSlice, str)
+	}
+
+	out := "Install packages: " + strings.Join(strSlice, "|")
+
+	return out
 }

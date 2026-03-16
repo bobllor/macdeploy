@@ -15,15 +15,15 @@ import (
 )
 
 type Config struct {
-	Accounts          map[string]UserInfo `yaml:"accounts"`
-	Packages          map[string][]string `yaml:"packages"`
-	SearchDirectories []string            `yaml:"search_directories"`
-	Scripts           ScriptTypes         `yaml:"scripts"`
-	Admin             UserInfo
-	Policy            Policies `yaml:"policies"`
-	ServerHost        string   `yaml:"server_host" validate:"url,required"`
-	FileVault         bool
-	Firewall          bool
+	Accounts           map[string]UserInfo `yaml:"accounts"`
+	Packages           map[string][]string `yaml:"packages"`
+	InstallDirectories []string            `yaml:"install_directories"`
+	Scripts            ScriptTypes         `yaml:"scripts"`
+	Admin              UserInfo
+	Policy             Policies `yaml:"policies"`
+	ServerHost         string   `yaml:"server_host" validate:"url,required"`
+	FileVault          bool
+	Firewall           bool
 }
 
 type UserInfo struct {
@@ -36,9 +36,9 @@ type UserInfo struct {
 // ScriptTypes contains fields with string slices representing the
 // script file names used to execute during the lifecycle of the process.
 type ScriptTypes struct {
-	Pre   []string `yaml:"pre"`
-	Inter []string `yaml:"inter"`
-	Post  []string `yaml:"post"`
+	Pre  []string `yaml:"pre"`
+	Mid  []string `yaml:"mid"`
+	Post []string `yaml:"post"`
 }
 
 // NewConfig returns a struct containing data read from the YAML file. The file is read

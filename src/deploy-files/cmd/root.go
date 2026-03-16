@@ -108,23 +108,24 @@ var rootCmd = &cobra.Command{
 			root.startAccountCreation(root.AdminStatus)
 		}
 
-		// creating the files found in the search directories, it is flattened.
-		searchDirectoryFiles := make([]string, 0)
-		for _, searchDir := range root.config.SearchDirectories {
+		// creating the files found in the install directories, it is flattened.
+		installDirectoryFiles := make([]string, 0)
+		for _, searchDir := range root.config.InstallDirectories {
 			searchFiles, err := utils.GetFiles(searchDir)
 			if err != nil {
 				root.log.Warn(fmt.Sprintf("Path %s does not exist, skipping path", searchDir))
 				continue
 			}
 
-			searchDirectoryFiles = append(searchDirectoryFiles, searchFiles...)
+			installDirectoryFiles = append(installDirectoryFiles, searchFiles...)
 		}
 
-		root.log.Debug(fmt.Sprintf("File amount: %d | Directories: %v", len(searchDirectoryFiles), root.config.SearchDirectories))
+		root.log.Debugf("File amount: %d | Directories: %v", len(installDirectoryFiles), root.config.InstallDirectories)
 
-		if len(searchDirectoryFiles) < 1 {
-			root.log.Warn("No files found in search directories, all packages will be installed")
-			fmt.Println("No files found in search directories, all packages will be installed")
+		if len(installDirectoryFiles) < 1 {
+			srcPkgMsg := "No files found in search directories, packages will always be attempted to isntall"
+			root.log.Warn(srcPkgMsg)
+			fmt.Println(srcPkgMsg)
 		}
 
 		// NOTE: can make the pkg/dmg/app process efficient by searching once.
@@ -134,7 +135,7 @@ var rootCmd = &cobra.Command{
 		root.log.Info("Searching for DMG files")
 		dmgFiles, err := root.dep.filehandler.ReadDir(root.metadata.Files.DistDirectory, ".dmg")
 		if err != nil {
-			root.log.Warn(fmt.Sprintf("Failed to search directory: %v", err))
+			root.log.Warnf("Failed to search directory: %v", err)
 		} else {
 			// this requires the use of --include to install properly.
 			volumeMounts := root.dep.filehandler.AttachDmgs(dmgFiles)
@@ -144,7 +145,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		root.startPackageInstallation(root.dep.filehandler, searchDirectoryFiles)
+		root.startPackageInstallation(root.dep.filehandler, installDirectoryFiles)
 
 		// app files will automatically get placed into the Applications folder
 		appFiles, err := root.dep.filehandler.ReadDir(root.metadata.Files.DistDirectory, ".app")
@@ -156,12 +157,12 @@ var rootCmd = &cobra.Command{
 			root.dep.filehandler.CopyFiles(appFiles, applicationDir)
 		}
 
-		// inter script execution
-		if len(root.config.Scripts.Inter) > 0 && !root.errors.ScriptsFailed {
+		// mid deplyoment script execution
+		if len(root.config.Scripts.Mid) > 0 && !root.errors.ScriptsFailed {
 			fmt.Println("Executing mid-deployment scripts")
-			root.log.Debug(fmt.Sprintf("Inter script files: %v", root.config.Scripts.Inter))
+			root.log.Debug(fmt.Sprintf("Mid-script files: %v", root.config.Scripts.Mid))
 
-			root.executeScripts(root.config.Scripts.Inter, root.data.scriptFiles)
+			root.executeScripts(root.config.Scripts.Mid, root.data.scriptFiles)
 		}
 
 		err = root.config.Admin.InitializeSudo()
@@ -258,7 +259,7 @@ var rootCmd = &cobra.Command{
 		// post script execution
 		if len(root.config.Scripts.Post) > 0 && !root.errors.ScriptsFailed {
 			fmt.Println("Executing post-deployment scripts")
-			root.log.Debug(fmt.Sprintf("Post script files: %v", root.config.Scripts.Post))
+			root.log.Debug(fmt.Sprintf("Post-script files: %v", root.config.Scripts.Post))
 
 			root.executeScripts(root.config.Scripts.Post, root.data.scriptFiles)
 		}
@@ -381,6 +382,8 @@ func (r *RootData) accountCreation(currAccount *yaml.UserInfo, adminStatus bool)
 		if !strings.Contains(err.Error(), "skipped") {
 			logMsg := fmt.Sprintf("Error making user: %v", err)
 			r.log.Warn(logMsg)
+
+			fmt.Println("Failed to create account")
 		}
 
 		return ""
@@ -427,7 +430,11 @@ func (r *RootData) postAccountCreation(accountName string, accountPassword strin
 }
 
 // startPackageInstallation begins the package installation process.
-func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDirectoryFiles []string) {
+//
+// handler is the FileHandler.
+//
+// installDirectoryFiles is a slice of strings that contain the files of installation directories.
+func (r *RootData) startPackageInstallation(handler *core.FileHandler, installDirectoryFiles []string) {
 	fmt.Println("Starting application installation")
 	// must be ran prior to installing software, if this fails then
 	// software will not install.
@@ -443,19 +450,24 @@ func (r *RootData) startPackageInstallation(handler *core.FileHandler, searchDir
 	handler.AddPackages(r.IncludePackages)
 	handler.RemovePackages(r.ExcludePackages)
 
-	r.log.Info("Searching for packages")
+	r.log.Debug(handler.PackageString())
 	packages, err := handler.ReadDir(r.metadata.Files.DistDirectory, ".pkg")
 	if err != nil {
-		r.log.Warn(fmt.Sprintf("Issue occurred with searching directory %s: %v", r.metadata.Files.DistDirectory, err))
+		r.log.Warnf("Issue occurred with searching directory %s: %v", r.metadata.Files.DistDirectory, err)
 		return
 	}
 
 	if len(packages) < 1 {
-		r.log.Warn("No packages found")
+		r.log.Warnf("Packages found in %s: %d", r.metadata.Files.DistDirectory, len(packages))
+		fmt.Println("No packages found in 'dist', skipping package installation")
 		return
 	}
 
-	handler.InstallPackages(packages, searchDirectoryFiles)
+	installCount := handler.InstallPackages(packages, installDirectoryFiles)
+	msg := fmt.Sprintf("Installed %d/%d files", installCount, len(handler.GetPackages()))
+
+	r.log.Debug(msg)
+	fmt.Println(msg)
 }
 
 // startFileVault begins the FileVault process and returns the generated key.
@@ -467,11 +479,13 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 	fvStatus, err := filevault.Status()
 	if err != nil {
 		r.log.Warn(fmt.Sprintf("Failed to check FileVault status: %v\n", err))
+		fmt.Println("Unable to check FileVault status, continuing")
 	}
 
 	if !fvStatus {
 		fvKey = filevault.Enable(r.config.Admin.Username, r.config.Admin.Password)
 
+		// this is not logged.
 		if fvKey != "" {
 			fmt.Printf("Generated key %s\n", fvKey)
 		}
@@ -574,32 +588,41 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 			continue
 		}
 
-		fmt.Printf("Running script %s\n", scriptFile)
+		fmt.Printf("Running script: %s\n", scriptFile)
 		out, err := r.dep.filehandler.ExecuteScript(scriptFile, scriptPaths)
+		scriptOutMsg := fmt.Sprintf("Script %s output: %s", scriptFile, out)
 		if err != nil {
 			r.log.Warn(fmt.Sprintf("Failed to run %s: %v", scriptFile, err))
-			r.log.Warn(fmt.Sprintf("%s: %s", scriptFile, out))
+			r.log.Info(scriptOutMsg)
+
+			fmt.Printf("Script %s failed to run\n", scriptFile)
+			if out != "" {
+				fmt.Println(scriptOutMsg)
+			}
+
 			continue
 		}
 
-		r.log.Info(fmt.Sprintf("Ran script %s: %s", scriptFile, out))
 		if out != "" {
-			fmt.Printf("%s: %s\n", scriptFile, out)
+			r.log.Info(scriptOutMsg)
+			fmt.Println(scriptOutMsg)
 		}
 	}
 }
 
 // initialize initializes the data for RootData.
 //
-// isSubProcess is a flag used to indicate that the method call is used
-// for a sub command. This will skip reading most values from the config file
-// and the hook lifecycle injection.
-func (r *RootData) initialize(isSubProcess bool) {
+// isSubCommand is a flag used to indicate that the method call is used
+// for a sub command. This will skip reading most values from the config file,
+// the hook lifecycle injection, and some terminal printing if true.
+func (r *RootData) initialize(isSubCommand bool) {
 	// not exiting, just in case mac fails somehow. but there are checks for non-mac devices.
 	serialTag, err := utils.GetSerialTag()
 	if err != nil {
 		serialTag = "UNKNOWN"
-		fmt.Printf("Unable to get serial number: %v\n", err)
+		if !isSubCommand {
+			fmt.Printf("Unable to get serial number: %v\n", err)
+		}
 	}
 
 	perms := utils.NewPerms()
@@ -677,8 +700,10 @@ func (r *RootData) initialize(isSubProcess bool) {
 	// dependency initializations
 	filevault := core.NewFileVault(config.Admin, scripts, log)
 	user := core.NewUser(config.Admin, scripts, log)
-	handler := core.NewFileHandler(config.Packages, log)
+	handler := core.NewFileHandler(log)
 	firewall := core.NewFirewall(log, scripts)
+
+	handler.AddMapPackages(config.Packages)
 
 	r.log = log
 	r.config = config
@@ -691,7 +716,7 @@ func (r *RootData) initialize(isSubProcess bool) {
 	r.dep.filevault = filevault
 
 	// script hooks, this is not applicable to sub commands.
-	if !isSubProcess {
+	if !isSubCommand {
 		// initialized for the lifecycle during pre, install, and post script stages
 		scriptFiles, err := r.dep.filehandler.ReadDir(root.metadata.Files.DistDirectory, ".sh")
 		if err != nil {
@@ -706,7 +731,7 @@ func (r *RootData) initialize(isSubProcess bool) {
 		// pre script execution
 		if len(r.config.Scripts.Pre) > 0 && !root.errors.ScriptsFailed {
 			fmt.Println("Executing pre-deployment scripts")
-			r.log.Debug(fmt.Sprintf("Pre script files: %v", root.config.Scripts.Pre))
+			r.log.Debug(fmt.Sprintf("Pre-script files: %v", root.config.Scripts.Pre))
 
 			r.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
 		}
