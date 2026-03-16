@@ -208,6 +208,7 @@ func (f *FileHandler) InstallPackages(packagesPath []string, installDirectoryFil
 				if err != nil {
 					outStr := strings.TrimSpace(string(out))
 					f.log.Warn(fmt.Sprintf("Failed installation of %s: %s %v", pkg, outStr, err))
+					fmt.Printf("Failed to install %s", pkg)
 					failedInstall = true
 					break
 				}
@@ -228,7 +229,9 @@ func (f *FileHandler) InstallPackages(packagesPath []string, installDirectoryFil
 		}
 
 		if !successfulInstall && !failedInstall {
-			f.log.Warn(fmt.Sprintf("Unable to find package %s", pkg))
+			fullFailMsg := fmt.Sprintf("Unable to find package %s to install", pkg)
+			f.log.Warn(fullFailMsg)
+			fmt.Println(fullFailMsg)
 		}
 	}
 
@@ -303,7 +306,7 @@ func (f *FileHandler) AttachDmgs(dmgPaths []string) []string {
 
 			out, err := exec.Command("bash", "-c", newCmd).Output()
 			if err != nil {
-				f.log.Warn(fmt.Sprintf("failed to mount %s: %v", dmgPath, err))
+				f.log.Warn(fmt.Sprintf("Failed to mount %s: %v", dmgPath, err))
 				continue
 			}
 
