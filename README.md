@@ -39,6 +39,7 @@ There is *no additional security* implemented to handle a public facing server.
 
 ## Table of Contents
 
+- [Workflow](#workflow)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Additional Information](#additional-information)
@@ -55,6 +56,32 @@ There is *no additional security* implemented to handle a public facing server.
 - [Supported MacBook Versions](#supported-macbook-versions)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
+
+## Workflow
+
+The general workflow of the program is divided into X parts:
+1. *Initialization*: Preparing the state of the program for deployment
+2. *Deployment*: The main automation process
+3. *Security & Storage*: FileVault, Firewall, and server-client communication for payloads
+4. *Finalization*: Post-deployment process, last finishes and clean up
+
+General workflow:
+
+1. Process start
+2. Program initialization -> Pre-deployment script execution
+3. Main process start
+4. User creation -> Add user to FileVault -> Apply password policies to user
+5. Application installation -> Mid-deployment script execution
+6. FileVault process -> FileVault key payload submission
+7. Logging payload submission
+8. Firewall process
+9. Main process end -> Post-deployment script execution
+
+A flowchart of the workflow:
+
+<p>
+  <img src="./docs/img/macdeploy.diagram.png" >
+</p>
 
 ## Getting Started
 
