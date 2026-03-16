@@ -612,15 +612,17 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 
 // initialize initializes the data for RootData.
 //
-// isSubProcess is a flag used to indicate that the method call is used
-// for a sub command. This will skip reading most values from the config file
-// and the hook lifecycle injection.
-func (r *RootData) initialize(isSubProcess bool) {
+// isSubCommand is a flag used to indicate that the method call is used
+// for a sub command. This will skip reading most values from the config file,
+// the hook lifecycle injection, and some terminal printing if true.
+func (r *RootData) initialize(isSubCommand bool) {
 	// not exiting, just in case mac fails somehow. but there are checks for non-mac devices.
 	serialTag, err := utils.GetSerialTag()
 	if err != nil {
 		serialTag = "UNKNOWN"
-		fmt.Printf("Unable to get serial number: %v\n", err)
+		if !isSubCommand {
+			fmt.Printf("Unable to get serial number: %v\n", err)
+		}
 	}
 
 	perms := utils.NewPerms()
@@ -714,7 +716,7 @@ func (r *RootData) initialize(isSubProcess bool) {
 	r.dep.filevault = filevault
 
 	// script hooks, this is not applicable to sub commands.
-	if !isSubProcess {
+	if !isSubCommand {
 		// initialized for the lifecycle during pre, install, and post script stages
 		scriptFiles, err := r.dep.filehandler.ReadDir(root.metadata.Files.DistDirectory, ".sh")
 		if err != nil {
