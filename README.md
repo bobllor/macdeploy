@@ -77,9 +77,7 @@ General workflow:
 8. Firewall process
 9. Main process end -> Post-deployment script execution
 
-A flowchart of the workflow:
-
-<p>
+<p align="center">
   <img src="./docs/img/macdeploy.diagram.png" >
 </p>
 
