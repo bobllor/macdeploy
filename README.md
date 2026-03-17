@@ -59,7 +59,7 @@ There is *no additional security* implemented to handle a public facing server.
 
 ## Workflow
 
-The general workflow of the program is divided into X parts:
+The general workflow of the program is divided into four groups:
 1. *Initialization*: Preparing the state of the program for deployment
 2. *Deployment*: The main automation process
 3. *Security & Storage*: FileVault, Firewall, and server-client communication for payloads
