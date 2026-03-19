@@ -89,7 +89,7 @@ func (f *FileHandler) AddPackages(packagesToAdd []string) {
 		}
 
 		f.packagesToInstall[pkg] = pkgInstalledArr
-		f.log.Info(fmt.Sprintf("Added %s to the installation list", pkg))
+		f.log.Info(fmt.Sprintf("Added '%s' to the installation list", pkg))
 	}
 }
 
@@ -110,14 +110,25 @@ func (f *FileHandler) AddMapPackages(packagesToAdd map[string][]string) {
 // RemovePackages removes packages from the list of packages to install by removing the packages
 // in the package maps from a slice of packages.
 //
-// The names must match in order to remove the packages.
+// The package removal uses a substring match.
 func (f *FileHandler) RemovePackages(packagesToRemove []string) {
 	for _, excludedPkg := range packagesToRemove {
 		excludedPkgLow := strings.ToLower(excludedPkg)
-		_, ok := f.packagesToInstall[excludedPkgLow]
-		if ok {
-			f.log.Info(fmt.Sprintf("Removed %s from installation list", excludedPkg))
-			delete(f.packagesToInstall, excludedPkg)
+		foundPkg := false
+		pkgToRemove := ""
+
+		for pkg := range f.packagesToInstall {
+			if strings.Contains(pkg, excludedPkgLow) {
+				pkgToRemove = pkg
+				foundPkg = true
+			}
+		}
+
+		if foundPkg && pkgToRemove != "" {
+			delete(f.packagesToInstall, pkgToRemove)
+			f.log.Infof("Removed '%s' from installation list", excludedPkg)
+		} else {
+			f.log.Infof("Package '%s' not found in installation list", excludedPkg)
 		}
 	}
 }
@@ -354,14 +365,14 @@ func (f *FileHandler) ExecuteScript(scriptName string, scriptPaths []string) (st
 			return outMsg, nil
 		} else {
 			f.scriptsPathCache[filename] = scriptPath
-			f.log.Debug(fmt.Sprintf("Added %s to cache", filename))
+			f.log.Debug(fmt.Sprintf("Added '%s' to cache", filename))
 		}
 
 		// substring match
 		if strings.Contains(scriptPathLow, scriptName) {
 			outMsg, err := f.execute(scriptPath)
 
-			f.log.Debugf("Script %s output: %s, error: %v", ogName, outMsg, err)
+			f.log.Debugf("Script '%s' output: %s, error: %v", ogName, outMsg, err)
 			if err != nil {
 				return outMsg, err
 			}
