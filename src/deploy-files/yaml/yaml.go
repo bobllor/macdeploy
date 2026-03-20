@@ -48,16 +48,20 @@ type Config struct {
 	// Firewall is used to enable or ignore enabling Firewall.
 	Firewall bool
 
-	// Cleanup is used to remove deployment files. By default the value is "none".
-	// The allowed values are ["default","warn","none"].
-	// This value will be overridden if the any cleanup flag is used with the binary.
+	// Cleanup is used for confirmation before file removal. By default the value is "warn".
+	// The allowed values are ["warn","force"].
+	// This only effects the user prompt before a cleanup occurs, it still requires
+	// the --cleanup flag to be used.
 	//
 	// If the value is in the allowed values then it will fail to validate.
 	//
-	// 	- default: Remove all deployment files with no warning.
-	//	- warn: Requires a confirmation input before removing the deployment files.
-	//	- none: Do not remove deployment files. The default option.
-	Cleanup string `yaml:"cleanup" validate:"oneof=default warn none"`
+	//	- warn: Requires a confirmation before removing the deployment files.
+	//	The default option.
+	//	- force: Remove deployment files with no confirmation.
+	//
+	// The option "force" will not override the confirmation if either
+	// the FileVault process or the POST to the server with the FileVault key failed.
+	Cleanup string `yaml:"cleanup" validate:"oneof=warn force"`
 }
 
 type UserInfo struct {
@@ -81,7 +85,7 @@ type ScriptTypes struct {
 // If an issue occurs while reading the file then it will return an error.
 func NewConfig(data []byte) (*Config, error) {
 	config := Config{
-		Cleanup: "none",
+		Cleanup: "warn",
 	}
 
 	err := yaml.Unmarshal(data, &config)

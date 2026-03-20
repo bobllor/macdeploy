@@ -64,7 +64,7 @@ func getConfig() *yaml.Config {
 		ServerHost:         "https://169.254.1.5:5000",
 		Firewall:           true,
 		FileVault:          true,
-		Cleanup:            "default",
+		Cleanup:            "warn",
 	}
 
 	return config
@@ -119,7 +119,7 @@ func TestDefaultConfig(t *testing.T) {
 	config, err := yaml.NewConfig(buf)
 	tests.Checkf(t, err != nil, "failed to create new Config: %v", err)
 
-	tests.Checkf(t, config.Cleanup != "none", "default value for 'cleanup' is not 'none', got %s", config.Cleanup)
+	tests.Checkf(t, config.Cleanup != "warn", "default value for 'cleanup' is not 'none', got %s", config.Cleanup)
 
 	err = yaml.Validate(config)
 	tests.Checkf(t, err != nil, "failed to validate 'cleanup': %v", err)
