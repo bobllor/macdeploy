@@ -108,6 +108,23 @@ func TestReadConfig(t *testing.T) {
 	}
 }
 
+func TestDefaultConfig(t *testing.T) {
+	fake, err := getEditableConfig()
+	tests.Checkf(t, err != nil, "failed to read config: %v", err)
+
+	delete(fake, "cleanup")
+
+	buf, err := yaml.Marshal(fake)
+	tests.Checkf(t, err != nil, "failed to marshal config: %v", err)
+	config, err := yaml.NewConfig(buf)
+	tests.Checkf(t, err != nil, "failed to create new Config: %v", err)
+
+	tests.Checkf(t, config.Cleanup != "none", "default value for 'cleanup' is not 'none', got %s", config.Cleanup)
+
+	err = yaml.Validate(config)
+	tests.Checkf(t, err != nil, "failed to validate 'cleanup': %v", err)
+}
+
 func TestValidateConfigNormal(t *testing.T) {
 	config := getConfig()
 

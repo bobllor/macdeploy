@@ -15,16 +15,49 @@ import (
 )
 
 type Config struct {
-	Accounts           map[string]UserInfo `yaml:"accounts"`
-	Packages           map[string][]string `yaml:"packages"`
-	InstallDirectories []string            `yaml:"install_directories"`
-	Scripts            ScriptTypes         `yaml:"scripts"`
-	Admin              UserInfo
-	Policy             Policies `yaml:"policies"`
-	ServerHost         string   `yaml:"server_host" validate:"url,required"`
-	FileVault          bool
-	Firewall           bool
-	Cleanup            string `yaml:"cleanup" validate:"oneof=default warn none"`
+	// Accounts is a map of UserInfo used to create local accounts on the device.
+	Accounts map[string]UserInfo `yaml:"accounts"`
+
+	// Packages are the package file names that are to be installed, with
+	// a slice of the install file names used to conditionally
+	// install packages if found in an install directory.
+	Packages map[string][]string `yaml:"packages"`
+
+	// InstallDirectories is a slice of paths that will contain the install files
+	// of packages.
+	InstallDirectories []string `yaml:"install_directories"`
+
+	// Scripts is a type used to inject script execution during deployment.
+	Scripts ScriptTypes `yaml:"scripts"`
+
+	// Admin is a UserInfo type that is used for admin elevation. For security purposes
+	// this can be omitted.
+	Admin UserInfo
+
+	// Policy is a type that holds the policy information to apply password policies to
+	// the created user.
+	Policy Policies `yaml:"policies"`
+
+	// ServerHost is the host of the server for the deployment process. This is required and
+	// must be a URL (https/http).
+	ServerHost string `yaml:"server_host" validate:"url,required"`
+
+	// FileVault is used to enable or ignore enabling FileVault.
+	FileVault bool
+
+	// Firewall is used to enable or ignore enabling Firewall.
+	Firewall bool
+
+	// Cleanup is used to remove deployment files. By default the value is "none".
+	// The allowed values are ["default","warn","none"].
+	// This value will be overridden if the any cleanup flag is used with the binary.
+	//
+	// If the value is in the allowed values then it will fail to validate.
+	//
+	// 	- default: Remove all deployment files with no warning.
+	//	- warn: Requires a confirmation input before removing the deployment files.
+	//	- none: Do not remove deployment files. The default option.
+	Cleanup string `yaml:"cleanup" validate:"oneof=default warn none"`
 }
 
 type UserInfo struct {
@@ -48,7 +81,7 @@ type ScriptTypes struct {
 // If an issue occurs while reading the file then it will return an error.
 func NewConfig(data []byte) (*Config, error) {
 	config := Config{
-		Cleanup: "default",
+		Cleanup: "none",
 	}
 
 	err := yaml.Unmarshal(data, &config)
