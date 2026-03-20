@@ -24,11 +24,13 @@ needed. It features:
 - Uses HTTPS for encrypted communications.
 - Customizable YAML configuration.
 
-***DISCLAIMER***: MacDeploy is provided only to automate MacBook deployment. Securing and management of the 
-hardware itself is the responsibility of the user.
-
-The HTTPS file server was built with the intention to be running on a *secure, private network*.
-There is *no additional security* implemented to handle a public facing server.
+> ***DISCLAIMER***
+>
+> MacDeploy is provided only to automate MacBook deployment. Securing and management of the 
+> hardware itself is the responsibility of the user.
+>
+> The HTTPS file server was built with the intention to be running on a *secure, private network*.
+> There is *no additional security* implemented to handle a public facing server.
 
 ### Powered By
 
@@ -42,6 +44,7 @@ There is *no additional security* implemented to handle a public facing server.
 - [Workflow](#workflow)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
+  - [Quickstart](#quickstart)
   - [Additional Information](#additional-information)
 - [Usage](#usage)
   - [Deployment](#deployment) 
@@ -83,26 +86,6 @@ General workflow:
 
 ## Getting Started
 
-The following code block sets up the server, Docker containers, and 
-*if a valid config YAML file* exists in the root, create the deployment files
-(ZIP file of `dist` including the binary creation `macdeploy`).
-
-```bash
-git clone https://github.com/bobllor/MacDeploy
-cd macdeploy
-
-# checks out the latest release tag
-git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
-
-bash build.sh -z
-```
-
-Do not use `build.sh` when trying to *create a new ZIP file or updating the repository*. The following scripts
-are for these two use cases respectively:
-1. `go_zip.sh`: Creates the ZIP file of `dist`. This requires a valid config YAML file in the root. 
-2. `update.sh`: Updates the repository, checks out the latest tag release, rebuilds the Docker containers,
-creates a new binary, and starts the Docker containers.
-
 ### Prerequisites
 
 The server must **run on a macOS, Unix, or Linux** operating system.
@@ -116,6 +99,30 @@ Below are the tools and software required on the server before starting the depl
 - `zip`
 
 `zip`, `unzip`, and `curl` are required on the clients. MacBook devices have these installed by default.
+
+### Quickstart
+
+The following initializes the projects, builds Docker containers, starts the Docker containers
+and *if a valid config YAML file* exists in the root, create the deployment files
+(ZIP file of `dist` including the binary creation `macdeploy`).
+
+```bash
+git clone https://github.com/bobllor/MacDeploy
+cd macdeploy
+
+# checks out the latest release tag
+git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+
+bash build.sh -z
+
+docker compose up -d
+```
+
+Do not use `build.sh` when trying to *create a new ZIP file or updating the repository*. The following scripts
+are for these two cases respectively:
+1. `go_zip.sh`: Creates the ZIP file of `dist`. This requires a valid config YAML file in the root. 
+2. `update.sh`: Updates the repository, checks out the latest tag release, rebuilds the Docker containers,
+creates a new binary, and starts the Docker containers.
 
 ### Additional Information
 

@@ -64,6 +64,7 @@ func getConfig() *yaml.Config {
 		ServerHost:         "https://169.254.1.5:5000",
 		Firewall:           true,
 		FileVault:          true,
+		Cleanup:            "warn",
 	}
 
 	return config
@@ -107,32 +108,61 @@ func TestReadConfig(t *testing.T) {
 	}
 }
 
+func TestDefaultConfig(t *testing.T) {
+	fake, err := getEditableConfig()
+	tests.Checkf(t, err != nil, "failed to read config: %v", err)
+
+	delete(fake, "cleanup")
+
+	buf, err := yaml.Marshal(fake)
+	tests.Checkf(t, err != nil, "failed to marshal config: %v", err)
+	config, err := yaml.NewConfig(buf)
+	tests.Checkf(t, err != nil, "failed to create new Config: %v", err)
+
+	tests.Checkf(t, config.Cleanup != "warn", "default value for 'cleanup' is not 'none', got %s", config.Cleanup)
+
+	err = yaml.Validate(config)
+	tests.Checkf(t, err != nil, "failed to validate 'cleanup': %v", err)
+}
+
+func TestValidateConfigNormal(t *testing.T) {
+	config := getConfig()
+
+	err := yaml.Validate(config)
+	tests.Checkf(t, err != nil, "failed to validate config: %v", err)
+}
+
+func TestValidateFailWrongCleanup(t *testing.T) {
+	fake, err := getEditableConfig()
+	tests.Checkf(t, err != nil, "failed to read config: %v", err)
+
+	fake["cleanup"] = "wrong value"
+
+	buf, err := yaml.Marshal(fake)
+	tests.Checkf(t, err != nil, "failed to marshal config: %v", err)
+	config, err := yaml.NewConfig(buf)
+	tests.Checkf(t, err != nil, "failed to create new Config: %v", err)
+
+	err = yaml.Validate(config)
+	tests.Checkf(t, err == nil, "expected error from validation with key 'Cleanup': %v", fake["cleanup"])
+}
+
 func TestValidateConfigFailIncorrectServerHost(t *testing.T) {
 	fake, err := getEditableConfig()
-	if err != nil {
-		t.Fatalf("failed to read config: %v", err)
-	}
+	tests.Checkf(t, err != nil, "failed to read config: %v", err)
 
 	fake["server_host"] = 123
 
 	buf, err := yaml.Marshal(fake)
-	if err != nil {
-		t.Fatalf("failed to marshal config: %v", err)
-	}
-
+	tests.Checkf(t, err != nil, "failed to marshal config: %v", err)
 	config, err := yaml.NewConfig(buf)
-	if err != nil {
-		t.Fatalf("failed to create new Config: %v", err)
-	}
+	tests.Checkf(t, err != nil, "failed to create new Config: %v", err)
 
 	err = yaml.Validate(config)
-
-	if err == nil {
-		t.Fatalf("expected error from validation with key 'ServerHost': %v", fake["server_host"])
-	}
+	tests.Checkf(t, err == nil, "expected error from validation with key 'ServerHost': %v", fake["server_host"])
 }
 
-func TestValidateConfigFailMissingSerevrHost(t *testing.T) {
+func TestValidateConfigFailMissingServerHost(t *testing.T) {
 	fake, err := getEditableConfig()
 	if err != nil {
 		t.Fatalf("failed to read config: %v", err)
@@ -222,4 +252,6 @@ func TestBuildPolicyCommand(t *testing.T) {
 			t.Fatalf("failed to find %s in built policy: %s", policy, policyString)
 		}
 	}
+
+	fmt.Println(config.Cleanup)
 }

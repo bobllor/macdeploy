@@ -32,5 +32,6 @@ admin: # username and password can be omitted.
   password: "ADMIN_PASSWORD"
   apply_policy: true # applies the policies above on the admin account
 server_host: "https://127.0.0.1:5000"
+cleanup: warn # default value if omitted, the other valid value is force. still requires --cleanup
 filevault: true
 firewall: true

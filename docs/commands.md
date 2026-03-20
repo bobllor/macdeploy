@@ -7,7 +7,7 @@ The binary used to start the deployment process has numerous flags and supports 
 Running `macdeploy -h`, `macdeploy install -h`, or `macdeploy user -h`, will provide information on the flags
 and how to use it found here.
 
-## Flags
+## Normal Flags
 
 | Options | Description |
 | ---- | ---- |
@@ -19,8 +19,8 @@ and how to use it found here.
 | `--debug` | Include debug logging to the terminal. |
 | `--nosend` | Prevents the log from being sent to the server. |
 | `--pwlist "/path/to/plist"` | Apply password policies using a plist path. |
-| `--exclude "file"` | Excludes a package from installation. |
-| `--include "<file,installed_file_1,installed_file_2>"` | Include a package to install. |
+| `--exclude "<file>"` | Excludes a package from installation. |
+| `--include "<file>,<installed_file_1>,<installed_file_2>..."` | Include a package to install. |
 
 The `--include` flag value is expected to be a string or a CSV string. The command will do
 different things depending on which style is used. This can be used multiple times
@@ -31,12 +31,18 @@ The program will install from *substring matching*, it is recommended to type th
 files after the package has been installed. This is used for conditional installations.
 This is often found in the `/Applications` folder and ends with the extension `.app`, but it can be any installation files.
 
+The `--exclude` flag is *only used* for excluded packages that are *added in the YAML file*.
+This is uses *substring matching* to remove packages, but it is recommended to use the full name of
+the file to remove.
+- If the package `antivirus.pkg` has an entry in the YAML, then `--exclude "antivirus"` will prevent
+the package from being installed.
+
 There are some caveats to installations:
 - All included files are *expected to be in the `dist` folder*.
 - If only a *single file* is added with `--include`, then the binary will attempt to install
 the program every time without checking if it exists.
 - Any of the installed files are expected to be found in the *search directories*, which is given inside
-the YAML file. If that s not given, then this *will always attempt to install the files.*
+the YAML file. If not given, then this *will always attempt to install the files.*
 
 ## User Creation
 

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bobllor/macdeploy/src/deploy-files/core"
 	"github.com/bobllor/macdeploy/src/deploy-files/logger"
@@ -76,15 +77,21 @@ func TestAddPackages(t *testing.T) {
 	}
 }
 
-func TestRemovePackages(t *testing.T) {
+func TestRemovePackagesExactName(t *testing.T) {
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 	handler := core.NewFileHandler(log)
 
-	handler.AddPackages(packagesToAdd)
+	packagesCopy := make([]string, len(packagesToAdd))
+	copy(packagesCopy, packagesToAdd)
+	packagesCopy = append(packagesCopy, []string{"zoom.pkg", "antivirus.pkg", "remote software.pkg", "vpn software"}...)
+
+	handler.AddPackages(packagesCopy)
 
 	expectedLength := len(handler.GetPackages())
 
-	randomSelection := strings.ToLower(packagesToAdd[rand.Intn(len(packagesToAdd))])
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+
+	randomSelection := strings.ToLower(packagesCopy[r.Intn(len(packagesCopy))])
 
 	handler.RemovePackages([]string{randomSelection})
 
@@ -94,6 +101,45 @@ func TestRemovePackages(t *testing.T) {
 	if newLen != expectedLength-1 {
 		t.Errorf("failed to remove package, got %d instead of %d", newLen, expectedLength)
 	}
+}
+
+func TestRemovePackagesWithSubstring(t *testing.T) {
+	handler := core.NewFileHandler(tests.TestLogger)
+
+	packagesCopy := make([]string, len(packagesToAdd))
+	copy(packagesCopy, packagesToAdd)
+	packagesCopy = append(packagesCopy, []string{"zoom.pkg", "antivirus.pkg", "remote software.pkg", "vpn software"}...)
+
+	handler.AddPackages(packagesCopy)
+
+	packagesSubstr := []string{}
+
+	for _, entry := range packagesCopy {
+		packagesSubstr = append(packagesSubstr, strings.ReplaceAll(entry, ".pkg", ""))
+	}
+
+	handler.RemovePackages(packagesSubstr)
+
+	tests.Checkf(t,
+		len(handler.GetAllPackages()) != 0,
+		"failed to remove packages, expected 0 got %d",
+		len(handler.GetAllPackages()),
+	)
+}
+
+func TestRemovePackagesNoMatch(t *testing.T) {
+	handler := core.NewFileHandler(tests.TestLogger)
+
+	handler.AddPackages(packagesToAdd)
+
+	handler.RemovePackages([]string{"nonexistent.pkg", "someother.pkg", "a pkg here"})
+
+	tests.Checkf(t,
+		len(handler.GetAllPackages()) != len(packagesToAdd),
+		"expected packages length to be %d, got %d",
+		len(packagesToAdd),
+		len(handler.GetAllPackages()),
+	)
 }
 
 func TestInstalledPackagesNormal(t *testing.T) {

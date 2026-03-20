@@ -15,15 +15,53 @@ import (
 )
 
 type Config struct {
-	Accounts           map[string]UserInfo `yaml:"accounts"`
-	Packages           map[string][]string `yaml:"packages"`
-	InstallDirectories []string            `yaml:"install_directories"`
-	Scripts            ScriptTypes         `yaml:"scripts"`
-	Admin              UserInfo
-	Policy             Policies `yaml:"policies"`
-	ServerHost         string   `yaml:"server_host" validate:"url,required"`
-	FileVault          bool
-	Firewall           bool
+	// Accounts is a map of UserInfo used to create local accounts on the device.
+	Accounts map[string]UserInfo `yaml:"accounts"`
+
+	// Packages are the package file names that are to be installed, with
+	// a slice of the install file names used to conditionally
+	// install packages if found in an install directory.
+	Packages map[string][]string `yaml:"packages"`
+
+	// InstallDirectories is a slice of paths that will contain the install files
+	// of packages.
+	InstallDirectories []string `yaml:"install_directories"`
+
+	// Scripts is a type used to inject script execution during deployment.
+	Scripts ScriptTypes `yaml:"scripts"`
+
+	// Admin is a UserInfo type that is used for admin elevation. For security purposes
+	// this can be omitted.
+	Admin UserInfo
+
+	// Policy is a type that holds the policy information to apply password policies to
+	// the created user.
+	Policy Policies `yaml:"policies"`
+
+	// ServerHost is the host of the server for the deployment process. This is required and
+	// must be a URL (https/http).
+	ServerHost string `yaml:"server_host" validate:"url,required"`
+
+	// FileVault is used to enable or ignore enabling FileVault.
+	FileVault bool
+
+	// Firewall is used to enable or ignore enabling Firewall.
+	Firewall bool
+
+	// Cleanup is used for confirmation before file removal. By default the value is "warn".
+	// The allowed values are ["warn","force"].
+	// This only effects the user prompt before a cleanup occurs, it still requires
+	// the --cleanup flag to be used.
+	//
+	// If the value is in the allowed values then it will fail to validate.
+	//
+	//	- warn: Requires a confirmation before removing the deployment files.
+	//	The default option.
+	//	- force: Remove deployment files with no confirmation.
+	//
+	// The option "force" will not override the confirmation if either
+	// the FileVault process or the POST to the server with the FileVault key failed.
+	Cleanup string `yaml:"cleanup" validate:"oneof=warn force"`
 }
 
 type UserInfo struct {
@@ -46,7 +84,9 @@ type ScriptTypes struct {
 //
 // If an issue occurs while reading the file then it will return an error.
 func NewConfig(data []byte) (*Config, error) {
-	config := Config{}
+	config := Config{
+		Cleanup: "warn",
+	}
 
 	err := yaml.Unmarshal(data, &config)
 	if err != nil {
@@ -56,13 +96,48 @@ func NewConfig(data []byte) (*Config, error) {
 	return &config, nil
 }
 
-// Validate validates the required fields. If it fails, it will return an error.
+// Validate validates the Config structure. It will return an error
+// with all the failed keys of Config for any failed validation.
 func Validate(config *Config) error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
+	configKeys := []string{
+		"Cleanup",
+		"ServerHost",
+	}
+
+	yamlErrHandler := NewConfigError(configKeys)
+
+	yamlErrHandler.SetKeyError("Cleanup", "field 'cleanup' (%s) is invalid, validation failed on %s (allowed values [%s])")
+	yamlErrHandler.SetKeyError("ServerHost", "field 'server_host' (%s) is invalid, validation failed on %s (https/http)")
+
 	err := validate.Struct(config)
 	if err != nil {
-		return err
+
+		errs := err.(validator.ValidationErrors)
+
+		errBuilder := []string{}
+
+		for _, e := range errs {
+			errStr, configErr := yamlErrHandler.GetKeyError(e.Field())
+			if configErr != nil {
+				return configErr
+			}
+
+			param := e.Param()
+			tag := e.Tag()
+			val := e.Value()
+
+			// handles Param if included
+			outErr := fmt.Sprintf(errStr, val, tag)
+			if param != "" {
+				outErr = fmt.Sprintf(errStr, val, tag, param)
+			}
+
+			errBuilder = append(errBuilder, outErr)
+		}
+
+		return errors.New(strings.Join(errBuilder, "\n"))
 	}
 
 	return nil
