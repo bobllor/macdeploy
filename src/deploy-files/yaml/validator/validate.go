@@ -20,7 +20,8 @@ func main() {
 
 	err = yaml.Validate(config)
 	if err != nil {
-		fmt.Printf("Config file failed to validate %v\n", err)
+		fmt.Println("Config file failed to validate:")
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }

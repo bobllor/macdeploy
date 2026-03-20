@@ -24,6 +24,7 @@ type Config struct {
 	ServerHost         string   `yaml:"server_host" validate:"url,required"`
 	FileVault          bool
 	Firewall           bool
+	Cleanup            string `yaml:"cleanup" validate:"oneof=default warn none"`
 }
 
 type UserInfo struct {
@@ -46,7 +47,9 @@ type ScriptTypes struct {
 //
 // If an issue occurs while reading the file then it will return an error.
 func NewConfig(data []byte) (*Config, error) {
-	config := Config{}
+	config := Config{
+		Cleanup: "default",
+	}
 
 	err := yaml.Unmarshal(data, &config)
 	if err != nil {
@@ -56,13 +59,48 @@ func NewConfig(data []byte) (*Config, error) {
 	return &config, nil
 }
 
-// Validate validates the required fields. If it fails, it will return an error.
+// Validate validates the Config structure. It will return an error
+// with all the failed keys of Config for any failed validation.
 func Validate(config *Config) error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
+	configKeys := []string{
+		"Cleanup",
+		"ServerHost",
+	}
+
+	yamlErrHandler := NewConfigError(configKeys)
+
+	yamlErrHandler.SetKeyError("Cleanup", "field 'cleanup' (%s) is invalid, validation failed on %s (allowed values [%s])")
+	yamlErrHandler.SetKeyError("ServerHost", "field 'server_host' (%s) is invalid, validation failed on %s (https/http)")
+
 	err := validate.Struct(config)
 	if err != nil {
-		return err
+
+		errs := err.(validator.ValidationErrors)
+
+		errBuilder := []string{}
+
+		for _, e := range errs {
+			errStr, configErr := yamlErrHandler.GetKeyError(e.Field())
+			if configErr != nil {
+				return configErr
+			}
+
+			param := e.Param()
+			tag := e.Tag()
+			val := e.Value()
+
+			// handles Param if included
+			outErr := fmt.Sprintf(errStr, val, tag)
+			if param != "" {
+				outErr = fmt.Sprintf(errStr, val, tag, param)
+			}
+
+			errBuilder = append(errBuilder, outErr)
+		}
+
+		return errors.New(strings.Join(errBuilder, "\n"))
 	}
 
 	return nil
