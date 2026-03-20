@@ -22,26 +22,68 @@ import (
 )
 
 type RootData struct {
-	AdminStatus     bool
-	Cleanup         bool
-	Verbose         bool
-	Debug           bool
-	NoSend          bool
-	SkipLocal       bool
-	CreateLocal     bool
+	// AdminStatus indicates that the local account should be admin.
+	AdminStatus bool
+
+	// Cleanup is used to remove the deployment files after the process is done.
+	Cleanup bool
+
+	// Verbose enables INFO level and above logging to stdout.
+	Verbose bool
+
+	// Debug enables DEBUG level and above logging to stdout.
+	Debug bool
+
+	// NoSend skips sending the log file to the server.
+	NoSend bool
+
+	// SkipLocal skips local account creation.
+	SkipLocal bool
+
+	// CreateLocal enables the local account creation.
+	CreateLocal bool
+
+	// ExcludePackages is a slice of packages to exclude the files defined in the
+	// config file.
 	ExcludePackages []string
+
+	// IncludePackages is a slice of packages to install. These must be in the 'dist/'
+	// directory.
 	IncludePackages []string
-	PlistPath       string
-	logFile         string
-	log             *logger.Logger
-	config          *yaml.Config
-	script          *scripts.BashScripts
-	metadata        *utils.Metadata
-	errors          errorFlags
-	data            varData
-	dep             dependencies
-	perm            *utils.Perms
-	osFile          *os.File
+
+	// PlistPath is a path to a plist file, used for password policies.
+	PlistPath string
+
+	// logFile the logging file name.
+	logFile string
+
+	// log is used to log the process.
+	log *logger.Logger
+
+	// config holds the YAML data.
+	config *yaml.Config
+
+	// script holds the embedded script files to execute commands.
+	script *scripts.BashScripts
+
+	// metadata is used to store meta information of the program.
+	metadata *utils.Metadata
+
+	// errors is a struct used to flag errors during the deployment process.
+	// It flags during the server communication and searching for script files.
+	errors errorFlags
+
+	// data is a slice of paths of the script files, if found.
+	data varData
+
+	// dep are the main dependencies used for the core process of the deployment.
+	dep dependencies
+
+	// perm are file modes for file creation.
+	perm *utils.Perms
+
+	// osFile is the log file, used to defer in calls where it must be closed.
+	osFile *os.File
 }
 
 type errorFlags struct {
@@ -265,7 +307,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if root.Cleanup {
-			if root.errors.ServerFailed {
+			if root.errors.ServerFailed || root.config.Cleanup == "warn" {
 				choice := ""
 				validChoices := "yn"
 
@@ -280,8 +322,11 @@ var rootCmd = &cobra.Command{
 
 				reader := bufio.NewReader(os.Stdin)
 
-				fmt.Println("The FileVault key failed to send to the server.")
-				fmt.Println("You can re-run the binary to try again.")
+				if root.errors.ServerFailed {
+					fmt.Println("The FileVault key failed to send to the server.")
+					fmt.Println("You can re-run the binary to try again.")
+				}
+
 				for !validation(choice, validChoices) {
 					fmt.Print("Remove all deployment files? [y/N]: ")
 					choice, _ = reader.ReadString('\n')
@@ -641,6 +686,12 @@ func (r *RootData) initialize(isSubCommand bool) {
 	if err != nil {
 		// TODO: make this a better error message (incorrect keys, required keys missing, etc)
 		fmt.Printf("Error parsing YAML configuration, %v\n", err)
+		os.Exit(1)
+	}
+
+	validateErr := yaml.Validate(config)
+	if validateErr != nil {
+		fmt.Println(validateErr)
 		os.Exit(1)
 	}
 
