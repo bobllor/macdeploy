@@ -97,7 +97,7 @@ func RemoveFiles(paths []string) {
 	for _, path := range paths {
 		file, err := os.Stat(path)
 		if err != nil {
-			fmt.Printf("Failed to stat %s: %v\n", path, err)
+			fmt.Printf("Error reading path %s: %v\n", path, err)
 			continue
 		}
 
