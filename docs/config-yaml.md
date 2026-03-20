@@ -88,6 +88,21 @@ admin: # username and password can be omitted.
   apply_policy: true # applies the policies above on the admin account
 ```
 
+### Cleanup
+
+The `cleanup` field is used to get user confirmation before removing the deployment files
+at the end of the deployment process.
+
+It has two valid values:
+1. `warn`: Prompts for user confirmation before removing files.
+2. `force`: It will remove the files with no user prompt.
+
+By default `cleanup` has the value `warn`, it will prompt every time before the deployment files
+are removed.
+
+If an invalid value is used for `cleanup`, the binary will refuse to run and the `go_zip.sh` will
+fail to create the binary during validation.
+
 ### Packages
 
 A dictionary containing dictionaries that have a *string key* and an *array value*.
