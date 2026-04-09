@@ -6,6 +6,7 @@ from app_types import Config
 from blueprints.processor import Processor
 from blueprints.zip_updater import ZipUpdater
 from blueprints.requestors import Requestors
+from blueprints.query import Query
 import system.utils as utils
 import secrets, os
 
@@ -43,10 +44,12 @@ def create_app(config_arg: Config = None) -> Flask:
     updater: ZipUpdater = ZipUpdater(config=app.config, logger=logger)
     processor: Processor = Processor(config=app.config, logger=logger)
     requestors: Requestors = Requestors(config=app.config, logger=logger)
+    query: Query = Query(config=app.config, logger=logger)
 
     app.register_blueprint(updater.get_blueprint())
     app.register_blueprint(processor.get_blueprint())
     app.register_blueprint(requestors.get_blueprint())
+    app.register_blueprint(query.get_blueprint())
 
     return app
 
