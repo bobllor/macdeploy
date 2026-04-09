@@ -89,7 +89,6 @@ class Query():
             else:
                 self.logger.warning(f"Device '{device}' does not exist in entries")
                 res["status"] = "error"
-                res["status_code"] = 404
                 res["message"] = f"Device {device} is not found"
         
             return res, res["status_code"]
