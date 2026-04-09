@@ -1,6 +1,7 @@
 from pathlib import Path
 from flask import make_response, Response
 from configuration import ROOT_PATH
+import re
 
 def get_dir_list(path: Path | str, data: list[str] = None, 
     *, replace_root: bool = False, include_arg_path: bool = False) -> list[str]:
@@ -107,3 +108,17 @@ def read_from(file_path: Path | str) -> str:
         content: str = file.read()
 
     return content
+
+def is_filevault_key(string: str) -> bool:
+    '''Matches the given string to the expected regex pattern of a FileVault key.
+    It will return true or false depending on if it is a match.
+    
+    An example of a FileVault key: `ABC1-23FG-AS33-LO09-12GH-POW7`.
+    '''
+    pattern: str = r'^[A-Z0-9]{4}-(-?[A-Z0-9]{4}){5}$'
+    r: re.Pattern = re.compile(pattern)
+
+    if r.match(string) is not None:
+        return True
+
+    return False
