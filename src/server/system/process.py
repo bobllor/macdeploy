@@ -52,7 +52,8 @@ class Process:
 
             if not key_entry.parent.exists():
                 self._create_entry(key_entry) 
-                self.log.info(f"Added {serial} with key {key}")
+                key_log = f"Added key {key} for {serial}"
+                self.log.info(key_log)
             else:
                 # commented regex out to simplify the process
                 #regex_str: str = r"^([A-Za-z0-9]{4}-?)+$"
@@ -149,20 +150,29 @@ class Process:
     
     def _validate_info(self, keys_to_check: list[str], info: dict[str, Any]) -> dict[str, Any]:
         '''Checks the info dictionary for validating the responses.'''
+        missing_keys: list[str] = []
+        missing_content: list[str] = []
         for key in keys_to_check:
             if key not in info:
-                return utils.generate_response(
-                    status="error", 
-                    content=f"Missing key in response",
-                    statusCode=400
-                )
-            
-            if info[key] == "":
-                return utils.generate_response(
-                    status="error", 
-                    content=f"No content given for key",
-                    statusCode=400
-                )
+                missing_keys.append(key)
+            else:
+                if info[key] == "":
+                    missing_content.append(key)
+        
+        if len(missing_keys) != 0:
+            return utils.generate_response(
+                status="error", 
+                content=f"Missing key(s) '{",".join(missing_keys)}'",
+                statusCode=400
+            )
+        
+        if len(missing_content) != 0:
+            return utils.generate_response(
+                status="error", 
+                content=f"Content is empty for key(s) '{",".join(missing_content)}'",
+                statusCode=400
+            )
+
 
         return utils.generate_response(statusCode=200, content="Successful validation")
   
