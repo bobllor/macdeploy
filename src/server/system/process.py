@@ -32,7 +32,7 @@ class Process:
         '''
         validation_res: dict[str, Any] = self._validate_info(self._key_info_keys, key_info)
         if validation_res["status"] == "error":
-            self.log.error(f"Missing key, got: {[key for key in key_info]}")
+            self.log.error(validation_res)
             return validation_res
 
         keys_path: Path = None
