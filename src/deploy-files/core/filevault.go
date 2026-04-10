@@ -51,6 +51,24 @@ func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 	return key
 }
 
+// Disable disables FileVault. It will return a return a bool indicating if it
+// was successful or not.
+func (f *FileVault) Disable(adminUser string, adminPassword string) bool {
+	f.log.Info("Disabling FileVault")
+
+	out, err := exec.Command("sudo", "bash", "-c", f.script.DisableFileVault,
+		adminUser, adminPassword).CombinedOutput()
+	outText := string(out)
+	if err != nil {
+		f.log.Warnf("Failed to disable FileVault: %v", err)
+		return false
+	}
+
+	f.log.Debugf("Disable FileVault output: %s", outText)
+
+	return true
+}
+
 // Status retrieves the status of FileVault and returns true/false on its status.
 //
 // If the command failed to run then return an error.
