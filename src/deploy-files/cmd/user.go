@@ -23,7 +23,7 @@ type UserData struct {
 var userCobra UserData
 
 var userCmd = &cobra.Command{
-	Use:   "user",
+	Use:   "user [flags]",
 	Short: "Create a local user",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		root.initialize(true)
