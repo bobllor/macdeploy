@@ -212,6 +212,7 @@ var rootCmd = &cobra.Command{
 			root.log.Warn(fmt.Sprintf("Failed to authenticate sudo: %v", err))
 		}
 
+		request := requests.NewRequest(root.log)
 		// payload for sending to the server
 		// initialized with an empty key, Key gets updated below.
 		// used for sending the log over to the server.
@@ -220,7 +221,7 @@ var rootCmd = &cobra.Command{
 		logPayload := requests.NewLogPayload(serverLogFile)
 		filevaultPayload := requests.NewFileVaultPayload("")
 		if root.config.FileVault {
-			fvKey := root.startFileVault(root.dep.filevault)
+			fvKey := root.startFileVault(root.dep.filevault, request)
 
 			filevaultPayload.Key = fvKey
 			filevaultPayload.SetBody(root.metadata.SerialTag)
@@ -235,48 +236,11 @@ var rootCmd = &cobra.Command{
 			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
 		}
 
-		request := requests.NewRequest(root.log)
-
 		if root.config.FileVault {
-			if filevaultPayload.Key != "" {
-				serverFailWarning := []string{
-					"WARNING",
-					"The FileVault key failed to send to the server",
-					"The deployment can be restarted or manual activation may be required",
-					"The key must be saved: %s", filevaultPayload.Key,
-				}
-				fvServerFailMsg := utils.FormatBannerString(serverFailWarning, paddingMsg)
-
-				root.log.Info("Sending FileVault key to the server")
-
-				err = root.startRequest(filevaultPayload, request, "/api/fv")
-				if err != nil {
-					root.log.Criticalf("Failed to send to data to server: %v", err)
-
-					fmt.Println("\n" + fvServerFailMsg)
-
-					root.errors.ServerFailed = true
-				}
-			} else {
-				fvFailStrings := []string{
-					"WARNING",
-					"FileVault failed to activate and the key failed to generate",
-					"The deployment can be restarted or manual activation may be required",
-				}
-				fvFailMsg := utils.FormatBannerString(fvFailStrings, paddingMsg)
-
-				fvStatus, err := root.dep.filevault.Status()
-				if err != nil {
-					root.log.Warn(fmt.Sprintf("Failed to check FileVault status %v", err))
-
-					fmt.Println("\n" + fvFailMsg)
-				} else {
-					if !fvStatus {
-						root.log.Warn("FileVault key failed to generate")
-
-						fmt.Println("\n" + fvFailMsg)
-					}
-				}
+			err := root.startRequest(filevaultPayload, request, "/api/fv")
+			if err != nil {
+				root.log.Warnf("Failed to send payload with FileVault key: %v", err)
+				root.warnFileVaultError(filevaultPayload)
 			}
 		}
 		if !root.NoSend {
@@ -516,7 +480,7 @@ func (r *RootData) startPackageInstallation(handler *core.FileHandler, installDi
 }
 
 // startFileVault begins the FileVault process and returns the generated key.
-func (r *RootData) startFileVault(filevault *core.FileVault) string {
+func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.Request) string {
 	fmt.Println("Starting FileVault process")
 	fvKey := ""
 
@@ -524,7 +488,29 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 	fvStatus, err := filevault.Status()
 	if err != nil {
 		r.log.Warn(fmt.Sprintf("Failed to check FileVault status: %v\n", err))
-		fmt.Println("Unable to check FileVault status, continuing")
+		fmt.Println("Unable to check FileVault status")
+	}
+
+	// UNKNOWN is set during, if one occurs initialization
+	if r.metadata.SerialTag != "UNKNOWN" {
+		// handles an edge case if FileVault is enabled but there is no entry in the
+		// server
+		qRes, err := request.GetDeviceKeyInfo(r.config.ServerHost, r.metadata.SerialTag)
+		if err != nil {
+			r.log.Warnf("Failed to query device information: %v | Response: %v", err, qRes)
+		} else {
+			r.log.Debugf("Query status code: %d | Query message: %s", qRes.StatusCode, qRes.Message)
+
+			// if len(qRes.Content) == 0/1, then always attempt FileVault process.
+			if len(qRes.Content) == 0 || len(qRes.Content) == 1 {
+				r.log.Infof("No FileVault entry found for %s", r.metadata.SerialTag)
+
+				if fvStatus {
+					filevault.Disable(r.config.Admin.Username, r.config.Admin.Password)
+					fvStatus = false
+				}
+			}
+		}
 	}
 
 	if !fvStatus {
@@ -561,7 +547,7 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 
 // startRequest sends the logs to the server.
 func (r *RootData) startRequest(payload requests.Payload, request *requests.Request, endpoint string) error {
-	fmt.Println("Creating payload request to send to server")
+	fmt.Println("Starting payload request")
 	host := r.config.ServerHost + endpoint
 
 	serverStatus, err := request.VerifyConnection(r.config.ServerHost)
@@ -651,6 +637,42 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 		if out != "" {
 			r.log.Info(scriptOutMsg)
 			fmt.Println(scriptOutMsg)
+		}
+	}
+}
+
+// warnFileVaultError is used to warn the user on the terminal that FileVault has failed.
+func (r *RootData) warnFileVaultError(filevaultPayload *requests.FileVaultPayload) {
+	if filevaultPayload.Key != "" {
+		serverFailWarning := []string{
+			"WARNING",
+			"The FileVault key failed to send to the server",
+			"The deployment can be restarted or manual activation may be required",
+			"The key must be saved: %s", filevaultPayload.Key,
+		}
+		fvServerFailMsg := utils.FormatBannerString(serverFailWarning, paddingMsg)
+
+		fmt.Println("\n" + fvServerFailMsg)
+		root.errors.ServerFailed = true
+	} else {
+		fvFailStrings := []string{
+			"WARNING",
+			"FileVault failed to activate and the key failed to generate",
+			"The deployment can be restarted or manual activation may be required",
+		}
+		fvFailMsg := utils.FormatBannerString(fvFailStrings, paddingMsg)
+
+		fvStatus, err := root.dep.filevault.Status()
+		if err != nil {
+			root.log.Warn(fmt.Sprintf("Failed to check FileVault status %v", err))
+
+			fmt.Println("\n" + fvFailMsg)
+		} else {
+			if !fvStatus {
+				root.log.Warn("FileVault key failed to generate")
+
+				fmt.Println("\n" + fvFailMsg)
+			}
 		}
 	}
 }
