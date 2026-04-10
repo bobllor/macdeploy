@@ -53,20 +53,33 @@ func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 
 // Disable disables FileVault. It will return a return a bool indicating if it
 // was successful or not.
-func (f *FileVault) Disable(adminUser string, adminPassword string) bool {
+func (f *FileVault) Disable(adminUser string, adminPassword string) (bool, error) {
 	f.log.Info("Disabling FileVault")
+
+	fvStatus, err := f.Status()
+	if err != nil {
+		return false, err
+	}
+
+	if !fvStatus {
+		return false, nil
+	}
 
 	out, err := exec.Command("sudo", "bash", "-c", f.script.DisableFileVault,
 		adminUser, adminPassword).CombinedOutput()
 	outText := string(out)
-	if err != nil {
+	if err != nil || strings.Contains(outText, "Error") {
 		f.log.Warnf("Failed to disable FileVault: %v", err)
-		return false
+
+		if err == nil {
+			err = fmt.Errorf(outText)
+		}
+		return false, err
 	}
 
-	f.log.Debugf("Disable FileVault output: %s", outText)
+	f.log.Debugf("FileVault disable output: %s", outText)
 
-	return true
+	return true, nil
 }
 
 // Status retrieves the status of FileVault and returns true/false on its status.
@@ -82,7 +95,7 @@ func (f *FileVault) Status() (bool, error) {
 
 	// either some fail happened or this is ran on a non-mac OS
 	if fileVaultStatus == "" {
-		return false, fmt.Errorf("%s", fileVaultStatus)
+		return false, fmt.Errorf("fdesetup: Failed to run: %s", fileVaultStatus)
 	}
 
 	f.log.Debugf("FileVault status: %s", fileVaultStatus)
@@ -130,4 +143,18 @@ func (f *FileVault) AddSecureToken(username string, userPassword string) error {
 	f.log.Infof("Secure token added for %s", username)
 
 	return nil
+}
+
+// List lists the users who are added to the FileVault list. These are the users that
+// are allowed to unlock the encrypted drive.
+// It will return the output string of the command, or an error if one occurs.
+func (f *FileVault) List() (string, error) {
+	cmd := "sudo fdesetup list"
+	out, err := exec.Command("bash", "-c", cmd).Output()
+	if err != nil {
+		return "", err
+	}
+	outText := string(out)
+
+	return outText, nil
 }
