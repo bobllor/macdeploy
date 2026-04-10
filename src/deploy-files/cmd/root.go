@@ -43,6 +43,9 @@ type RootData struct {
 	// CreateLocal enables the local account creation.
 	CreateLocal bool
 
+	// SkipFileVault skips the FileVault process.
+	SkipFileVault bool
+
 	// ExcludePackages is a slice of packages to exclude the files defined in the
 	// config file.
 	ExcludePackages []string
@@ -219,12 +222,22 @@ var rootCmd = &cobra.Command{
 		currDate := time.Now().Format("2006-01-02")
 		serverLogFile := fmt.Sprintf("%s.%s.log", root.metadata.SerialTag, currDate)
 		logPayload := requests.NewLogPayload(serverLogFile)
-		filevaultPayload := requests.NewFileVaultPayload("")
-		if root.config.FileVault {
-			fvKey := root.startFileVault(root.dep.filevault, request)
 
-			filevaultPayload.Key = fvKey
-			filevaultPayload.SetBody(root.metadata.SerialTag)
+		if !root.SkipFileVault {
+			filevaultPayload := requests.NewFileVaultPayload("")
+			if root.config.FileVault {
+				fvKey := root.startFileVault(root.dep.filevault, request)
+
+				filevaultPayload.Key = fvKey
+				filevaultPayload.SetBody(root.metadata.SerialTag)
+
+				err := root.startRequest(filevaultPayload, request, "/api/fv")
+				if err != nil {
+					root.log.Warnf("Failed to send payload with FileVault key: %v", err)
+					root.warnFileVaultError(filevaultPayload)
+				}
+			}
+
 		}
 
 		// if admin is applied policies, it must be after all the sudo commands.
@@ -236,13 +249,6 @@ var rootCmd = &cobra.Command{
 			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
 		}
 
-		if root.config.FileVault {
-			err := root.startRequest(filevaultPayload, request, "/api/fv")
-			if err != nil {
-				root.log.Warnf("Failed to send payload with FileVault key: %v", err)
-				root.warnFileVaultError(filevaultPayload)
-			}
-		}
 		if !root.NoSend {
 			root.log.Info("Sending log file to the server")
 
@@ -346,6 +352,9 @@ func InitializeRoot() {
 		&root.SkipLocal, "skiplocal", "s", false, "Skip the local user creation")
 	rootCmd.Flags().BoolVarP(
 		&root.CreateLocal, "createlocal", "c", false, "Create a local user")
+	rootCmd.Flags().BoolVar(
+		&root.SkipFileVault, "nofilevault", false, "Skip the FileVault process",
+	)
 
 	rootCmd.MarkFlagsMutuallyExclusive("skiplocal", "createlocal")
 	rootCmd.MarkFlagsMutuallyExclusive("debug", "verbose")
@@ -545,7 +554,7 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 	}
 }
 
-// startRequest sends the logs to the server.
+// startRequest sends the payload to the server.
 func (r *RootData) startRequest(payload requests.Payload, request *requests.Request, endpoint string) error {
 	fmt.Println("Starting payload request")
 	host := r.config.ServerHost + endpoint
