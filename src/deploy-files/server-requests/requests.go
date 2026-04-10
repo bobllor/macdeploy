@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -36,6 +37,61 @@ func NewRequest(log *logger.Logger) *Request {
 	}
 
 	return &request
+}
+
+type DeviceFileData struct {
+	Name     string `json:"name"`
+	Modified string `json:"modified"`
+	Size     int    `json:"size"`
+}
+type StatusType string
+
+const (
+	StatusTypeError   StatusType = "error"
+	StatusTypeSuccess StatusType = "success"
+)
+
+type DeviceQuery struct {
+	Content    []DeviceFileData `json:"content"`
+	Message    string           `json:"message"`
+	Status     StatusType       `json:"status"`
+	StatusCode int              `json:"status_code"`
+}
+
+// GetDeviceKeyInfo sends a GET request to the url with the device tag to retrieve
+// the metadata of its stored file on the disk in a DeviceQuery.
+//
+// The DeviceQuery contains a slice of DeviceFileData in its contents, which
+// can be empty, a length of one, or a length of two:
+//   - 0: The device used in the query does not have an entry in the server
+//   - 1: The device entry exists
+//   - 2: The device's FileVault key entry exists
+//
+// The first entry of the slice will always be the information of the device,
+// while the second entry is information about the device's FileVault key,
+// if either exists.
+//
+// The host is expected to the root URL connection to access the server.
+func (r *Request) GetDeviceKeyInfo(host string, deviceTag string) (*DeviceQuery, error) {
+	url := host + "/api/devices/" + deviceTag
+	res, err := r.client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode >= 400 {
+		return nil, fmt.Errorf("failed to query device, got status code %d", res.StatusCode)
+	}
+
+	devRes := &DeviceQuery{}
+
+	err = json.NewDecoder(res.Body).Decode(&devRes)
+	if err != nil {
+		return nil, err
+	}
+
+	return devRes, nil
 }
 
 // POSTData sends a JSON POST request to the server.
