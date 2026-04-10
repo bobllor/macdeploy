@@ -4,7 +4,7 @@ from logger import Log
 from app_types import Config
 from pathlib import Path
 from typing import Any, TypedDict, Literal
-from datetime import datetime
+from datetime import datetime, timezone
 import system.utils as utils
 import os
 
@@ -34,8 +34,6 @@ class Query():
             '''Get the metadata of the device and its filevault key, if either exists.
             The file information contains its metadata information.
             Both files will be appended to the `content` array of the response.
-
-            If the device does not exist, then it will return a 404 error.
             '''
             keys_path: Path = self.config["keys_path"]
             if not keys_path.exists():
@@ -55,7 +53,7 @@ class Query():
 
                 device_file_data: FileData = {
                         "name": device,
-                        "modified": datetime.fromtimestamp(stat.st_mtime),
+                        "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc),
                         "size": stat.st_size,
                 }
 
@@ -81,7 +79,7 @@ class Query():
 
                     key_data: FileData = {
                         "name": key_path.name,
-                        "modified": datetime.fromtimestamp(key_stat.st_mtime),
+                        "modified": datetime.fromtimestamp(key_stat.st_mtime, timezone.utc),
                         "size": stat.st_size,
                     } 
 
