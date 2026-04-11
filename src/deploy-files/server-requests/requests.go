@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/bobllor/macdeploy/src/deploy-files/logger"
 )
@@ -40,9 +41,9 @@ func NewRequest(log *logger.Logger) *Request {
 }
 
 type DeviceFileData struct {
-	Name     string `json:"name"`
-	Modified string `json:"modified"`
-	Size     int    `json:"size"`
+	Name     string    `json:"name"`
+	Modified time.Time `json:"modified"`
+	Size     int       `json:"size"`
 }
 type StatusType string
 
