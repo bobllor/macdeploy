@@ -115,7 +115,7 @@ def is_filevault_key(string: str) -> bool:
     
     An example of a FileVault key: `ABC1-23FG-AS33-LO09-12GH-POW7`.
     '''
-    pattern: str = r'^[A-Z0-9]{4}-(-?[A-Z0-9]{4}){5}$'
+    pattern: str = r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$'
     r: re.Pattern = re.compile(pattern)
 
     if r.match(string) is not None:
