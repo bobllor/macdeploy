@@ -500,24 +500,54 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 		fmt.Println("Unable to check FileVault status")
 	}
 
-	// UNKNOWN is set during, if one occurs initialization
+	// serial tag is set during initialization, UNKNOWN means that its on a non-mac device.
+	// this is used to handle edge cases where filevault is already enabled,
+	// regardless of whether it succeeds or not filevault will always be attempted.
 	if r.metadata.SerialTag != "UNKNOWN" {
-		// handles an edge case if FileVault is enabled but there is no entry in the
-		// server
 		qRes, err := request.GetDeviceKeyInfo(r.config.ServerHost, r.metadata.SerialTag)
 		if err != nil {
 			r.log.Warnf("Failed to query device information: %v | Response: %v", err, qRes)
 		} else {
+			// res has the filevault key, do not log it
 			r.log.Debugf("Query status code: %d | Query message: %s", qRes.StatusCode, qRes.Message)
 
+			resetFv := false
 			// if len(qRes.Content) == 0/1, then always attempt FileVault process.
 			if len(qRes.Content) == 0 || len(qRes.Content) == 1 {
 				r.log.Infof("No FileVault entry found for %s", r.metadata.SerialTag)
 
+				// if the server has no entries but the filevault is enabled, then
+				// reset to ensure filevault is ran after
+				// if fvStatus is already false then this does nothing.
 				if fvStatus {
-					filevault.Disable(r.config.Admin.Username, r.config.Admin.Password)
-					fvStatus = false
+					resetFv = true
 				}
+			} else {
+				// len(qRes.Content) == 2, a filevault key for the device already exists
+				// if the modified time is >= 1.5 hours, then reset filevault and start the process.
+				keyData := qRes.Content[len(qRes.Content)-1]
+				r.log.Infof("Existing key found for %s", r.metadata.SerialTag)
+				r.log.Debugf("Existing key modified date: %v", keyData.Modified)
+				utcExistTime := keyData.Modified.UTC()
+				now := time.Now().UTC()
+
+				calcTime := now.Sub(utcExistTime)
+
+				// if the file time in the server is greater than 1 hour, then remove the entry
+				// and start a new filevault process.
+				// this ensures that reruns are still possible, but later on it can be overwritten.
+				if calcTime.Hours() >= 1.5 {
+					resetFv = true
+				}
+			}
+
+			if resetFv {
+				// only log error, regardless of what happens always attempt if resetFv is true.
+				_, err := filevault.Disable(r.config.Admin.Username, r.config.Admin.Password)
+				if err != nil {
+					root.log.Warnf("Failed to disable FileVault: %v", err)
+				}
+				fvStatus = false
 			}
 		}
 	}
