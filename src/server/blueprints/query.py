@@ -52,9 +52,9 @@ class Query():
                 stat: os.stat_result = device_path.stat()
 
                 device_file_data: FileData = {
-                        "name": device,
-                        "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc),
-                        "size": stat.st_size,
+                    "name": device,
+                    "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc),
+                    "size": stat.st_size,
                 }
 
                 content.append(device_file_data)
