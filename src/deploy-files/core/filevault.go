@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -72,7 +73,7 @@ func (f *FileVault) Disable(adminUser string, adminPassword string) (bool, error
 		f.log.Warnf("Failed to disable FileVault: %v", err)
 
 		if err == nil {
-			err = fmt.Errorf(outText)
+			err = errors.New(outText)
 		}
 		return false, err
 	}
