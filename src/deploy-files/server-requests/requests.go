@@ -75,6 +75,7 @@ type DeviceQuery struct {
 // The host is expected to the root URL connection to access the server.
 func (r *Request) GetDeviceKeyInfo(host string, deviceTag string) (*DeviceQuery, error) {
 	url := host + "/api/devices/" + deviceTag
+
 	res, err := r.client.Get(url)
 	if err != nil {
 		return nil, err
@@ -82,7 +83,7 @@ func (r *Request) GetDeviceKeyInfo(host string, deviceTag string) (*DeviceQuery,
 	defer res.Body.Close()
 
 	if res.StatusCode >= 400 {
-		return nil, fmt.Errorf("failed to query device, got status code %d", res.StatusCode)
+		return nil, fmt.Errorf("failed to query device (%s): %v", res.Status, res)
 	}
 
 	devRes := &DeviceQuery{}
