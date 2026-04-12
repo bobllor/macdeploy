@@ -27,6 +27,10 @@ jobs:
         run: ./scripts/build.sh
       - name: Starting test Docker container instance
         run: ./scripts/start.sh -t
+      - name: Docker debugging
+        run: |
+          docker ps -a
+          sleep 1
       - name: Build and test Go
         run: |
           cp "sample-config.yml" "./src/config/config.yml"
