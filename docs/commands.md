@@ -21,6 +21,7 @@ and how to use it found here.
 | `--skipsend` | Prevents the log from being sent to the server. |
 | `--skipfilevault` | Skips the FileVault process. |
 | `--plist "/path/to/plist"` | Apply password policies using a plist path. |
+| `--forcefilevault` | Forces the FileVault process to overwrite existing keys with no warnings. |
 | `--exclude "<file>"` | Excludes a package defined in the YAML from installing. |
 | `--include "<file>[,<installed_file_1>,<installed_file_2>...]"` | Include a package to install. |
 
