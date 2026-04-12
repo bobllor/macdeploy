@@ -40,10 +40,9 @@ else
             
             touch "$serial/ABC1-23DF-GH45-J6KL-7MN8-OPQ9"
         fi
-
-        # this is only related to testing due to permission errors
-        chmod -R 777 "$dir"
     done
+
+    # this is only related to testing due to permission errors
     chmod -R 777 "$root"
 
     docker compose -f compose.yml -f dockerfiles/compose-test.override.yml up -d
