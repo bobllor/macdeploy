@@ -80,6 +80,7 @@ func (r *Request) GetDeviceKeyInfo(host string, deviceTag string) (*DeviceQuery,
 	if err != nil {
 		return nil, err
 	}
+	res.Close = true
 	defer res.Body.Close()
 
 	if res.StatusCode >= 400 {
