@@ -423,6 +423,7 @@ func (r *RootData) postAccountCreation(accountName string, accountPassword strin
 			"WARNING",
 			"The secure token has failed to apply to the user",
 			"The deployment can be restarted or manual user creation may be required",
+			"If the key has been stored or generated then this can be ignored",
 		}
 
 		secureErrorMsg := utils.FormatBannerString(userSecureTokenString, paddingMsg)
