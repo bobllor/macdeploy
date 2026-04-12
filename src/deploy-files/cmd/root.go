@@ -516,11 +516,14 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 			// if len(qRes.Content) == 0/1, then always attempt FileVault process.
 			if len(qRes.Content) == 0 || len(qRes.Content) == 1 {
 				r.log.Infof("No FileVault entry found for %s", r.metadata.SerialTag)
+				r.log.Debugf("Query response: %v", qRes.Content)
 
 				// if the server has no entries but the filevault is enabled, then
 				// reset to ensure filevault is ran after
 				// if fvStatus is already false then this does nothing.
 				if fvStatus {
+					fmt.Println("FileVault found enabled but no key found in the server")
+					fmt.Println("Disabling FileVault...")
 					resetFv = true
 				}
 			} else {
@@ -538,6 +541,9 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 				// and start a new filevault process.
 				// this ensures that reruns are still possible, but later on it can be overwritten.
 				if calcTime.Hours() >= 1.5 {
+					r.log.Infof("Modified date condition met: %f is greater than limit of 1.5 hours", calcTime.Hours())
+					fmt.Println("Removing existing stored FileVault key, time limit is greater than 1.5 hours")
+					fmt.Println("Disabling FileVault...")
 					resetFv = true
 				}
 			}
