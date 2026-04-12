@@ -87,7 +87,7 @@ func (r *Request) GetDeviceKeyInfo(host string, deviceTag string) (*DeviceQuery,
 
 	devRes := &DeviceQuery{}
 
-	err = json.NewDecoder(res.Body).Decode(&devRes)
+	err = json.NewDecoder(res.Body).Decode(devRes)
 	if err != nil {
 		return nil, err
 	}
