@@ -34,8 +34,8 @@ type RootData struct {
 	// Debug enables DEBUG level and above logging to stdout.
 	Debug bool
 
-	// NoSend skips sending the log file to the server.
-	NoSend bool
+	// SkipLog skips sending the log file to the server.
+	SkipLog bool
 
 	// SkipLocal skips local account creation.
 	SkipLocal bool
@@ -141,6 +141,7 @@ var rootCmd = &cobra.Command{
 		fmt.Printf("Starting deployment for %s\n", root.metadata.SerialTag)
 
 		root.log.Debugf("Metadata data: %s", root.metadata.ToString())
+		root.log.Debugf("Flags: %s", root.FlagsToString())
 
 		err := root.config.Admin.InitializeSudo()
 		if err != nil {
@@ -249,7 +250,7 @@ var rootCmd = &cobra.Command{
 			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
 		}
 
-		if !root.NoSend {
+		if !root.SkipLog {
 			root.log.Info("Sending log file to the server")
 
 			logPayload.Body = root.log.String()
@@ -336,7 +337,7 @@ func InitializeRoot() {
 	rootCmd.Flags().StringArrayVar(&root.IncludePackages,
 		"include", []string{}, "Include a package to install")
 	rootCmd.Flags().StringVar(
-		&root.PlistPath, "pwlist", "", "Apply password policies with a plist")
+		&root.PlistPath, "plist", "", "Apply password policies with a plist")
 
 	rootCmd.Flags().BoolVarP(
 		&root.AdminStatus, "admin", "a", false, "Grants admin to local users")
@@ -347,13 +348,13 @@ func InitializeRoot() {
 	rootCmd.Flags().BoolVar(
 		&root.Debug, "debug", false, "Displays the debug output to the terminal")
 	rootCmd.Flags().BoolVar(
-		&root.NoSend, "nosend", false, "Do not send the log file to the server")
-	rootCmd.Flags().BoolVarP(
-		&root.SkipLocal, "skiplocal", "s", false, "Skip the local user creation")
+		&root.SkipLog, "skiplog", false, "Skip sending the logs to the server")
+	rootCmd.Flags().BoolVar(
+		&root.SkipLocal, "skiplocal", false, "Skip the local user creation")
 	rootCmd.Flags().BoolVarP(
 		&root.CreateLocal, "createlocal", "c", false, "Create a local user")
 	rootCmd.Flags().BoolVar(
-		&root.SkipFileVault, "nofilevault", false, "Skip the FileVault process",
+		&root.SkipFileVault, "skipfilevault", false, "Skip the FileVault process",
 	)
 
 	rootCmd.MarkFlagsMutuallyExclusive("skiplocal", "createlocal")
@@ -858,4 +859,28 @@ func (r *RootData) initialize(isSubCommand bool) {
 			r.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
 		}
 	}
+}
+
+// FlagsToString returns the string representation of
+// the flags used with the command.
+func (r *RootData) FlagsToString() string {
+	slice := []string{}
+
+	format := func(flag string, value any) string {
+		return fmt.Sprintf("%s='%v'", flag, value)
+	}
+
+	slice = append(slice, format("exclude", r.ExcludePackages))
+	slice = append(slice, format("include", r.IncludePackages))
+	slice = append(slice, format("plist", r.PlistPath))
+	slice = append(slice, format("admin", r.AdminStatus))
+	slice = append(slice, format("cleanup", r.Cleanup))
+	slice = append(slice, format("verbose", r.Verbose))
+	slice = append(slice, format("debug", r.Debug))
+	slice = append(slice, format("skiplog", r.SkipLog))
+	slice = append(slice, format("skiplocal", r.SkipLocal))
+	slice = append(slice, format("skipfilevault", r.SkipFileVault))
+	slice = append(slice, format("createlocal", r.CreateLocal))
+
+	return strings.Join(slice, "|")
 }
