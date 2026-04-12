@@ -17,6 +17,7 @@ pkg-files
 keys
 build
 zip-build
+testroot/
 
 # python stuff
 __pycache__/
