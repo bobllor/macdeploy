@@ -533,7 +533,7 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 
 				calcTime := now.Sub(utcExistTime)
 
-				// if the file time in the server is greater than 1 hour, then remove the entry
+				// if the file time in the server is greater than 1.5 hours, then remove the entry
 				// and start a new filevault process.
 				// this ensures that reruns are still possible, but later on it can be overwritten.
 				if calcTime.Hours() >= 1.5 {
