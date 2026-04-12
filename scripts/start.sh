@@ -44,6 +44,7 @@ else
         # this is only related to testing due to permission errors
         chmod -R 777 "$dir"
     done
+    chmod -R 777 "$root"
 
     docker compose -f compose.yml -f dockerfiles/compose-test.override.yml up -d
 fi
