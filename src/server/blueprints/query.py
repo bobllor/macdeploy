@@ -1,9 +1,9 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint
 from logger import Log
 from logger import Log
 from app_types import Config
 from pathlib import Path
-from typing import Any, TypedDict, Literal
+from typing import Any, TypedDict
 from datetime import datetime, timezone
 import system.utils as utils
 import os
@@ -11,7 +11,7 @@ import os
 
 class FileData(TypedDict):
     name: str
-    modified: datetime
+    modified: str # has to be convereted to string due to go's strict time formatting
     size: int
 
 class Query():
@@ -35,6 +35,7 @@ class Query():
             The file information contains its metadata information.
             Both files will be appended to the `content` array of the response.
             '''
+            self.logger.info(f"Device info query accessed")
             keys_path: Path = self.config["keys_path"]
             if not keys_path.exists():
                 self.logger.warning(f"Created missing 'keys' folder: {keys_path}")
@@ -44,6 +45,7 @@ class Query():
             device = device.strip()
             # could maybe rewrite this into SQL now that i know it... nah maybe not - 4/8/2026
             device_path: Path = keys_path / device
+            date_fmt: str = "%Y-%m-%dT%H:%M:%SZ"
 
             content: list[FileData] = []
             res: dict[str, Any] = utils.generate_response("success", status_code=200, content=content, message="Device found")
@@ -53,7 +55,7 @@ class Query():
 
                 device_file_data: FileData = {
                     "name": device,
-                    "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc),
+                    "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).strftime(date_fmt),
                     "size": stat.st_size,
                 }
 
@@ -79,15 +81,17 @@ class Query():
 
                     key_data: FileData = {
                         "name": key_path.name,
-                        "modified": datetime.fromtimestamp(key_stat.st_mtime, timezone.utc),
+                        "modified": datetime.fromtimestamp(key_stat.st_mtime, timezone.utc).strftime(date_fmt),
                         "size": stat.st_size,
                     } 
 
                     content.append(key_data)
             else:
-                self.logger.warning(f"Device '{device}' does not exist in entries")
+                self.logger.info(f"Queried device '{device}' does not have an entry")
                 res["status"] = "error"
                 res["message"] = f"Device {device} is not found"
+            
+            self.logger.debug(f"Response: {res}")
         
             return res, res["status_code"]
 
