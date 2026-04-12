@@ -142,12 +142,12 @@ func TestSendKeyPayloadIntegration(t *testing.T) {
 
 		dir, err := os.Getwd()
 		// needed for debugging an issue with github actions
-		fmt.Println("Debug current directory:", dir, err)
+		fmt.Println("Debug current directory:", dir, err, serialDir)
 
 		res, err := req.POSTData(testServerHost, "/api/fv", pl)
 		assert.Nil(t, err)
+		fmt.Println("Debug:", res)
 		assert.True(t, strings.EqualFold(res.Status, "success"))
-		fmt.Println("Debug:", res.Content)
 		assert.TrueAll(t,
 			strings.Contains(res.Content, "no key"),
 			strings.Contains(res.Content, testKey),
