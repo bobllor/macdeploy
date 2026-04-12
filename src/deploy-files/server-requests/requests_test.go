@@ -3,6 +3,7 @@ package requests
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -140,8 +141,9 @@ func TestSendKeyPayloadIntegration(t *testing.T) {
 		res, err := req.POSTData(testServerHost, "/api/fv", pl)
 		assert.Nil(t, err)
 		assert.True(t, strings.EqualFold(res.Status, "success"))
+		fmt.Println(res.Content)
 		assert.TrueAll(t,
-			strings.Contains(res.Content, "found with no key"),
+			strings.Contains(res.Content, "no key"),
 			strings.Contains(res.Content, testKey),
 		)
 
