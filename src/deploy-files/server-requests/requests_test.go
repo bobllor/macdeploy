@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -13,7 +14,20 @@ import (
 	"github.com/bobllor/macdeploy/src/deploy-files/logger"
 )
 
-var testSerial = "ABCDEFG"
+// testNoIntegrationSerial is a serial used only for non-integration testing.
+var testNoIntegrationSerial = "ABCDEFG"
+
+// NOTE: any tests that has "integration" in it means that the test server
+// must be started.
+//
+// due to the server being a python application, a test folder is created
+// when the test server is started. this can be accessed from the root
+// repository: 'testroot'. t.TempDir will not work.
+// The variables below are the default test variables used for integration.
+
+var testSerial = "SERIALTAG1"
+var testKey = "W9Z5-N3KT-Y7MP-L2RX-Q8VH-D4CB"
+var testServerHost = "https://127.0.0.1:5000"
 
 func TestGetQueryDataNormalNoServer(t *testing.T) {
 	mux := http.NewServeMux()
@@ -25,11 +39,11 @@ func TestGetQueryDataNormalNoServer(t *testing.T) {
 
 	t.Run("Normal With Device", func(t *testing.T) {
 
-		devQ, err := req.GetDeviceKeyInfo(serv.URL, testSerial)
+		devQ, err := req.GetDeviceKeyInfo(serv.URL, testNoIntegrationSerial)
 		assert.Nil(t, err)
 
 		assert.Equal(t, len(devQ.Content), 1)
-		assert.Equal(t, devQ.Content[0].Name, testSerial)
+		assert.Equal(t, devQ.Content[0].Name, testNoIntegrationSerial)
 	})
 
 	t.Run("Normal No Device", func(t *testing.T) {
@@ -61,11 +75,109 @@ func TestGetQueryDataFail(t *testing.T) {
 func TestGetQueryDataIntegration(t *testing.T) {
 	log := logger.NewTestLogger()
 	req := NewRequest(log)
-	serial := "SERIALTAG1"
+
+	dres, err := req.GetDeviceKeyInfo("https://127.0.0.1:5000", testSerial)
+	assert.Nil(t, err)
+	assert.NotEqual(t, len(dres.Content), 0)
+}
+
+func TestGetQueryDataNoDeviceIntegration(t *testing.T) {
+	log := logger.NewTestLogger()
+	req := NewRequest(log)
+	serial := "DoesnotExist"
 
 	dres, err := req.GetDeviceKeyInfo("https://127.0.0.1:5000", serial)
 	assert.Nil(t, err)
-	assert.NotEqual(t, len(dres.Content), 0)
+	assert.Equal(t, len(dres.Content), 0)
+	assert.Equal(t, strings.Contains(dres.Message, "not found"), true)
+}
+
+func TestSendKeyPayloadIntegration(t *testing.T) {
+	log := logger.NewTestLogger()
+	req := NewRequest(log)
+	root := getProjectRoot(t) + "/testroot/keys"
+
+	t.Run("New Device", func(t *testing.T) {
+		pl := NewFileVaultPayload(testKey)
+		serial := "SERIALTAG2"
+		pl.SetBody(serial)
+
+		res, err := req.POSTData(testServerHost, "/api/fv", pl)
+		assert.Nil(t, err)
+		assert.True(t, res.Status == "success")
+		assert.True(t, strings.Contains(res.Content, testKey))
+
+		_ = os.RemoveAll(root + "/" + serial)
+	})
+
+	t.Run("Replace Device With Existing Key", func(t *testing.T) {
+		pl := NewFileVaultPayload(testKey)
+		serial := "SERIALTAG2"
+		pl.SetBody(serial)
+
+		res, err := req.POSTData(testServerHost, "/api/fv", pl)
+		assert.Nil(t, err)
+		assert.True(t, res.Status == "success")
+
+		res, err = req.POSTData(testServerHost, "/api/fv", pl)
+		assert.Nil(t, err)
+		assert.True(t, res.Status == "success")
+		assert.True(t, strings.Contains(res.Content, "Replaced") || strings.Contains(res.Content, "replaced"))
+
+		_ = os.RemoveAll(root + "/" + serial)
+	})
+
+	t.Run("Replace Device With No Existing Key", func(t *testing.T) {
+		pl := NewFileVaultPayload(testKey)
+		serial := "SERIALTAG3"
+		pl.SetBody(serial)
+
+		serialDir := root + "/" + serial
+
+		err := os.Mkdir(serialDir, 0o777)
+		assert.Nil(t, err)
+
+		res, err := req.POSTData(testServerHost, "/api/fv", pl)
+		assert.Nil(t, err)
+		assert.True(t, strings.EqualFold(res.Status, "success"))
+		assert.TrueAll(t,
+			strings.Contains(res.Content, "found with no key"),
+			strings.Contains(res.Content, testKey),
+		)
+
+		_ = os.RemoveAll(serialDir)
+	})
+}
+
+func TestFormatPath(t *testing.T) {
+	urls := [][]string{
+		{"https://api:5000"},
+		{"https://api:5000", "/api/fv"},
+		{"http://api:5000"},
+		{"http://api:5000", "/api/fv/another/api/long/here"},
+		{"https://api:5000/api/fv"},
+		{"https://api:5000", "/api/fv", "/long/here"},
+	}
+
+	for _, url := range urls {
+		assert.Nil(t, ValidateUrl(url...))
+	}
+}
+
+func TestFormatPathError(t *testing.T) {
+	urls := [][]string{
+		{""},
+		{"https://api:5000", "/api/fv/"},
+		{"api:5000/api/fv"},
+		{"//fv/api/"},
+		{"fv/api/"},
+		{"12345"},
+		{},
+	}
+
+	for _, url := range urls {
+		assert.NotNil(t, ValidateUrl(url...))
+	}
 }
 
 // testQueryFunc is the handler used to test the Request.GetDeviceKeyInfo
@@ -80,7 +192,7 @@ func testQueryFunc(w http.ResponseWriter, r *http.Request) {
 		Message:    "Some message here",
 	}
 
-	if strings.EqualFold(device, testSerial) {
+	if strings.EqualFold(device, testNoIntegrationSerial) {
 		dq.Content = append(dq.Content,
 			DeviceFileData{
 				Name:     device,
@@ -100,4 +212,23 @@ func testQueryFunc(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+}
+
+// getProjectRoot retrieves the full path to the project repository.
+func getProjectRoot(t *testing.T) string {
+	dir, err := os.Getwd()
+	assert.Nil(t, err)
+	projectName := "MacDeploy"
+
+	newDir := []string{}
+
+	for d := range strings.SplitSeq(dir, "/") {
+		newDir = append(newDir, d)
+
+		if strings.EqualFold(d, projectName) {
+			break
+		}
+	}
+
+	return strings.Join(newDir, "/")
 }
