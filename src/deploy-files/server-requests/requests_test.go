@@ -27,6 +27,7 @@ var testNoIntegrationSerial = "ABCDEFG"
 // The variables below are the default test variables used for integration.
 
 var testSerial = "SERIALTAG1"
+var testSerial2nd = "SERIALTAG3"
 var testKey = "W9Z5-N3KT-Y7MP-L2RX-Q8VH-D4CB"
 var testServerHost = "https://127.0.0.1:5000"
 
@@ -132,17 +133,14 @@ func TestSendKeyPayloadIntegration(t *testing.T) {
 
 	t.Run("Replace Device With No Existing Key", func(t *testing.T) {
 		pl := NewFileVaultPayload(testKey)
-		serial := "SERIALTAG3"
-		pl.SetBody(serial)
-
-		serialDir := root + "/" + serial
-
-		err := os.MkdirAll(serialDir, 0o777)
-		assert.Nil(t, err)
+		// this tag exists by default with the test server creation
+		// this is done due to a permission issue with golang creation + docker
+		// in github actions
+		pl.SetBody(testSerial2nd)
 
 		dir, err := os.Getwd()
 		// needed for debugging an issue with github actions
-		fmt.Println("Debug current directory:", dir, err, serialDir)
+		fmt.Println("Debug current directory:", dir, err)
 
 		res, err := req.POSTData(testServerHost, "/api/fv", pl)
 		assert.Nil(t, err)
@@ -153,6 +151,7 @@ func TestSendKeyPayloadIntegration(t *testing.T) {
 			strings.Contains(res.Content, testKey),
 		)
 
+		serialDir := root + "/" + testSerial2nd
 		_ = os.RemoveAll(serialDir)
 	})
 }
