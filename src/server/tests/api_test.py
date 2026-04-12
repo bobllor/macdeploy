@@ -13,28 +13,29 @@ import system.utils as utils
 import json
 
 def test_add_key(tmp_path: Path, client: FlaskClient):
-    serial: str = "SERIAL1234"
-    key: str = "1235-6789-1024-ABC0"
+    serials: list[str] = ["SERIAL1234", "SERIAL3456"]
+    keys: list[str] = ["1235-6789-1024-ABC0-RAND-OMH4", "FDS3-231S-ZZXC-FDSA-LOL1-WHAT"]
 
-    key_info: KeyInfo = {
-        "key": key,
-        "serialTag": serial,
-    } 
+    for i, serial in enumerate(serials):
+        key: str = keys[i]
+        key_info: KeyInfo = {
+            "key": key,
+            "serialTag": serial,
+        } 
 
-    response: TestResponse = client.post("/api/fv", json=key_info)
-    if response.status_code != 200:
-        raise AssertionError(f"Got {response.status_code}: {response.data.decode()}")
+        response: TestResponse = client.post("/api/fv", json=key_info)
+        assert response.status_code == 200
 
-    files: list[str] = utils.get_dir_list(tmp_path)
-    for file in files:
-        path: Path = Path(file)
+        files: list[str] = utils.get_dir_list(tmp_path)
+        for file in files:
+            path: Path = Path(file)
 
-        if path.name == key:
-            assert True
+            if path.name == key:
+                assert True
 
 def test_add_existing_key(tmp_path: Path, client: FlaskClient):
     serial: str = "SERIAL1234"
-    key: str = "1235-6789-1024-ABC0"
+    key: str = "1235-6789-1024-ABC0-FILL-INWO"
 
     key_info: KeyInfo = {
         "key": key,
@@ -74,14 +75,13 @@ def test_add_key_fail(client: FlaskClient):
     } 
 
     response: TestResponse = client.post("/api/fv", json=key_info)
-    if response.status_code == 200:
-        raise AssertionError(f"Got {response.status_code}: {response.data.decode()}")
+    assert response.status_code > 300
 
     content: dict[str, Any] = json.loads(response.data)    
 
     res_msg: str = content["content"]
     status: str = content["status"]
-    expected_msg: str = "missing key in response"
+    expected_msg: str = "missing key(s)"
 
     assert status == "error" and expected_msg in res_msg.lower()
 
@@ -96,7 +96,7 @@ def test_add_log(tmp_path: Path, client: FlaskClient):
     }
 
     res: TestResponse = client.post(api, json=log_info)
-
+    assert res.status_code < 300
     files: list[str] = utils.get_dir_list(tmp_path / "logs")
 
     log_file: Path = None
@@ -124,15 +124,13 @@ def test_add_log_fail(tmp_path: Path, client: FlaskClient):
 
     res: TestResponse = client.post(api, json=log_info)
 
-    if res.status_code == 200:
-        raise AssertionError(f"Expected adding the log to fail: {res.data}")
+    assert res.status_code > 300
     
     content: dict[str, Any] = json.loads(res.data)
     msg: str = content["content"]
     status: str = content["status"]
-    expected_msg: str = "missing key in response"
 
-    assert expected_msg == msg.lower() and status == "error"
+    assert "missing key(s)" in msg.lower() and status == "error"
 
 def test_create_zip(tmp_path: Path, client: FlaskClient):
     response: TestResponse = client.get(f"/api/packages/{ZIP_NAME}")
@@ -202,3 +200,41 @@ def test_get_zip(tmp_path: Path, client: FlaskClient):
     zip_file: ZipFile = ZipFile(tmp_path / test_zip_name) 
 
     assert len(zip_file.filelist) == zip_size
+
+def test_query_device(tmp_path: Path, client: FlaskClient):
+    key_path: Path = tmp_path / "keys"
+    device_name: str = "ABCD3TNGHZ23"
+    device_path: Path = key_path / device_name
+
+    (device_path / "123A-234S-3WQ1-12FF-12Z4-ZX3D").mkdir(parents=True, exist_ok=True)
+
+    res: TestResponse = client.get(f"/api/devices/{device_name}")
+
+    assert res.status_code < 300
+    assert len(res.json["content"]) == 2
+
+def test_multiple_files_query_device(tmp_path: Path, client: FlaskClient):
+    key_path: Path = tmp_path / "keys"
+    device_name: str = "ABCD3TNGHZ23"
+    device_path: Path = key_path / device_name
+    key: str = "W9Z5-N3KT-Y7MP-L2RX-Q8VH-D4CB"
+
+    device_path.mkdir(parents=True, exist_ok=True)
+
+    files: list[str] = [
+        "test1.txt",
+        "2344-SSZX",
+        "somelog.log",
+        key,
+    ]
+
+    for f in files:
+        file: Path = device_path / f
+
+        file.touch()
+    
+    res: TestResponse = client.get(f"/api/devices/{device_name}")
+
+    assert res.status_code < 300
+    assert len(res.json["content"]) == 2
+    assert res.json["content"][1]["name"] == key

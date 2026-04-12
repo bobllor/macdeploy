@@ -1,6 +1,6 @@
 #/usr/bin/env bash
 
-# Get the value of an argument equalt to the variable name of the  configuration file at 
+# Get the value of an argument equal to the variable name of the configuration file at 
 # src/server/configuration.py.
 # Used to prevent hard coded strings in scripts by using configuration.py as the source of truth.
 #

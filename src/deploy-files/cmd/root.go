@@ -34,14 +34,20 @@ type RootData struct {
 	// Debug enables DEBUG level and above logging to stdout.
 	Debug bool
 
-	// NoSend skips sending the log file to the server.
-	NoSend bool
+	// SkipLog skips sending the log file to the server.
+	SkipLog bool
 
 	// SkipLocal skips local account creation.
 	SkipLocal bool
 
 	// CreateLocal enables the local account creation.
 	CreateLocal bool
+
+	// SkipFileVault skips the FileVault process.
+	SkipFileVault bool
+
+	// ForceFileVault is used to force a FileVault process even if an existing key is found.
+	ForceFileVault bool
 
 	// ExcludePackages is a slice of packages to exclude the files defined in the
 	// config file.
@@ -73,6 +79,9 @@ type RootData struct {
 	// It flags during the server communication and searching for script files.
 	errors errorFlags
 
+	// context is used for holding global flags for the program.
+	context contextFlags
+
 	// data is a slice of paths of the script files, if found.
 	data varData
 
@@ -89,6 +98,10 @@ type RootData struct {
 type errorFlags struct {
 	ServerFailed  bool // Indicates if sending the files to the server has failed.
 	ScriptsFailed bool // Indicates if searching for script files (.sh) has failed.
+}
+
+type contextFlags struct {
+	SkipFileVaultPayload bool // SkipFileVaultPayload skips the payload process for FileVault if true.
 }
 
 type dependencies struct {
@@ -138,6 +151,7 @@ var rootCmd = &cobra.Command{
 		fmt.Printf("Starting deployment for %s\n", root.metadata.SerialTag)
 
 		root.log.Debugf("Metadata data: %s", root.metadata.ToString())
+		root.log.Debugf("Flags: %s", root.FlagsToString())
 
 		err := root.config.Admin.InitializeSudo()
 		if err != nil {
@@ -212,18 +226,31 @@ var rootCmd = &cobra.Command{
 			root.log.Warn(fmt.Sprintf("Failed to authenticate sudo: %v", err))
 		}
 
+		request := requests.NewRequest(root.log)
 		// payload for sending to the server
 		// initialized with an empty key, Key gets updated below.
 		// used for sending the log over to the server.
 		currDate := time.Now().Format("2006-01-02")
 		serverLogFile := fmt.Sprintf("%s.%s.log", root.metadata.SerialTag, currDate)
 		logPayload := requests.NewLogPayload(serverLogFile)
-		filevaultPayload := requests.NewFileVaultPayload("")
-		if root.config.FileVault {
-			fvKey := root.startFileVault(root.dep.filevault)
 
-			filevaultPayload.Key = fvKey
-			filevaultPayload.SetBody(root.metadata.SerialTag)
+		if !root.config.FileVault || !root.SkipFileVault {
+			filevaultPayload := requests.NewFileVaultPayload("")
+			fvKey := root.startFileVault(root.dep.filevault, request)
+
+			root.log.Debugf("FileVault payload flag: %v", root.context.SkipFileVaultPayload)
+			if !root.context.SkipFileVaultPayload {
+				filevaultPayload.Key = fvKey
+				filevaultPayload.SetBody(root.metadata.SerialTag)
+
+				err := root.startRequest(filevaultPayload, request, root.config.ServerHost, "/api/fv")
+				if err != nil {
+					root.log.Warnf("Failed to send payload with FileVault key: %v", err)
+					root.warnFileVaultError(filevaultPayload)
+				}
+			} else {
+				root.log.Info("Skipped FileVault payload request")
+			}
 		}
 
 		// if admin is applied policies, it must be after all the sudo commands.
@@ -235,55 +262,11 @@ var rootCmd = &cobra.Command{
 			root.applyPasswordPolicy(policyString, root.config.Admin.Username)
 		}
 
-		request := requests.NewRequest(root.log)
-
-		if root.config.FileVault {
-			if filevaultPayload.Key != "" {
-				serverFailWarning := []string{
-					"WARNING",
-					"The FileVault key failed to send to the server",
-					"The deployment can be restarted or manual activation may be required",
-					"The key must be saved: %s", filevaultPayload.Key,
-				}
-				fvServerFailMsg := utils.FormatBannerString(serverFailWarning, paddingMsg)
-
-				root.log.Info("Sending FileVault key to the server")
-
-				err = root.startRequest(filevaultPayload, request, "/api/fv")
-				if err != nil {
-					root.log.Criticalf("Failed to send to data to server: %v", err)
-
-					fmt.Println("\n" + fvServerFailMsg)
-
-					root.errors.ServerFailed = true
-				}
-			} else {
-				fvFailStrings := []string{
-					"WARNING",
-					"FileVault failed to activate and the key failed to generate",
-					"The deployment can be restarted or manual activation may be required",
-				}
-				fvFailMsg := utils.FormatBannerString(fvFailStrings, paddingMsg)
-
-				fvStatus, err := root.dep.filevault.Status()
-				if err != nil {
-					root.log.Warn(fmt.Sprintf("Failed to check FileVault status %v", err))
-
-					fmt.Println("\n" + fvFailMsg)
-				} else {
-					if !fvStatus {
-						root.log.Warn("FileVault key failed to generate")
-
-						fmt.Println("\n" + fvFailMsg)
-					}
-				}
-			}
-		}
-		if !root.NoSend {
+		if !root.SkipLog {
 			root.log.Info("Sending log file to the server")
 
 			logPayload.Body = root.log.String()
-			err = root.startRequest(logPayload, request, "/api/log")
+			err = root.startRequest(logPayload, request, root.config.ServerHost, "/api/log")
 			if err != nil {
 				root.log.Critical(fmt.Sprintf("Failed to send to data to server: %v", err))
 			}
@@ -366,7 +349,7 @@ func InitializeRoot() {
 	rootCmd.Flags().StringArrayVar(&root.IncludePackages,
 		"include", []string{}, "Include a package to install")
 	rootCmd.Flags().StringVar(
-		&root.PlistPath, "pwlist", "", "Apply password policies with a plist")
+		&root.PlistPath, "plist", "", "Apply password policies with a plist")
 
 	rootCmd.Flags().BoolVarP(
 		&root.AdminStatus, "admin", "a", false, "Grants admin to local users")
@@ -377,11 +360,17 @@ func InitializeRoot() {
 	rootCmd.Flags().BoolVar(
 		&root.Debug, "debug", false, "Displays the debug output to the terminal")
 	rootCmd.Flags().BoolVar(
-		&root.NoSend, "nosend", false, "Do not send the log file to the server")
-	rootCmd.Flags().BoolVarP(
-		&root.SkipLocal, "skiplocal", "s", false, "Skip the local user creation")
+		&root.SkipLog, "skiplog", false, "Skip sending the logs to the server")
+	rootCmd.Flags().BoolVar(
+		&root.SkipLocal, "skiplocal", false, "Skip the local user creation")
 	rootCmd.Flags().BoolVarP(
 		&root.CreateLocal, "createlocal", "c", false, "Create a local user")
+	rootCmd.Flags().BoolVar(
+		&root.SkipFileVault, "skipfilevault", false, "Skip the FileVault process",
+	)
+	rootCmd.Flags().BoolVar(
+		&root.ForceFileVault, "forcefilevault", false, "Forces the FileVault process and overwrites existing keys",
+	)
 
 	rootCmd.MarkFlagsMutuallyExclusive("skiplocal", "createlocal")
 	rootCmd.MarkFlagsMutuallyExclusive("debug", "verbose")
@@ -450,6 +439,7 @@ func (r *RootData) postAccountCreation(accountName string, accountPassword strin
 			"WARNING",
 			"The secure token has failed to apply to the user",
 			"The deployment can be restarted or manual user creation may be required",
+			"If the key has been stored or generated then this can be ignored",
 		}
 
 		secureErrorMsg := utils.FormatBannerString(userSecureTokenString, paddingMsg)
@@ -516,15 +506,83 @@ func (r *RootData) startPackageInstallation(handler *core.FileHandler, installDi
 }
 
 // startFileVault begins the FileVault process and returns the generated key.
-func (r *RootData) startFileVault(filevault *core.FileVault) string {
+func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.Request) string {
 	fmt.Println("Starting FileVault process")
 	fvKey := ""
+	// flag used to reset filevault depending on the query results + conditions
+	resetFv := false
 
 	// doesn't matter if it fails, an attempt will always occur.
 	fvStatus, err := filevault.Status()
 	if err != nil {
 		r.log.Warn(fmt.Sprintf("Failed to check FileVault status: %v\n", err))
-		fmt.Println("Unable to check FileVault status, continuing")
+		fmt.Println("Unable to check FileVault status")
+	}
+
+	// serial tag is set during initialization, UNKNOWN means that its on a non-mac device.
+	// this is used to handle edge cases where filevault is already enabled,
+	// regardless of whether it succeeds or not filevault will always be attempted.
+	if r.metadata.SerialTag != "UNKNOWN" {
+		qRes, err := request.GetDeviceKeyInfo(r.config.ServerHost, r.metadata.SerialTag)
+		if err != nil {
+			r.log.Warnf("Failed to query device information: %v | Response: %v", err, qRes)
+		} else {
+			// res has the filevault key, do not log it
+			r.log.Debugf("Query status code: %d | Query message: %s", qRes.StatusCode, qRes.Message)
+
+			// if len(qRes.Content) == 0/1, then always attempt FileVault process.
+			if len(qRes.Content) == 0 || len(qRes.Content) == 1 {
+				r.log.Infof("No FileVault entry found for %s", r.metadata.SerialTag)
+				r.log.Debugf("Query response: %v", qRes.Content)
+
+				// if the server has no entries but the filevault is enabled, then
+				// reset to ensure filevault is ran after
+				// if fvStatus is already false then this does nothing.
+				if fvStatus {
+					fmt.Println("FileVault is enabled but no key found in the server")
+					fmt.Println("Disabling FileVault...")
+					resetFv = true
+				}
+			} else {
+				// len(qRes.Content) == 2, a filevault key for the device already exists
+				// if the modified time is >= 1.5 hours, then reset filevault and start the process.
+				keyData := qRes.Content[len(qRes.Content)-1]
+				r.log.Infof("Existing key found for %s", r.metadata.SerialTag)
+				r.log.Debugf("Existing key modified date: %v", keyData.Modified)
+				utcExistTime := keyData.Modified.UTC()
+				now := time.Now().UTC()
+
+				calcTime := now.Sub(utcExistTime)
+
+				// if the file time in the server is greater than 1.5 hours, then remove the entry
+				// and start a new filevault process.
+				// this ensures that reruns are still possible, but later on it can be overwritten.
+				if calcTime.Hours() >= 1.5 {
+					r.log.Infof("Modified date condition met: %f is greater than limit of 1.5 hours", calcTime.Hours())
+					fmt.Println("Removing existing stored FileVault key (time limit is >= than 1.5 hours)")
+					resetFv = true
+				} else {
+					if !r.ForceFileVault {
+						fmt.Println("Existing key found but does not meet conditions for removal (time limit is <= 1.5 hours)")
+						fmt.Println("If this is not intended then run the binary with the flag --forcefilevault")
+					} else {
+						r.log.Info("Force FileVault overwrite is true")
+					}
+				}
+			}
+
+		}
+	}
+
+	if resetFv || r.ForceFileVault {
+		fmt.Println("Disabling FileVault...")
+		// only log error, regardless of what happens always attempt if resetFv is true.
+		_, err := filevault.Disable(r.config.Admin.Username, r.config.Admin.Password)
+		if err != nil {
+			fmt.Println("Failed to disable FileVault")
+			root.log.Warnf("Failed to disable FileVault: %v", err)
+		}
+		fvStatus = false
 	}
 
 	if !fvStatus {
@@ -534,6 +592,10 @@ func (r *RootData) startFileVault(filevault *core.FileVault) string {
 		if fvKey != "" {
 			fmt.Printf("Generated key %s\n", fvKey)
 		}
+	} else {
+		// if everything above did not make fvStatus false, then the fvKey is empty
+		// by default and this will skip the payload process.
+		root.context.SkipFileVaultPayload = true
 	}
 
 	return fvKey
@@ -559,10 +621,13 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 	}
 }
 
-// startRequest sends the logs to the server.
-func (r *RootData) startRequest(payload requests.Payload, request *requests.Request, endpoint string) error {
-	fmt.Println("Creating payload request to send to server")
-	host := r.config.ServerHost + endpoint
+// startRequest sends the payload to the server.
+//
+// The host is the root connection of the server.
+//
+// The endpoint is the endpoint used to access the API of the server.
+func (r *RootData) startRequest(payload requests.Payload, request *requests.Request, host string, endpoint string) error {
+	fmt.Println("Starting payload request")
 
 	serverStatus, err := request.VerifyConnection(r.config.ServerHost)
 	if err != nil {
@@ -572,7 +637,7 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 	}
 
 	if serverStatus {
-		res, err := request.POSTData(host, payload)
+		res, err := request.POSTData(host, endpoint, payload)
 		if err != nil {
 			return err
 		}
@@ -651,6 +716,42 @@ func (r *RootData) executeScripts(executingScripts []string, scriptPaths []strin
 		if out != "" {
 			r.log.Info(scriptOutMsg)
 			fmt.Println(scriptOutMsg)
+		}
+	}
+}
+
+// warnFileVaultError is used to warn the user on the terminal that FileVault has failed.
+func (r *RootData) warnFileVaultError(filevaultPayload *requests.FileVaultPayload) {
+	if filevaultPayload.Key != "" {
+		serverFailWarning := []string{
+			"WARNING",
+			"The FileVault key failed to send to the server",
+			"The deployment can be restarted or manual activation may be required",
+			"The key must be saved: %s", filevaultPayload.Key,
+		}
+		fvServerFailMsg := utils.FormatBannerString(serverFailWarning, paddingMsg)
+
+		fmt.Println("\n" + fvServerFailMsg)
+		root.errors.ServerFailed = true
+	} else {
+		fvFailStrings := []string{
+			"WARNING",
+			"FileVault failed to activate and the key failed to generate",
+			"The deployment can be restarted or manual activation may be required",
+		}
+		fvFailMsg := utils.FormatBannerString(fvFailStrings, paddingMsg)
+
+		fvStatus, err := root.dep.filevault.Status()
+		if err != nil {
+			root.log.Warn(fmt.Sprintf("Failed to check FileVault status %v", err))
+
+			fmt.Println("\n" + fvFailMsg)
+		} else {
+			if !fvStatus {
+				root.log.Warn("FileVault key failed to generate")
+
+				fmt.Println("\n" + fvFailMsg)
+			}
 		}
 	}
 }
@@ -787,4 +888,29 @@ func (r *RootData) initialize(isSubCommand bool) {
 			r.executeScripts(root.config.Scripts.Pre, root.data.scriptFiles)
 		}
 	}
+}
+
+// FlagsToString returns the string representation of
+// the flags used with the command.
+func (r *RootData) FlagsToString() string {
+	slice := []string{}
+
+	format := func(flag string, value any) string {
+		return fmt.Sprintf("%s='%v'", flag, value)
+	}
+
+	slice = append(slice, format("exclude", r.ExcludePackages))
+	slice = append(slice, format("include", r.IncludePackages))
+	slice = append(slice, format("plist", r.PlistPath))
+	slice = append(slice, format("admin", r.AdminStatus))
+	slice = append(slice, format("cleanup", r.Cleanup))
+	slice = append(slice, format("verbose", r.Verbose))
+	slice = append(slice, format("debug", r.Debug))
+	slice = append(slice, format("skiplog", r.SkipLog))
+	slice = append(slice, format("skiplocal", r.SkipLocal))
+	slice = append(slice, format("skipfilevault", r.SkipFileVault))
+	slice = append(slice, format("createlocal", r.CreateLocal))
+	slice = append(slice, format("forcefilevault", r.ForceFileVault))
+
+	return strings.Join(slice, "|")
 }

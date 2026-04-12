@@ -1,0 +1,9 @@
+services:
+  fs-server:
+    volumes:
+      - ./testroot/logs:/macdeploy/logs
+      - ./testroot/keys:/macdeploy/keys
+      - ./testroot/zip-build:/macdeploy/zip-build
+      - ./testroot/dist:/macdeploy/dist
+    environment:
+      - ROOT_FLASK_DIR=testroot

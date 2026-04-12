@@ -23,8 +23,20 @@ jobs:
           go-version: '^1.24'
           check-latest: true
           cache: true
+      - name: Setup Docker container and files
+        run: make build
+      - name: Starting test Docker container instance
+        run: make start-test
+      - name: Docker debugging
+        run: |
+          docker ps -a
+          sleep 3
+          docker logs python-fs
       - name: Build and test Go
         run: |
           cp "sample-config.yml" "./src/config/config.yml"
           go mod download
           go test ./...
+      - name: Debug Python server logs
+        if: always()
+        run: find ./testroot/logs/server-logs/ -name "*.log" | xargs cat

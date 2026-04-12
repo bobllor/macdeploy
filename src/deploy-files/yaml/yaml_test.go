@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
+	"github.com/bobllor/assert"
 	"github.com/bobllor/macdeploy/src/tests"
 )
 
 // getConfig returns a test Config struct with all fields
 // filled out with default test values.
-func getConfig() *yaml.Config {
-	accounts := map[string]yaml.UserInfo{
+func getConfig() *Config {
+	accounts := map[string]UserInfo{
 		"account_one": {
 			Username:    "example.one",
 			Password:    "ExamplePassword",
@@ -34,18 +34,18 @@ func getConfig() *yaml.Config {
 		"/Library/Application Support",
 	}
 
-	scripts := yaml.ScriptTypes{
+	scripts := ScriptTypes{
 		Pre:  []string{"run-before-process.sh"},
 		Mid:  []string{"run-during-process.sh"},
 		Post: []string{"run-after-process.sh"},
 	}
 
-	admin := yaml.UserInfo{
+	admin := UserInfo{
 		Username: "admin",
 		Password: "AdminPassword",
 	}
 
-	policy := yaml.Policies{
+	policy := Policies{
 		ChangeOnLogin:  true,
 		RequireAlpha:   true,
 		ReusePassword:  3,
@@ -54,7 +54,7 @@ func getConfig() *yaml.Config {
 		MaxChars:       15,
 	}
 
-	config := &yaml.Config{
+	config := &Config{
 		Accounts:           accounts,
 		Packages:           packages,
 		InstallDirectories: installDirectories,
@@ -76,12 +76,12 @@ func getConfig() *yaml.Config {
 func getEditableConfig() (map[string]any, error) {
 	config := getConfig()
 
-	buf, err := yaml.Marshal(config)
+	buf, err := Marshal(config)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := yaml.Unmarshal(buf)
+	data, err := Unmarshal(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -92,17 +92,17 @@ func getEditableConfig() (map[string]any, error) {
 func TestReadConfig(t *testing.T) {
 	config := getConfig()
 	// converting back into bytes for reading
-	buf, err := yaml.Marshal(config)
+	buf, err := Marshal(config)
 	if err != nil {
 		t.Fatalf("failed to marshal config: %v", err)
 	}
 
-	config, err = yaml.NewConfig(buf)
+	config, err = NewConfig(buf)
 	if err != nil {
 		t.Fatalf("failed to read config buffer: %v", err)
 	}
 
-	err = yaml.Validate(config)
+	err = Validate(config)
 	if err != nil {
 		t.Fatalf("failed to validate config: %v", err)
 	}
@@ -114,21 +114,21 @@ func TestDefaultConfig(t *testing.T) {
 
 	delete(fake, "cleanup")
 
-	buf, err := yaml.Marshal(fake)
+	buf, err := Marshal(fake)
 	tests.Checkf(t, err != nil, "failed to marshal config: %v", err)
-	config, err := yaml.NewConfig(buf)
+	config, err := NewConfig(buf)
 	tests.Checkf(t, err != nil, "failed to create new Config: %v", err)
 
 	tests.Checkf(t, config.Cleanup != "warn", "default value for 'cleanup' is not 'none', got %s", config.Cleanup)
 
-	err = yaml.Validate(config)
+	err = Validate(config)
 	tests.Checkf(t, err != nil, "failed to validate 'cleanup': %v", err)
 }
 
 func TestValidateConfigNormal(t *testing.T) {
 	config := getConfig()
 
-	err := yaml.Validate(config)
+	err := Validate(config)
 	tests.Checkf(t, err != nil, "failed to validate config: %v", err)
 }
 
@@ -138,12 +138,12 @@ func TestValidateFailWrongCleanup(t *testing.T) {
 
 	fake["cleanup"] = "wrong value"
 
-	buf, err := yaml.Marshal(fake)
+	buf, err := Marshal(fake)
 	tests.Checkf(t, err != nil, "failed to marshal config: %v", err)
-	config, err := yaml.NewConfig(buf)
+	config, err := NewConfig(buf)
 	tests.Checkf(t, err != nil, "failed to create new Config: %v", err)
 
-	err = yaml.Validate(config)
+	err = Validate(config)
 	tests.Checkf(t, err == nil, "expected error from validation with key 'Cleanup': %v", fake["cleanup"])
 }
 
@@ -153,12 +153,12 @@ func TestValidateConfigFailIncorrectServerHost(t *testing.T) {
 
 	fake["server_host"] = 123
 
-	buf, err := yaml.Marshal(fake)
+	buf, err := Marshal(fake)
 	tests.Checkf(t, err != nil, "failed to marshal config: %v", err)
-	config, err := yaml.NewConfig(buf)
+	config, err := NewConfig(buf)
 	tests.Checkf(t, err != nil, "failed to create new Config: %v", err)
 
-	err = yaml.Validate(config)
+	err = Validate(config)
 	tests.Checkf(t, err == nil, "expected error from validation with key 'ServerHost': %v", fake["server_host"])
 }
 
@@ -170,12 +170,12 @@ func TestValidateConfigFailMissingServerHost(t *testing.T) {
 
 	delete(fake, "server_host")
 
-	buf, err := yaml.Marshal(fake)
+	buf, err := Marshal(fake)
 	if err != nil {
 		t.Fatalf("failed to marshal config: %v", err)
 	}
 
-	config, err := yaml.NewConfig(buf)
+	config, err := NewConfig(buf)
 	if err != nil {
 		t.Fatalf("failed to create new Config: %v", err)
 	}
@@ -184,7 +184,7 @@ func TestValidateConfigFailMissingServerHost(t *testing.T) {
 		t.Fatalf("expected 'ServerHost' to be empty from config, failed to delete: %s", config.ServerHost)
 	}
 
-	err = yaml.Validate(config)
+	err = Validate(config)
 
 	if err == nil {
 		t.Fatalf("expected error from validation with key 'ServerHost': %v", fake["server_host"])
@@ -200,10 +200,10 @@ func TestDefaultValue(t *testing.T) {
 
 	delete(fake["policies"].(map[string]any), key)
 
-	buf, err := yaml.Marshal(fake)
+	buf, err := Marshal(fake)
 	tests.Fatal(t, err, fmt.Sprintf("failed to marshal fake config: %v", err))
 
-	config, err := yaml.NewConfig(buf)
+	config, err := NewConfig(buf)
 	tests.Fatal(t, err, fmt.Sprintf("failed to unmarshal YAML config: %v", err))
 
 	if config.Policy.RequireNumeric == baseValue {
@@ -254,4 +254,13 @@ func TestBuildPolicyCommand(t *testing.T) {
 	}
 
 	fmt.Println(config.Cleanup)
+}
+
+func TestFormatUrlWithSlash(t *testing.T) {
+	baseUrl := "https://testing.com"
+	url := baseUrl + "/////"
+
+	newUrl := formatUrl(url)
+
+	assert.Equal(t, newUrl, baseUrl)
 }

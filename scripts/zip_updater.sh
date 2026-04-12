@@ -3,6 +3,7 @@
 # Accesses the endpoint that triggers the ZIP update API.
 # This should only be used by the container.
 
+# this requires the docker container
 cd /macdeploy/src/server
 log="/tmp/cronner.log"
 touch $log

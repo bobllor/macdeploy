@@ -103,6 +103,32 @@ func NewLogger(printer Printer, logLevel int) *Logger {
 	return &logger
 }
 
+// NewTestLogger creates a new Logger with preconfigured data
+// for testing.
+func NewTestLogger() *Logger {
+	buf := make([]byte, 0)
+	buffer := bytes.NewBuffer(buf)
+
+	printer := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	bufLogger := log.New(buffer, "", log.Ldate|log.Ltime)
+
+	logger := Logger{
+		log: printer,
+		prefix: Prefix{
+			debug:    "[DEBUG]",
+			info:     "[INFO]",
+			warn:     "[WARN]",
+			critical: "[CRITICAL]",
+			fatal:    "[FATAL]",
+		},
+		logLevel:  Lsilent,
+		bufWriter: bufLogger,
+		buf:       buffer,
+	}
+
+	return &logger
+}
+
 // SetLogLevel sets the log level for outputting to the stream.
 //
 // The logging level has no effect on the actual logging.

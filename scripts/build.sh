@@ -40,10 +40,10 @@ zip_dir_var="ZIP_DIR_NAME"
 zip_dir=$(filename "$zip_dir_var")
 varcheck "$zip_dir" "$zip_dir_var" || exit 1
 
-mkdir -p $keys_dir
-mkdir -p $logs_dir
-mkdir -p $dist_dir
-mkdir -p $zip_dir
+dirs=("$keys_dir" "$logs_dir" "$dist_dir" "$zip_dir")
+for dir in "${dirs[@]}"; do
+    mkdir -p "$dir"
+done
 
 if [[ $zip == true ]]; then
     config=$(ls -t | grep -Ei "^config\.(yaml|yml)$" | head -1)
@@ -62,3 +62,5 @@ fi
 
 docker compose down -v
 docker compose build && docker compose create
+
+echo "Complete! To start the server: ./scripts/start.sh or make start (if applicable)"

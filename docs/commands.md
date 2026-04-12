@@ -1,8 +1,9 @@
 ## About
 
-The binary used to start the deployment process has numerous flags and supports two sub-commands:
+The binary used to start the deployment process has numerous flags and supports three sub-commands:
 1. `user`: Creates a local user on the device.
 2. `install`: Installs a package found in the `dist` folder.
+3. `filevault`: FileVault related operations.
 
 Running `macdeploy -h`, `macdeploy install -h`, or `macdeploy user -h`, will provide information on the flags
 and how to use it found here.
@@ -12,15 +13,17 @@ and how to use it found here.
 | Options | Description |
 | ---- | ---- |
 | `--admin`, `-a` | Gives admin to a created user. If `ignore_admin` is true in the YAML, this is ignored. |
-| `--skiplocal`, `-s` | Skips the creation of the local user account, if configured in the YAML. |
+| `--skiplocal` | Skips the creation of the local user account, if configured in the YAML. |
 | `--createlocal`, `-c` | Enables the local user account creation process. Skips YAML account creation if true. |
 | `--cleanup` | Removes deployment files upon successful completion. |
 | `--verbose`, `-v` | Output log levels INFO or above to the terminal. |
 | `--debug` | Include debug logging to the terminal. |
-| `--nosend` | Prevents the log from being sent to the server. |
-| `--pwlist "/path/to/plist"` | Apply password policies using a plist path. |
-| `--exclude "<file>"` | Excludes a package from installation. |
-| `--include "<file>,<installed_file_1>,<installed_file_2>..."` | Include a package to install. |
+| `--skipsend` | Prevents the log from being sent to the server. |
+| `--skipfilevault` | Skips the FileVault process. |
+| `--plist "/path/to/plist"` | Apply password policies using a plist path. |
+| `--forcefilevault` | Forces the FileVault process to overwrite existing keys with no warnings. |
+| `--exclude "<file>"` | Excludes a package defined in the YAML from installing. |
+| `--include "<file>[,<installed_file_1>,<installed_file_2>...]"` | Include a package to install. |
 
 The `--include` flag value is expected to be a string or a CSV string. The command will do
 different things depending on which style is used. This can be used multiple times
@@ -93,3 +96,30 @@ It *does not support* installation file name conditions, it will *always attempt
 | `--debug` | Enables debug logging |
 | `-v`, `--verbose` | Enables info logging |
 | `--mountdmg` | Mounts and extracts the contents of DMG files |
+
+## FileVault Operations
+
+`macdeploy filevault <command>` is used for FileVault related operations on a MacBook device.
+These are the available commands for the operation:
+- `disable`: Disables FileVault
+- `enable`: Enable FileVault
+- `list`: Lists the users that are added to FileVault (users who can unlock the file disk)
+- `status`: Checks the status of FileVault
+
+The two commands `disable` and `enable` both have two flags that allow for quicker automation:
+1. `--username`/`-u`: The admin username. If left blank, it will assume that the current 
+logged in user is admin with `whoami`.
+2. `--password`/`-p`: The admin password. It left blank, it will use a hidden input prompt with
+confirmation. It is recommended this to be left blank.
+
+> IMPORTANT
+>
+> Operations regarding FileVault requires `sudo` permission, regardless of if its a status check.
+> Enabling and disabling FileVault does require an admin account in order to perform.
+
+### `filevault` flags
+
+| Options | Description |
+| ----- | ----- |
+| `--debug` | Enables debug logging |
+| `-v`, `--verbose` | Enables info logging |

@@ -15,7 +15,10 @@ require (
 	golang.org/x/term v0.41.0 // direct
 )
 
-require github.com/go-playground/validator/v10 v10.30.1
+require (
+	github.com/bobllor/assert v1.2.0
+	github.com/go-playground/validator/v10 v10.30.1
+)
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect

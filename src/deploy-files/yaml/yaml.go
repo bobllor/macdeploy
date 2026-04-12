@@ -93,6 +93,8 @@ func NewConfig(data []byte) (*Config, error) {
 		return nil, err
 	}
 
+	config.ServerHost = formatUrl(config.ServerHost)
+
 	return &config, nil
 }
 
@@ -274,4 +276,15 @@ func (u *UserInfo) ResetSudo() error {
 	}
 
 	return nil
+}
+
+// formatUrl formats a given url by dropping trailing slashes.
+// This is only used for formatting for future use in the program,
+// c.Validate already validates if it is a valid URL.
+func formatUrl(url string) string {
+	for strings.HasSuffix(url, "/") {
+		url = url[:len(url)-1]
+	}
+
+	return url
 }

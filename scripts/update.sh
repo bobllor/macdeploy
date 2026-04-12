@@ -7,6 +7,6 @@ set -e
 git fetch origin
 git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
 
-bash build.sh -z
+bash ./scripts/build.sh -z
 
 docker compose up -d

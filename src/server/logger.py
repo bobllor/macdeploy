@@ -2,8 +2,8 @@ from logging import Formatter, Logger, StreamHandler, FileHandler
 from logging import Handler
 from logging import DEBUG
 from datetime import datetime
+from logging import setLoggerClass
 from typing import TypedDict, Literal, TextIO
-from configuration import SERVER_LOGS_PATH
 from pathlib import Path
 import sys
 
