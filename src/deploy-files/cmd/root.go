@@ -135,7 +135,10 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("--verbose and --debug cannot be used together")
 		}
 		if root.SkipLocal && root.CreateLocal {
-			return fmt.Errorf("--skip-local/-s and --create-local/-c cannot be used together")
+			return fmt.Errorf("--skip-local and --create-local/-c cannot be used together")
+		}
+		if root.SkipFileVault && root.ForceFileVault {
+			return fmt.Errorf("--skipfilevault and --forcefilevault cannot be used together")
 		}
 
 		root.initialize(false)
@@ -234,7 +237,7 @@ var rootCmd = &cobra.Command{
 		serverLogFile := fmt.Sprintf("%s.%s.log", root.metadata.SerialTag, currDate)
 		logPayload := requests.NewLogPayload(serverLogFile)
 
-		if !root.config.FileVault || !root.SkipFileVault {
+		if (!root.config.FileVault || !root.SkipFileVault) || root.ForceFileVault {
 			filevaultPayload := requests.NewFileVaultPayload("")
 			fvKey := root.startFileVault(root.dep.filevault, request)
 
@@ -374,6 +377,7 @@ func InitializeRoot() {
 
 	rootCmd.MarkFlagsMutuallyExclusive("skiplocal", "createlocal")
 	rootCmd.MarkFlagsMutuallyExclusive("debug", "verbose")
+	rootCmd.MarkFlagsMutuallyExclusive("skipfilevault", "forcefilevault")
 }
 
 // startAccountCreation starts the account making process.
