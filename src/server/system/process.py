@@ -56,7 +56,6 @@ class Process:
                 self.log.info(key_log)
             else:
                 # commented regex out to simplify the process
-                #regex_str: str = r"^([A-Za-z0-9]{4}-?)+$"
                 prev_key: str = ""
 
                 # getting the previous key for logging purposes
@@ -82,6 +81,11 @@ class Process:
                         content=key_log,
                         statusCode=200
                     )
+                else:
+                    # if the device entry exists, but there is no key entry
+                    self._create_entry(key_entry)
+                    key_log = f"Entry {serial} found with no key, added {key}"
+                    self.log.info(key_log)
         except Exception:
             self.log.exception("Failed to write key to server")
 
@@ -180,3 +184,4 @@ class Process:
         '''Creates the given Path object with its parents.'''
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
+        self.log.debug(f"Created entry {path}")
