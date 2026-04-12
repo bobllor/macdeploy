@@ -30,8 +30,8 @@ jobs:
       - name: Docker debugging
         run: |
           connection=false
-          for i in {1..5}; do
-              out=$(curl -k https://127.0.0.1:5000)
+          for i in {1..3}; do
+              out=$(curl -vk https://127.0.0.1:5000 --retry 3 --retry-all-errors)
               if [[ "$out" =~ "success" ]]; then
                   connection=true
                   break
