@@ -23,7 +23,7 @@ jobs:
           go-version: '^1.24'
           check-latest: true
           cache: true
-      - name: Setup Docker container
+      - name: Setup Docker container and files
         run: ./scripts/build.sh
       - name: Starting test Docker container instance
         run: make start-test
