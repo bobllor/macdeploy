@@ -24,7 +24,7 @@ jobs:
           check-latest: true
           cache: true
       - name: Setup Docker container and files
-        run: ./scripts/build.sh
+        run: make build
       - name: Starting test Docker container instance
         run: make start-test
       - name: Docker debugging
