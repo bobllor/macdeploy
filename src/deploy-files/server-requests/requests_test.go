@@ -97,6 +97,8 @@ func TestSendKeyPayloadIntegration(t *testing.T) {
 	log := logger.NewTestLogger()
 	req := NewRequest(log)
 	root := getProjectRoot(t) + "/testroot/keys"
+	// needed due to github actions debugging
+	fmt.Println("Debug root:", root)
 
 	t.Run("New Device", func(t *testing.T) {
 		pl := NewFileVaultPayload(testKey)
@@ -226,14 +228,24 @@ func getProjectRoot(t *testing.T) string {
 	assert.Nil(t, err)
 	projectName := "MacDeploy"
 
+	splitDir := strings.Split(dir, "/")
 	newDir := []string{}
 
-	for d := range strings.SplitSeq(dir, "/") {
-		newDir = append(newDir, d)
+	for i := 0; i < len(dir); i++ {
+		d := splitDir[i]
 
+		// handles github action runner with duplicate names
 		if strings.EqualFold(d, projectName) {
+			tempi := i
+			for strings.EqualFold(d, projectName) {
+				newDir = append(newDir, d)
+				tempi += 1
+				d = splitDir[tempi]
+			}
 			break
 		}
+
+		newDir = append(newDir, d)
 	}
 
 	return strings.Join(newDir, "/")
