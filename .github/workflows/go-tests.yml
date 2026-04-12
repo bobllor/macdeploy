@@ -26,11 +26,22 @@ jobs:
       - name: Setup Docker container
         run: ./scripts/build.sh
       - name: Starting test Docker container instance
-        run: ./scripts/start.sh -t
+        run: make start-test
       - name: Docker debugging
         run: |
-          docker ps -a
-          sleep 1
+          connection=false
+          for i in {1..5}; do
+              out=$(curl -k https://127.0.0.1:5000)
+              if [[ "$out" =~ "success" ]]; then
+                  connection=true
+                  break
+              fi
+              sleep 1
+          done
+          if [[ "$connection" == "false" ]]; then
+              echo "error: failed to establish connection to server"
+              exit 1
+          fi
       - name: Build and test Go
         run: |
           cp "sample-config.yml" "./src/config/config.yml"
