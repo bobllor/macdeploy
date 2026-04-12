@@ -63,7 +63,7 @@ func TestGetQueryDataIntegration(t *testing.T) {
 	req := NewRequest(log)
 	serial := "SERIALTAG1"
 
-	dres, err := req.GetDeviceKeyInfo("https://localhost:5000", serial)
+	dres, err := req.GetDeviceKeyInfo("https://127.0.0.1:5000", serial)
 	assert.Nil(t, err)
 	assert.NotEqual(t, len(dres.Content), 0)
 }
