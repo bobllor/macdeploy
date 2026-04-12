@@ -122,7 +122,7 @@ var fvEnableCmd = &cobra.Command{
 		keyPayload := requests.NewFileVaultPayload(key)
 		keyPayload.SetBody(root.metadata.SerialTag)
 
-		err := root.startRequest(keyPayload, r, "/api/fv")
+		err := root.startRequest(keyPayload, r, root.config.ServerHost, "/api/fv")
 		if err != nil {
 			root.log.Warn(err)
 			root.warnFileVaultError(keyPayload)

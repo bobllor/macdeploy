@@ -231,7 +231,7 @@ var rootCmd = &cobra.Command{
 				filevaultPayload.Key = fvKey
 				filevaultPayload.SetBody(root.metadata.SerialTag)
 
-				err := root.startRequest(filevaultPayload, request, "/api/fv")
+				err := root.startRequest(filevaultPayload, request, root.config.ServerHost, "/api/fv")
 				if err != nil {
 					root.log.Warnf("Failed to send payload with FileVault key: %v", err)
 					root.warnFileVaultError(filevaultPayload)
@@ -253,7 +253,7 @@ var rootCmd = &cobra.Command{
 			root.log.Info("Sending log file to the server")
 
 			logPayload.Body = root.log.String()
-			err = root.startRequest(logPayload, request, "/api/log")
+			err = root.startRequest(logPayload, request, root.config.ServerHost, "/api/log")
 			if err != nil {
 				root.log.Critical(fmt.Sprintf("Failed to send to data to server: %v", err))
 			}
@@ -585,9 +585,12 @@ func (r *RootData) startFirewall(firewall *core.Firewall) {
 }
 
 // startRequest sends the payload to the server.
-func (r *RootData) startRequest(payload requests.Payload, request *requests.Request, endpoint string) error {
+//
+// The host is the root connection of the server.
+//
+// The endpoint is the endpoint used to access the API of the server.
+func (r *RootData) startRequest(payload requests.Payload, request *requests.Request, host string, endpoint string) error {
 	fmt.Println("Starting payload request")
-	host := r.config.ServerHost + endpoint
 
 	serverStatus, err := request.VerifyConnection(r.config.ServerHost)
 	if err != nil {
@@ -597,7 +600,7 @@ func (r *RootData) startRequest(payload requests.Payload, request *requests.Requ
 	}
 
 	if serverStatus {
-		res, err := request.POSTData(host, payload)
+		res, err := request.POSTData(host, endpoint, payload)
 		if err != nil {
 			return err
 		}
