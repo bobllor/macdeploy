@@ -134,7 +134,7 @@ func TestSendKeyPayloadIntegration(t *testing.T) {
 
 		serialDir := root + "/" + serial
 
-		err := os.Mkdir(serialDir, 0o777)
+		err := os.MkdirAll(serialDir, 0o777)
 		assert.Nil(t, err)
 
 		res, err := req.POSTData(testServerHost, "/api/fv", pl)
