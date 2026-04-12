@@ -523,7 +523,7 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 				// reset to ensure filevault is ran after
 				// if fvStatus is already false then this does nothing.
 				if fvStatus {
-					fmt.Println("FileVault found enabled but no key found in the server")
+					fmt.Println("FileVault is enabled but no key found in the server")
 					fmt.Println("Disabling FileVault...")
 					resetFv = true
 				}
