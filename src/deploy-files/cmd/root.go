@@ -46,6 +46,9 @@ type RootData struct {
 	// SkipFileVault skips the FileVault process.
 	SkipFileVault bool
 
+	// ForceFileVault is used to force a FileVault process even if an existing key is found.
+	ForceFileVault bool
+
 	// ExcludePackages is a slice of packages to exclude the files defined in the
 	// config file.
 	ExcludePackages []string
@@ -76,6 +79,9 @@ type RootData struct {
 	// It flags during the server communication and searching for script files.
 	errors errorFlags
 
+	// context is used for holding global flags for the program.
+	context contextFlags
+
 	// data is a slice of paths of the script files, if found.
 	data varData
 
@@ -92,6 +98,10 @@ type RootData struct {
 type errorFlags struct {
 	ServerFailed  bool // Indicates if sending the files to the server has failed.
 	ScriptsFailed bool // Indicates if searching for script files (.sh) has failed.
+}
+
+type contextFlags struct {
+	SkipFileVaultPayload bool // SkipFileVaultPayload skips the payload process for FileVault if true.
 }
 
 type dependencies struct {
@@ -224,11 +234,12 @@ var rootCmd = &cobra.Command{
 		serverLogFile := fmt.Sprintf("%s.%s.log", root.metadata.SerialTag, currDate)
 		logPayload := requests.NewLogPayload(serverLogFile)
 
-		if !root.SkipFileVault {
+		if !root.config.FileVault || !root.SkipFileVault {
 			filevaultPayload := requests.NewFileVaultPayload("")
-			if root.config.FileVault {
-				fvKey := root.startFileVault(root.dep.filevault, request)
+			fvKey := root.startFileVault(root.dep.filevault, request)
 
+			root.log.Debugf("FileVault payload flag: %v", root.context.SkipFileVaultPayload)
+			if !root.context.SkipFileVaultPayload {
 				filevaultPayload.Key = fvKey
 				filevaultPayload.SetBody(root.metadata.SerialTag)
 
@@ -237,8 +248,9 @@ var rootCmd = &cobra.Command{
 					root.log.Warnf("Failed to send payload with FileVault key: %v", err)
 					root.warnFileVaultError(filevaultPayload)
 				}
+			} else {
+				root.log.Info("Skipped FileVault payload request")
 			}
-
 		}
 
 		// if admin is applied policies, it must be after all the sudo commands.
@@ -355,6 +367,9 @@ func InitializeRoot() {
 		&root.CreateLocal, "createlocal", "c", false, "Create a local user")
 	rootCmd.Flags().BoolVar(
 		&root.SkipFileVault, "skipfilevault", false, "Skip the FileVault process",
+	)
+	rootCmd.Flags().BoolVar(
+		&root.ForceFileVault, "forcefilevault", false, "Forces the FileVault process and overwrites existing keys",
 	)
 
 	rootCmd.MarkFlagsMutuallyExclusive("skiplocal", "createlocal")
@@ -494,6 +509,8 @@ func (r *RootData) startPackageInstallation(handler *core.FileHandler, installDi
 func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.Request) string {
 	fmt.Println("Starting FileVault process")
 	fvKey := ""
+	// flag used to reset filevault depending on the query results + conditions
+	resetFv := false
 
 	// doesn't matter if it fails, an attempt will always occur.
 	fvStatus, err := filevault.Status()
@@ -513,7 +530,6 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 			// res has the filevault key, do not log it
 			r.log.Debugf("Query status code: %d | Query message: %s", qRes.StatusCode, qRes.Message)
 
-			resetFv := false
 			// if len(qRes.Content) == 0/1, then always attempt FileVault process.
 			if len(qRes.Content) == 0 || len(qRes.Content) == 1 {
 				r.log.Infof("No FileVault entry found for %s", r.metadata.SerialTag)
@@ -543,21 +559,30 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 				// this ensures that reruns are still possible, but later on it can be overwritten.
 				if calcTime.Hours() >= 1.5 {
 					r.log.Infof("Modified date condition met: %f is greater than limit of 1.5 hours", calcTime.Hours())
-					fmt.Println("Removing existing stored FileVault key, time limit is greater than 1.5 hours")
-					fmt.Println("Disabling FileVault...")
+					fmt.Println("Removing existing stored FileVault key (time limit is >= than 1.5 hours)")
 					resetFv = true
+				} else {
+					if !r.ForceFileVault {
+						fmt.Println("Existing key found but does not meet conditions for removal (time limit is <= 1.5 hours)")
+						fmt.Println("If this is not intended then run the binary with the flag --forcefilevault")
+					} else {
+						r.log.Info("Force FileVault overwrite is true")
+					}
 				}
 			}
 
-			if resetFv {
-				// only log error, regardless of what happens always attempt if resetFv is true.
-				_, err := filevault.Disable(r.config.Admin.Username, r.config.Admin.Password)
-				if err != nil {
-					root.log.Warnf("Failed to disable FileVault: %v", err)
-				}
-				fvStatus = false
-			}
 		}
+	}
+
+	if resetFv || r.ForceFileVault {
+		fmt.Println("Disabling FileVault...")
+		// only log error, regardless of what happens always attempt if resetFv is true.
+		_, err := filevault.Disable(r.config.Admin.Username, r.config.Admin.Password)
+		if err != nil {
+			fmt.Println("Failed to disable FileVault")
+			root.log.Warnf("Failed to disable FileVault: %v", err)
+		}
+		fvStatus = false
 	}
 
 	if !fvStatus {
@@ -567,6 +592,10 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 		if fvKey != "" {
 			fmt.Printf("Generated key %s\n", fvKey)
 		}
+	} else {
+		// if everything above did not make fvStatus false, then the fvKey is empty
+		// by default and this will skip the payload process.
+		root.context.SkipFileVaultPayload = true
 	}
 
 	return fvKey
@@ -881,6 +910,7 @@ func (r *RootData) FlagsToString() string {
 	slice = append(slice, format("skiplocal", r.SkipLocal))
 	slice = append(slice, format("skipfilevault", r.SkipFileVault))
 	slice = append(slice, format("createlocal", r.CreateLocal))
+	slice = append(slice, format("forcefilevault", r.ForceFileVault))
 
 	return strings.Join(slice, "|")
 }
