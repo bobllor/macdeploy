@@ -23,6 +23,10 @@ jobs:
           go-version: '^1.24'
           check-latest: true
           cache: true
+      - name: Setup Docker container
+        run: ./scripts/build.sh
+      - name: Starting test Docker container instance
+        run: ./scripts/start.sh -t
       - name: Build and test Go
         run: |
           cp "sample-config.yml" "./src/config/config.yml"
