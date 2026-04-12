@@ -29,7 +29,9 @@ else
 
     mkdir -p "$root"
 
-    files=("$root/data" "$root/keys" "$root/logs" "$root/zip-build")
+    key_path="$root/keys"
+
+    files=("$root/data" "$key_path" "$root/logs" "$root/zip-build")
 
     for file in "${files[@]}"; do
         mkdir -p "$file"
@@ -42,7 +44,11 @@ else
         fi
     done
 
-    # this is only related to testing due to permission errors
+    # separate serial entry due to github actions and permission issues
+    # used for testing adding key entries to the folder.
+    mkdir "$key_path/SERIALTAG3"
+
+    # this is only related to testing due to permission errors due to github actions
     chmod -R 777 "$root"
 
     docker compose -f compose.yml -f dockerfiles/compose-test.override.yml up -d
