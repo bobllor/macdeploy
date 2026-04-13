@@ -731,7 +731,7 @@ func (r *RootData) warnFileVaultError(filevaultPayload *requests.FileVaultPayloa
 			"WARNING",
 			"The FileVault key failed to send to the server",
 			"The deployment can be restarted or manual activation may be required",
-			"The key must be saved: %s", filevaultPayload.Key,
+			fmt.Sprintf("The key must be saved: %s", filevaultPayload.Key),
 		}
 		fvServerFailMsg := utils.FormatBannerString(serverFailWarning, paddingMsg)
 
