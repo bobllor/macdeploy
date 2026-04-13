@@ -579,7 +579,6 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 	}
 
 	if resetFv || r.ForceFileVault {
-		fmt.Println("Disabling FileVault...")
 		// only log error, regardless of what happens always attempt if resetFv is true.
 		_, err := filevault.Disable(r.config.Admin.Username, r.config.Admin.Password)
 		if err != nil {
