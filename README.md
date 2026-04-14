@@ -102,27 +102,33 @@ Below are the tools and software required on the server before starting the depl
 
 ### Quickstart
 
-The following initializes the projects, builds Docker containers, starts the Docker containers
-and *if a valid config YAML file* exists in the root, create the deployment files
-(ZIP file of `dist` including the binary creation `macdeploy`).
+Below are the commands for the first time setup. Both will create and start the Docker
+containers.
+There are two versions of the first time setup:
+1. Does not include the binary creation
+2. Includes the binary creation
+
+For first time setups, its recommended the 1st option be used as a config YAML is required.
+
+First time setup without the binary creation:
 
 ```bash
-git clone https://github.com/bobllor/MacDeploy
+git clone https://github.com/bobllor/macdeploy
 cd macdeploy
 
-# checks out the latest release tag
-git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
-
-bash build.sh -z
-
-docker compose up -d
+./scripts/build.sh
+./scripts/start.sh
 ```
 
-Do not use `build.sh` when trying to *create a new ZIP file or updating the repository*. The following scripts
-are for these two cases respectively:
-1. `go_zip.sh`: Creates the ZIP file of `dist`. This requires a valid config YAML file in the root. 
-2. `update.sh`: Updates the repository, checks out the latest tag release, rebuilds the Docker containers,
-creates a new binary, and starts the Docker containers.
+First time setup with the binary creation (*requires a valid config YAML*):
+
+```bash
+git clone https://github.com/bobllor/macdeploy
+cd macdeploy
+
+./scripts/build.sh -z
+./scripts/start.sh
+```
 
 ### Additional Information
 
@@ -159,11 +165,23 @@ Replace `SERVER_IP_DOMAIN` with the IP or domain name of your server. Do note th
 be reachable* through the Docker container.
 
 ```shell
-curl https://SERVER_IP_DOMAIN:5000/api/packages/deploy.zip -o deploy.zip --insecure && \
+curl https://SERVER_IP_DOMAIN:5000/api/packages/deploy.zip -o deploy.zip --insecure && \ 
 unzip deploy.zip
 
-./dist/macdeploy
+macdeploy(){
+  ./dist/macdeploy $@
+}
+
+macdeploy
 ```
+
+Due to the command length, it is often best to use a QR code scanner on the device. Inside
+`scripts` contains a QR code generator built with Python. 
+
+The function `macdeploy` is also generated with the command above. This allows to utilize
+`macdeploy` without specifying the full path, in addition to flags.
+- This will require the current working directory to be located where the `dist` folder is
+located.
 
 The binary supports *flags* and has sub-commands which can be found [here](#deployment-options).
 
