@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bobllor/macdeploy/src/deploy-files/core"
 	"github.com/bobllor/macdeploy/src/deploy-files/logger"
 	"github.com/bobllor/macdeploy/src/tests"
 )
@@ -35,7 +34,7 @@ var searchDirectoryFiles = []string{
 var baseLenPkgInstall int = len(packagesToAdd)
 
 func TestArrayLowerCase(t *testing.T) {
-	handler := core.NewFileHandler(tests.TestLogger)
+	handler := NewFileHandler(tests.TestLogger)
 
 	handler.AddPackages(packagesToAdd)
 
@@ -61,7 +60,7 @@ func TestArrayLowerCase(t *testing.T) {
 }
 
 func TestAddPackages(t *testing.T) {
-	handler := core.NewFileHandler(tests.TestLogger)
+	handler := NewFileHandler(tests.TestLogger)
 
 	handler.AddPackages(packagesToAdd)
 
@@ -79,7 +78,7 @@ func TestAddPackages(t *testing.T) {
 
 func TestRemovePackagesExactName(t *testing.T) {
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(log)
+	handler := NewFileHandler(log)
 
 	packagesCopy := make([]string, len(packagesToAdd))
 	copy(packagesCopy, packagesToAdd)
@@ -104,7 +103,7 @@ func TestRemovePackagesExactName(t *testing.T) {
 }
 
 func TestRemovePackagesWithSubstring(t *testing.T) {
-	handler := core.NewFileHandler(tests.TestLogger)
+	handler := NewFileHandler(tests.TestLogger)
 
 	packagesCopy := make([]string, len(packagesToAdd))
 	copy(packagesCopy, packagesToAdd)
@@ -128,7 +127,7 @@ func TestRemovePackagesWithSubstring(t *testing.T) {
 }
 
 func TestRemovePackagesNoMatch(t *testing.T) {
-	handler := core.NewFileHandler(tests.TestLogger)
+	handler := NewFileHandler(tests.TestLogger)
 
 	handler.AddPackages(packagesToAdd)
 
@@ -143,7 +142,7 @@ func TestRemovePackagesNoMatch(t *testing.T) {
 }
 
 func TestInstalledPackagesNormal(t *testing.T) {
-	handler := core.NewFileHandler(tests.TestLogger)
+	handler := NewFileHandler(tests.TestLogger)
 
 	alreadyInstalledCount := 0
 
@@ -163,7 +162,7 @@ func TestInstallPackagesAddNewPackages(t *testing.T) {
 	projectDirectory := t.TempDir()
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(log)
+	handler := NewFileHandler(log)
 
 	handler.AddMapPackages(packagesToInstall)
 	handler.AddPackages(packagesToAdd)
@@ -200,7 +199,7 @@ func TestInstallPackagesAddNewPackages(t *testing.T) {
 }
 
 func TestInstallPackagesNoPackages(t *testing.T) {
-	handler := core.NewFileHandler(tests.TestLogger)
+	handler := NewFileHandler(tests.TestLogger)
 
 	count := handler.InstallPackages([]string{}, []string{})
 
@@ -225,7 +224,7 @@ func TestReadDmg(t *testing.T) {
 		}
 	}
 
-	dmg := core.NewFileHandler(log)
+	dmg := NewFileHandler(log)
 
 	dmg.AddMapPackages(packagesToInstall)
 	dmgFiles, err := dmg.ReadDir(projectDirectory, ".dmg")
@@ -245,7 +244,7 @@ func TestCopyApp(t *testing.T) {
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 
-	handler := core.NewFileHandler(log)
+	handler := NewFileHandler(log)
 
 	handler.AddMapPackages(packagesToInstall)
 	appBundle := "a program bundle.app"
@@ -292,7 +291,7 @@ func TestCopyFile(t *testing.T) {
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
 
-	handler := core.NewFileHandler(log)
+	handler := NewFileHandler(log)
 
 	handler.AddMapPackages(packagesToInstall)
 	newTestDir := projectDirectory + "/" + "test-dir"
@@ -333,7 +332,7 @@ func TestScriptCacheAddition(t *testing.T) {
 	projectDirectory := t.TempDir()
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(log)
+	handler := NewFileHandler(log)
 
 	handler.AddMapPackages(packagesToInstall)
 	fakeScriptFiles := []string{
@@ -373,7 +372,7 @@ func TestScriptExecution(t *testing.T) {
 	projectDirectory := t.TempDir()
 
 	log := logger.NewLogger(log.New(bytes.NewBuffer([]byte{}), "", log.Ldate), logger.Ldebug)
-	handler := core.NewFileHandler(log)
+	handler := NewFileHandler(log)
 
 	handler.AddMapPackages(packagesToInstall)
 	baseScriptNames := []string{
@@ -415,7 +414,7 @@ func TestScriptExecution(t *testing.T) {
 }
 
 func TestPackageString(t *testing.T) {
-	handler := core.NewFileHandler(tests.TestLogger)
+	handler := NewFileHandler(tests.TestLogger)
 
 	pkg := "chrome.pkg"
 	installFiles := "chrome.app,google chrome.app"
@@ -439,7 +438,7 @@ func TestPackageString(t *testing.T) {
 }
 
 func TestPackageStringNoInstallFiles(t *testing.T) {
-	handler := core.NewFileHandler(tests.TestLogger)
+	handler := NewFileHandler(tests.TestLogger)
 
 	pkg := "chrome.pkg"
 
