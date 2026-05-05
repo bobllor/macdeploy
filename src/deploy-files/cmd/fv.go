@@ -14,8 +14,9 @@ func init() {
 }
 
 type FileVaultData struct {
-	User    yaml.UserInfo
-	logvars LogVars
+	User           yaml.UserInfo
+	ForceFileVault bool
+	logvars        LogVars
 }
 
 var fvCobra FileVaultData
@@ -42,6 +43,7 @@ func InitializeFileVaultCmd() {
 	// enable subcommand
 	fvEnableCmd.Flags().StringVarP(&fvCobra.User.Username, "username", "u", "", "Admin user username")
 	fvEnableCmd.Flags().StringVarP(&fvCobra.User.Password, "password", "p", "", "Admin user password")
+	fvEnableCmd.Flags().BoolVar(&fvCobra.ForceFileVault, "forcefilevault", false, "Forces FileVault process to start")
 
 	fvCmd.MarkFlagsMutuallyExclusive("verbose", "debug")
 }
@@ -54,7 +56,7 @@ var fvDisableCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if fvCobra.User.Username == "" {
-			fmt.Println("No username given")
+			fmt.Println("No username given, using current logged in user")
 			err := fvCobra.User.SetUsername()
 			if err != nil {
 				fmt.Println(err)
@@ -64,7 +66,7 @@ var fvDisableCmd = &cobra.Command{
 		}
 		if fvCobra.User.Password == "" {
 			fmt.Println("No admin password given")
-			err := fvCobra.User.SetPassword()
+			err := fvCobra.User.SetPassword(false)
 			if err != nil {
 				fmt.Println(err)
 				root.log.Fatal(err)
@@ -93,8 +95,25 @@ var fvEnableCmd = &cobra.Command{
 	Long:  "Enables FileVault and sends the key to the server",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		root.initialize(true)
+
+		// force FileVault if true
+		if fvCobra.ForceFileVault {
+			root.ForceFileVault = true
+		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		stat, err := root.dep.filevault.Status()
+		root.log.Debugf("FileVault status: %v", stat)
+		if err != nil {
+			root.log.Warnf("Failed to check FileVault status: %v", err)
+			fmt.Printf("Failed to check FileVault status: %v\n", err)
+			return
+		}
+		if stat && !fvCobra.ForceFileVault {
+			fmt.Println("FileVault is already enabled, disable FileVault and rerun or use the flag --forcefilevault")
+			return
+		}
+
 		if fvCobra.User.Username == "" {
 			fmt.Println("No username given, setting username")
 			// this is root config as startFileVault uses root.
@@ -108,7 +127,7 @@ var fvEnableCmd = &cobra.Command{
 		if fvCobra.User.Password == "" {
 			fmt.Println("No password given, input required")
 			// this is root config as startFileVault uses root.
-			err := root.config.Admin.SetPassword()
+			err := root.config.Admin.SetPassword(false)
 			if err != nil {
 				fmt.Println(err)
 				root.log.Fatal(err)
@@ -122,7 +141,14 @@ var fvEnableCmd = &cobra.Command{
 		keyPayload := requests.NewFileVaultPayload(key)
 		keyPayload.SetBody(root.metadata.SerialTag)
 
-		err := root.startRequest(keyPayload, r, root.config.ServerHost, "/api/fv")
+		// ForceFileVault status doesnt matter here.
+		// this is primarily used to just warn that no generation occurred.
+		if keyPayload.Key == "" {
+			root.warnFileVaultError(keyPayload)
+			return
+		}
+
+		err = root.startRequest(keyPayload, r, root.config.ServerHost, "/api/fv")
 		if err != nil {
 			root.log.Warn(err)
 			root.warnFileVaultError(keyPayload)
