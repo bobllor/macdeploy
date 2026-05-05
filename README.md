@@ -302,7 +302,7 @@ Below is a table of supported versions that is confirmed to work.
 | Ventura 13.0+ |
 | Sonoma 14.0+ |
 | Sequoia 15.0+ |
-| Tahoe 26.0+ |
+| Tahoe 26.0 - 26.4.1 |
 
 As of October 27th, 2025, M1 through M4 chips are confirmed working. M5 chips are in progress for testing.
 

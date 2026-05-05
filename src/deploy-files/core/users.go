@@ -67,7 +67,7 @@ func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, er
 	if user.Password == "" {
 		u.log.Warnf("No user password was given for %s", username)
 
-		err := user.SetPassword()
+		err := user.SetPassword(true)
 		if err != nil {
 			return "", err
 		}

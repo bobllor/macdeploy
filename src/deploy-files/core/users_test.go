@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bobllor/macdeploy/src/deploy-files/core"
 	"github.com/bobllor/macdeploy/src/deploy-files/logger"
 	"github.com/bobllor/macdeploy/src/deploy-files/scripts"
 	"github.com/bobllor/macdeploy/src/deploy-files/utils"
@@ -52,7 +51,7 @@ func TestFailUserNoPassword(t *testing.T) {
 
 	log := logger.NewLogger(log.New(os.Stdout, "", log.Ldate), logger.Ldebug)
 
-	user := core.NewUser(yaml.UserInfo{
+	user := NewUser(yaml.UserInfo{
 		Username: "admin",
 		Password: "admin",
 	}, scripts.NewScript(), log)
@@ -67,7 +66,7 @@ func TestFailAdminNoPassword(t *testing.T) {
 	config := &yaml.Config{}
 
 	// expects to fail due to the input terminal requirement
-	err := config.Admin.SetPassword()
+	err := config.Admin.SetPassword(false)
 	if err == nil {
 		t.Fatal(err)
 	}

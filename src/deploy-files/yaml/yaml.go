@@ -186,9 +186,11 @@ func (u *UserInfo) SetUsername() error {
 // SetPassword is used to set the password of the user if one was not given.
 // It prompts a hidden input for the user password.
 //
+// If confirmation is given, then it will prompt a re-entry of the original password.
+//
 // It returns an error if the maximum attempt is reached or if an error occurs.
 // By default the maximum attempts is 3.
-func (u *UserInfo) SetPassword() error {
+func (u *UserInfo) SetPassword(confirmPassword bool) error {
 	fmt.Print("Enter password: ")
 	pwOne, err := u.readPassword()
 	if err != nil {
@@ -198,26 +200,28 @@ func (u *UserInfo) SetPassword() error {
 		return errors.New("cannot have empty password")
 	}
 
-	maxAttempts := 3
-	attempts := 0
+	if confirmPassword {
+		maxAttempts := 3
+		attempts := 0
 
-	for attempts < maxAttempts {
-		fmt.Print("Confirm password: ")
-		pwTwo, err := u.readPassword()
-		if err != nil {
-			return err
+		for attempts < maxAttempts {
+			fmt.Print("Confirm password: ")
+			pwTwo, err := u.readPassword()
+			if err != nil {
+				return err
+			}
+
+			if pwTwo == pwOne {
+				break
+			}
+
+			fmt.Println("Sorry, try again")
+			attempts += 1
 		}
 
-		if pwTwo == pwOne {
-			break
+		if attempts >= maxAttempts {
+			return fmt.Errorf("%d incorrect password attempts", attempts)
 		}
-
-		fmt.Println("Sorry, try again")
-		attempts += 1
-	}
-
-	if attempts >= maxAttempts {
-		return fmt.Errorf("%d incorrect password attempts", attempts)
 	}
 
 	u.Password = pwOne

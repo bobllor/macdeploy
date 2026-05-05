@@ -22,22 +22,27 @@ var findFilesScript string
 //go:embed disable_filevault.sh
 var disableFileVaultScript string
 
+//go:embed change_filevault.sh
+var changeFileVaultScript string
+
 type BashScripts struct {
-	CreateUser       string
-	EnableFileVault  string
-	DisableFileVault string
-	EnableFirewall   string
-	FindFiles        string // Takes two arguments: search_dir, ext_type
+	CreateUser         string
+	EnableFileVault    string
+	DisableFileVault   string
+	EnableFirewall     string
+	FindFiles          string // Takes two arguments: search_dir, ext_type
+	ChangeFileVaultKey string
 }
 
 // NewScript generates an embedded struct for scripts created in Bash.
 func NewScript() *BashScripts {
 	scripts := BashScripts{
-		CreateUser:       createUserScript,
-		EnableFileVault:  enableFileVaultScript,
-		DisableFileVault: disableFileVaultScript,
-		EnableFirewall:   enableFirewallScript,
-		FindFiles:        findFilesScript,
+		CreateUser:         createUserScript,
+		EnableFileVault:    enableFileVaultScript,
+		DisableFileVault:   disableFileVaultScript,
+		EnableFirewall:     enableFirewallScript,
+		FindFiles:          findFilesScript,
+		ChangeFileVaultKey: changeFileVaultScript,
 	}
 
 	return &scripts

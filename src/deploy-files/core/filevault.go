@@ -36,18 +36,46 @@ func (f *FileVault) Enable(adminUser string, adminPassword string) string {
 
 	out, err := exec.Command("sudo", "bash", "-c", f.script.EnableFileVault,
 		adminUser, adminPassword).CombinedOutput()
-	outText := string(out)
+	outText := strings.TrimSpace(string(out))
 	if err != nil {
-		f.log.Warn("Failed to enable FileVault")
+		f.log.Warnf("Failed to enable FileVault: %v", err)
 		return ""
 	}
 
-	// output is <name> = '<key>'
-	outArr := strings.Split(outText, "'")
-	// TIL an empty string is added to the array if there is a delimiter at the end!
-	key = outArr[len(outArr)-2]
+	if outText == "" {
+		f.log.Warn("No new FileVault key was generated, no output detected")
+		return ""
+	}
+
+	key = f.parseKey(outText)
 
 	f.log.Info("FileVault enabled")
+
+	return key
+}
+
+// ChangeRecovery revokes the old existing key and generates a new key.
+// This requires FileVault to be enabled prior to running.
+//
+// If an error occurs it will be logged but the return will be an empty string.
+func (f *FileVault) ChangeRecovery(adminUser, adminPassword string) string {
+	out, err := exec.Command("sudo", "bash", "-c",
+		f.script.ChangeFileVaultKey, adminUser, adminPassword,
+	).CombinedOutput()
+	if err != nil {
+		f.log.Warnf("Failed to change recovery key: %v", err)
+		return ""
+	}
+
+	outStr := strings.TrimSpace(string(out))
+	if outStr == "" {
+		f.log.Warn("No new FileVault key was generated, no output detected from 'changerecovery'")
+		return ""
+	}
+
+	key := f.parseKey(outStr)
+
+	f.log.Info("New FileVault key generated, revoking previous key")
 
 	return key
 }
@@ -158,4 +186,20 @@ func (f *FileVault) List() (string, error) {
 	outText := string(out)
 
 	return outText, nil
+}
+
+// parseKey parses the output of the FileVault enabling and returns the key string.
+// If the
+func (f *FileVault) parseKey(out string) string {
+	// output is <name> = '<key>'
+	outArr := strings.Split(out, "'")
+	// the array is a minimal of length 2, if not then its invalid.
+	if len(outArr) < 2 {
+		return ""
+	}
+
+	// TIL an empty string is added to the array if there is a delimiter at the end!
+	key := outArr[len(outArr)-2]
+
+	return key
 }
