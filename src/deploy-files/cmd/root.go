@@ -567,8 +567,18 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 					resetFv = true
 				} else {
 					if !r.ForceFileVault {
-						fmt.Println("Existing key found but does not meet conditions for removal (time limit is <= 1.5 hours)")
-						fmt.Println("If this is not intended then run the binary with the flag --forcefilevault")
+						// if a key was recently generated then filevault does not continue
+						fmt.Printf(
+							"Existing key found but is not removed (created: %.2f hours ago <= 1.5 hours)\n",
+							calcTime.Hours(),
+						)
+						fmt.Println(
+							"If this is not intended then you can rerun with the flag --forcefilevault, rerun with FileVault disabled, or run 'macdeploy filevault' subcommand",
+						)
+
+						r.SkipFileVault = true
+
+						return ""
 					} else {
 						r.log.Info("Force FileVault overwrite is true")
 					}
@@ -591,7 +601,15 @@ func (r *RootData) startFileVault(filevault *core.FileVault, request *requests.R
 	if !fvStatus {
 		fvKey = filevault.Enable(r.config.Admin.Username, r.config.Admin.Password)
 
-		// this is not logged.
+		// 05/04/26 UPDATE:
+		// as of tahoe 26.4.1 (april 9 2026) the key is no longer sent
+		// to the output with f.Enable.
+		// the key must be regenerated with f.ChangeRecovery to capture the output properly.
+		// older versions are not affected by this.
+		if fvKey == "" {
+			fvKey = filevault.ChangeRecovery(r.config.Admin.Username, r.config.Admin.Password)
+		}
+
 		if fvKey != "" {
 			fmt.Printf("Generated key %s\n", fvKey)
 		}
@@ -809,7 +827,7 @@ func (r *RootData) initialize(isSubCommand bool) {
 	}
 	if config.Admin.Password == "" {
 		fmt.Println("No admin password given")
-		err = config.Admin.SetPassword()
+		err = config.Admin.SetPassword(false)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
