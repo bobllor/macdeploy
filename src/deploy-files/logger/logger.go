@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -127,6 +128,43 @@ func NewTestLogger() *Logger {
 	}
 
 	return &logger
+}
+
+// NewLoggerFile creates a new Logger and its os.File struct.
+//
+// The file path is the path to the folder holding the log files.
+// The file name is the name of the log file.
+// The default file name is "{<fileName>.}2006-01-02.log".
+//
+// This is a wrapper around NewLogger and NewLogFile.
+//
+// The caller is responsible for closing the file.
+func NewLoggerFile(path, fileName string, logLevel int) (*Logger, *os.File, error) {
+	fullPath := filepath.Join(path, fileName)
+
+	logDir := filepath.Dir(fullPath)
+	err := os.MkdirAll(logDir, 0o777)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	logFile, err := NewLogFile(fullPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	printer := log.New(logFile, "", log.Ldate)
+	logger := NewLogger(printer, logLevel)
+
+	return logger, logFile, nil
+}
+
+// NewStdoutLogger is a Logger that is set with a terminal output by default.
+func NewStdoutLogger(logLevel int) *Logger {
+	printer := log.New(os.Stdout, "", log.Ldate)
+	logger := NewLogger(printer, logLevel)
+
+	return logger
 }
 
 // SetLogLevel sets the log level for outputting to the stream.
