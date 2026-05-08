@@ -35,8 +35,12 @@ var userCmd = &cobra.Command{
 func InitializeUserCmd() {
 	initializeUserCreateCmd()
 
+	userCmd.PersistentFlags().BoolVar(&userCobra.logvars.Verbose, "verbose", false, "Show info level logging")
+	userCmd.PersistentFlags().BoolVar(&userCobra.logvars.Debug, "debug", false, "Show debug level logging")
+
 	userCmd.AddCommand(userCreateCmd)
 	userCmd.AddCommand(userAdminGrantCmd)
+	userCmd.AddCommand(userAdminRevokeCmd)
 }
 
 var userCreateCmd = &cobra.Command{
@@ -51,9 +55,9 @@ var userCreateCmd = &cobra.Command{
 			fmt.Printf("Failed to set admin info: %v\n", err)
 			os.Exit(1)
 		}
+		logLevel := getLogLevel(userCobra.logvars)
 
-		usermaker, fv, log, file := newUserCmdStructs(adminInfo)
-		// TODO: log level flag
+		usermaker, fv, log, file := newUserCmdStructs(adminInfo, logLevel)
 		if file != nil {
 			defer file.Close()
 		}
@@ -90,7 +94,7 @@ var userCreateCmd = &cobra.Command{
 				os.Exit(1)
 			}
 
-			fmt.Printf("Added password policy for %s\n")
+			fmt.Printf("Added password policy for %s\n", username)
 		} else if config.Policy.ChangeOnLogin {
 			log.Warnf("Key 'change_on_login' is %v, unable to apply policy", config.Policy.ChangeOnLogin)
 			fmt.Println("Key [policies] in YAML config requires 'change_on_login' to be true")
@@ -114,7 +118,7 @@ func initializeUserCreateCmd() {
 }
 
 var userAdminGrantCmd = &cobra.Command{
-	Use:   "grantadmin <user> <user...>",
+	Use:   "grantadmin <user> [<user>...]",
 	Short: "Grants admin privileges to the given user",
 	Long:  "Grants admin privileges to the given user or users",
 	PreRun: func(cmd *cobra.Command, args []string) {
@@ -129,8 +133,9 @@ var userAdminGrantCmd = &cobra.Command{
 			fmt.Printf("Failed to set admin info: %v\n", err)
 			os.Exit(1)
 		}
+		logLevel := getLogLevel(userCobra.logvars)
 
-		um, _, log, file := newUserCmdStructs(adminInfo)
+		um, _, log, file := newUserCmdStructs(adminInfo, logLevel)
 		if file != nil {
 			defer file.Close()
 		}
@@ -148,15 +153,50 @@ var userAdminGrantCmd = &cobra.Command{
 	},
 }
 
+var userAdminRevokeCmd = &cobra.Command{
+	Use:   "revokeadmin <user> [<user>...]",
+	Short: "Revokes admin privileges to the given user",
+	Long:  "Revokes admin privileges to the given user or users",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			fmt.Println("Missing user operand\nTry 'macdeploy user admin grant -h' for more information")
+			os.Exit(1)
+		}
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		adminInfo, err := newAdminInfo()
+		if err != nil {
+			fmt.Printf("Failed to set admin info: %v\n", err)
+			os.Exit(1)
+		}
+		logLevel := getLogLevel(userCobra.logvars)
+
+		um, _, log, file := newUserCmdStructs(adminInfo, logLevel)
+		if file != nil {
+			defer file.Close()
+		}
+
+		for _, arg := range args {
+			err := um.RevokeAdmin(arg)
+			if err != nil {
+				log.Warnf("User argument %s got an error while revoking admin: %v", arg, err)
+				fmt.Printf("Failed to revoke admin to user %s: %v\n", arg, err)
+			} else {
+				fmt.Printf("Revoked admin to user %s", arg)
+				log.Infof("User %s revoked admin", arg)
+			}
+		}
+	},
+}
+
 // newUserCmdStructs creates and returns four structs:
 //  1. UserMaker: initialized for user related tasks
 //  2. FileVault: initialized for FileVault related tasks
 //  3. Logger: initialized to the default logging location or Stdout (if error)
 //  4. File: The log file, this can be nil if an error occurs which must be handled
-func newUserCmdStructs(adminInfo *yaml.UserInfo) (*core.UserMaker, *core.FileVault, *logger.Logger, *os.File) {
+func newUserCmdStructs(adminInfo *yaml.UserInfo, logLevel int) (*core.UserMaker, *core.FileVault, *logger.Logger, *os.File) {
 	logDir := fmt.Sprintf("%s/%s", utils.GetCurrOrHomePath(), defaultLogDir)
-	// TODO: log level flag
-	log, file, err := logger.NewLoggerFile(logDir, "macdeploy.user", logger.Lsilent)
+	log, file, err := logger.NewLoggerFile(logDir, "macdeploy.user", logLevel)
 	if err != nil {
 		log = logger.NewStdoutLogger(logger.Lsilent)
 	}
@@ -194,4 +234,16 @@ func newAdminInfo() (*yaml.UserInfo, error) {
 	}
 
 	return adminInfo, nil
+}
+
+// getLogLevel retrieves the log level based on the flag value.
+func getLogLevel(v LogVars) int {
+	if v.Verbose {
+		return logger.Linfo
+	}
+	if v.Debug {
+		return logger.Ldebug
+	}
+
+	return logger.Lsilent
 }
