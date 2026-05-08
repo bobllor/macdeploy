@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	requests "github.com/bobllor/macdeploy/src/deploy-files/server-requests"
 	"github.com/bobllor/macdeploy/src/deploy-files/yaml"
@@ -61,7 +62,8 @@ var fvDisableCmd = &cobra.Command{
 			if err != nil {
 				fmt.Println(err)
 				root.log.Fatal(err)
-				return
+
+				os.Exit(1)
 			}
 		}
 		if fvCobra.User.Password == "" {
@@ -70,7 +72,8 @@ var fvDisableCmd = &cobra.Command{
 			if err != nil {
 				fmt.Println(err)
 				root.log.Fatal(err)
-				return
+
+				os.Exit(1)
 			}
 		}
 
@@ -78,7 +81,8 @@ var fvDisableCmd = &cobra.Command{
 		if err != nil {
 			fmt.Println("An error occurred during an attempt to disable FileVault")
 			root.log.Warn(err)
-			return
+
+			os.Exit(1)
 		}
 
 		if status {
