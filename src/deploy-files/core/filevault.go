@@ -97,7 +97,7 @@ func (f *FileVault) Disable(adminUser string, adminPassword string) (bool, error
 	out, err := exec.Command("sudo", "bash", "-c", f.script.DisableFileVault,
 		adminUser, adminPassword).CombinedOutput()
 	outText := string(out)
-	if err != nil || strings.Contains(outText, "Error") {
+	if err != nil || strings.Contains(outText, "Error") || strings.Contains(outText, "not disabled") {
 		f.log.Warnf("Failed to disable FileVault: %v", err)
 
 		if err == nil {
