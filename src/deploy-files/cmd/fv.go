@@ -105,12 +105,12 @@ var fvEnableCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		stat, err := root.dep.filevault.Status()
-		root.log.Debugf("FileVault status: %v", stat)
 		if err != nil {
-			root.log.Warnf("Failed to check FileVault status: %v", err)
-			fmt.Printf("Failed to check FileVault status: %v\n", err)
+			root.log.Warnf("Failed to get FileVault status: %v", err)
+			fmt.Println("Failed to determine FileVault status")
 			return
 		}
+		root.log.Debugf("FileVault status: %v", stat)
 		if stat && !fvCobra.ForceFileVault {
 			fmt.Println("FileVault is already enabled, disable FileVault and rerun or use the flag --forcefilevault")
 			return
@@ -154,9 +154,9 @@ var fvEnableCmd = &cobra.Command{
 		if err != nil {
 			root.log.Warn(err)
 			root.warnFileVaultError(keyPayload)
-		} else {
-			fmt.Println("FileVault enabled")
 		}
+
+		fmt.Println("FileVault enabled")
 	},
 }
 
