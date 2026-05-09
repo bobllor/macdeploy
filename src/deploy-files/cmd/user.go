@@ -62,7 +62,7 @@ var userCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		adminInfo, err := newAdminInfo()
 		if err != nil {
-			fmt.Printf("Failed to set admin info: %v\n", err)
+			fmt.Println("Failed to retrieve admin information")
 			os.Exit(1)
 		}
 		logLevel := getLogLevel(userCobra.logvars)
@@ -85,6 +85,10 @@ var userCreateCmd = &cobra.Command{
 			fmt.Printf("Failed to create user %s\n", username)
 			os.Exit(1)
 		}
+		if userCobra.Admin {
+			log.Infof("Admin flag used for %s", userCobra.UserInfo.Username)
+			fmt.Printf("User %s granted admin\n", userCobra.UserInfo.Username)
+		}
 
 		err = fv.AddSecureToken(username, userCobra.UserInfo.Password)
 		if err != nil {
@@ -92,8 +96,8 @@ var userCreateCmd = &cobra.Command{
 			log.Warnf("Failed to add secure token for user %s: %v", username, err)
 			err := usermaker.DeleteAccount(username)
 			if err != nil {
-				fmt.Printf("Failed to delete user %s: %v\n", username, err)
 				log.Warnf("Failed to delete user: %v", err)
+				fmt.Printf("Failed to delete user %s\n", username)
 			}
 
 			os.Exit(1)
@@ -139,7 +143,7 @@ var userDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		adminInfo, err := newAdminInfo()
 		if err != nil {
-			fmt.Printf("Failed to set admin info: %v\n", err)
+			fmt.Println("Failed to retrieve admin information")
 			os.Exit(1)
 		}
 
@@ -152,7 +156,7 @@ var userDeleteCmd = &cobra.Command{
 			err = um.DeleteAccount(arg)
 			if err != nil {
 				log.Warnf("Failed to delete user %s: %v", arg, err)
-				fmt.Printf("Failed to delete user %s: %v\n", arg, err)
+				fmt.Printf("Failed to delete user %s\n", arg)
 				continue
 			}
 
@@ -174,7 +178,7 @@ var userAdminGrantCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		adminInfo, err := newAdminInfo()
 		if err != nil {
-			fmt.Printf("Failed to set admin info: %v\n", err)
+			fmt.Println("Failed to retrieve admin information")
 			os.Exit(1)
 		}
 		logLevel := getLogLevel(userCobra.logvars)
@@ -188,8 +192,8 @@ var userAdminGrantCmd = &cobra.Command{
 			user := utils.FormatUsername(arg)
 			err := um.GrantAdmin(user)
 			if err != nil {
-				log.Warnf("User argument %s got an error while granting admin: %v", arg, err)
-				fmt.Printf("Failed to grant admin to user %s: %v\n", arg, err)
+				log.Warnf("User argument %s (%s) got an error while granting admin: %v", arg, user, err)
+				fmt.Printf("Failed to grant admin to user %s\n", arg)
 				continue
 			}
 
@@ -211,7 +215,7 @@ var userAdminRevokeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		adminInfo, err := newAdminInfo()
 		if err != nil {
-			fmt.Printf("Failed to set admin info: %v\n", err)
+			fmt.Println("Failed to retrieve admin information")
 			os.Exit(1)
 		}
 		logLevel := getLogLevel(userCobra.logvars)
@@ -226,7 +230,7 @@ var userAdminRevokeCmd = &cobra.Command{
 			err := um.RevokeAdmin(user)
 			if err != nil {
 				log.Warnf("User argument %s got an error while revoking admin: %v", arg, err)
-				fmt.Printf("Failed to revoke admin to user %s: %v\n", arg, err)
+				fmt.Printf("Failed to revoke admin from user %s\n", arg)
 			} else {
 				fmt.Printf("Revoked admin to user %s\n", arg)
 				log.Infof("User %s revoked admin", arg)
@@ -237,7 +241,7 @@ var userAdminRevokeCmd = &cobra.Command{
 
 var userListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Lists the current local users on the device",
+	Short: "Lists the local users on the device",
 	Run: func(cmd *cobra.Command, args []string) {
 		logLevel := getLogLevel(userCobra.logvars)
 		log, file, err := logger.NewLoggerFile(utils.GetCurrOrHomePath()+"/"+defaultLogDir, userLogName, logLevel)
@@ -252,8 +256,8 @@ var userListCmd = &cobra.Command{
 
 		users, err := um.List()
 		if err != nil {
-			log.Warnf("Failed to list users: %v", err)
-			fmt.Printf("Failed to list users: %v\n", err)
+			log.Warnf("Failed to get local users list: %v", err)
+			fmt.Println("Failed to retrieve local users list")
 		}
 
 		fmt.Println(strings.Join(users, "\n"))
@@ -267,7 +271,7 @@ var userListCmd = &cobra.Command{
 //  4. File: The log file, this can be nil if an error occurs which must be handled
 func newUserCmdStructs(adminInfo *yaml.UserInfo, logLevel int) (*core.UserMaker, *core.FileVault, *logger.Logger, *os.File) {
 	logDir := fmt.Sprintf("%s/%s", utils.GetCurrOrHomePath(), defaultLogDir)
-	log, file, err := logger.NewLoggerFile(logDir, "macdeploy.user", logLevel)
+	log, file, err := logger.NewLoggerFile(logDir, userLogName, logLevel)
 	if err != nil {
 		log = logger.NewStdoutLogger(logger.Lsilent)
 	}
