@@ -74,18 +74,20 @@ var fvDisableCmd = &cobra.Command{
 			}
 		}
 
-		status, err := root.dep.filevault.Disable(fvCobra.User.Username, fvCobra.User.Password)
+		_, err := root.dep.filevault.Disable(fvCobra.User.Username, fvCobra.User.Password)
 		if err != nil {
 			fmt.Println("An error occurred during an attempt to disable FileVault")
-			root.log.Warn(err)
+			root.log.Warnf("Failed to disable FileVault: %v", err)
 			return
 		}
 
-		if status {
-			fmt.Println("Disabled FileVault")
-		} else {
-			fmt.Println("FileVault did not get disabled")
+		status, err := root.dep.filevault.Status()
+		if err != nil {
+			fmt.Println("Failed to check FileVault status")
+			root.log.Warnf("Failed to check FileVault status: %v", err)
+			return
 		}
+		fmt.Printf("FileVault status: %v\n", status)
 	},
 }
 
@@ -103,12 +105,12 @@ var fvEnableCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		stat, err := root.dep.filevault.Status()
-		root.log.Debugf("FileVault status: %v", stat)
 		if err != nil {
-			root.log.Warnf("Failed to check FileVault status: %v", err)
-			fmt.Printf("Failed to check FileVault status: %v\n", err)
+			root.log.Warnf("Failed to get FileVault status: %v", err)
+			fmt.Println("Failed to determine FileVault status")
 			return
 		}
+		root.log.Debugf("FileVault status: %v", stat)
 		if stat && !fvCobra.ForceFileVault {
 			fmt.Println("FileVault is already enabled, disable FileVault and rerun or use the flag --forcefilevault")
 			return
@@ -152,9 +154,9 @@ var fvEnableCmd = &cobra.Command{
 		if err != nil {
 			root.log.Warn(err)
 			root.warnFileVaultError(keyPayload)
-		} else {
-			fmt.Println("FileVault enabled")
 		}
+
+		fmt.Println("FileVault enabled")
 	},
 }
 

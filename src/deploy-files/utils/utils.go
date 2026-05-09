@@ -157,3 +157,20 @@ func FormatBannerString(lineArr []string, padding int) string {
 
 	return strings.Join(outString, "\n")
 }
+
+// GetCurrOrHomePath retrieves the absolute home or current paths.
+//
+// If both attempts fail, it will return a "." as the current path.
+func GetCurrOrHomePath() string {
+	path := os.Getenv("HOME")
+	if path == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "."
+		}
+
+		path = cwd
+	}
+
+	return path
+}

@@ -8,8 +8,11 @@ import (
 
 func main() {
 	cmd.InitializeRoot()
+
 	cmd.InitializeUserCmd()
+
 	cmd.InitializeInstallCmd()
+
 	cmd.InitializeFileVaultCmd()
 
 	cmd.Execute()

@@ -19,6 +19,10 @@ type UserMaker struct {
 	adminInfo yaml.UserInfo
 	log       *logger.Logger
 	script    *scripts.BashScripts
+
+	// userCache is a in-memory cache of the users in the users directory.
+	// This will be populated on the existence check. All keys are lowercased.
+	userCache map[string]any
 }
 
 // NewUser creates a new UserMaker to handle user creation.
@@ -67,6 +71,7 @@ func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, er
 	if user.Password == "" {
 		u.log.Warnf("No user password was given for %s", username)
 
+		fmt.Println("User password required")
 		err := user.SetPassword(true)
 		if err != nil {
 			return "", err
@@ -108,19 +113,120 @@ func (u *UserMaker) CreateAccount(user *yaml.UserInfo, isAdmin bool) (string, er
 	return accountName, nil
 }
 
-// DeleteAccount removes the given user from the device.
+// DeleteAccount removes the given user from the device. This requires
+// the user to exist.
 func (u *UserMaker) DeleteAccount(username string) error {
 	cmd := fmt.Sprintf(
-		"sudo sysadminctl -deleteUser '%s' -adminUser '%s' -adminPassword '%s'",
+		"sudo sysadminctl -deleteUser '%s'",
 		username,
-		u.adminInfo.Username,
-		u.adminInfo.Password)
+	)
+
+	// the output is not in stdout, it is not possible to capture.
+	// error codes:
+	//	- user not found (255)
 	_, err := exec.Command("sudo", "bash", "-c", cmd).Output()
 	if err != nil {
-		return err
+		newErr := errors.New("account deletion failed")
+		if strings.Contains(err.Error(), "255") {
+			newErr = fmt.Errorf("user %s does not exist", username)
+		}
+
+		u.log.Warnf("Failed to delete account: %v | %v", err, newErr)
+		return newErr
 	}
 
 	u.log.Info(fmt.Sprintf("Removed user %s", username))
+
+	return nil
+}
+
+// GrantAdmin grants the given user admin privileges.
+// The user must exist and is not an admin.
+func (u *UserMaker) GrantAdmin(username string) error {
+	err := u.adminInfo.InitializeSudo()
+	if err != nil {
+		return fmt.Errorf("failed to initialize sudo: %v", err)
+	}
+
+	stat, err := u.isAdmin(username)
+	if err != nil {
+		return fmt.Errorf("failed to check admin status: %v", err)
+	}
+	if stat {
+		return fmt.Errorf("user %s is admin", username)
+	}
+
+	cmd := `
+	#!/usr/bin/env bash
+
+	username=$0
+	dseditgroup -o edit -a "$username" -t user admin
+
+	user_group=$(groups "$username")
+	if [[ "$user_group" =~ "admin" ]]; then
+		echo true
+	else
+		echo false
+	fi
+	`
+
+	b, err := exec.Command("sudo", "bash", "-c", cmd, username).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to grant admin: %v", err)
+	}
+
+	out := strings.TrimSpace(string(b))
+	u.log.Debugf("Grant admin output: %s", out)
+
+	if out == "false" {
+		u.log.Warnf("Granting admin failed for %s | out=%s,err=%v", username, out, err)
+		return fmt.Errorf("failed to grant admin for user %s", username)
+	}
+
+	return nil
+}
+
+// RevokeAdmin revokes the admin privileges from the user.
+// The user must exist and is an admin.
+func (u *UserMaker) RevokeAdmin(username string) error {
+	err := u.adminInfo.InitializeSudo()
+	if err != nil {
+		return fmt.Errorf("failed to initialize sudo: %v", err)
+	}
+
+	stat, err := u.isAdmin(username)
+	if err != nil {
+		return fmt.Errorf("failed to check admin status: %v", err)
+	}
+	if !stat {
+		return fmt.Errorf("user %s is not admin", username)
+	}
+
+	cmd := `
+	#!/usr/bin/env bash
+
+	username=$0
+	dseditgroup -o edit -d "$username" -t user admin
+
+	user_group=$(groups "$username")
+	if [[ "$user_group" =~ "admin" ]]; then
+		echo true
+	else
+		echo false
+	fi
+	`
+
+	b, err := exec.Command("sudo", "bash", "-c", cmd, username).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to revoke admin (%v)", err)
+	}
+
+	out := strings.TrimSpace(string(b))
+	u.log.Debugf("Revoke admin output: %s", out)
+
+	if out == "true" {
+		return fmt.Errorf("failed to revoke admin for user %s", username)
+	}
 
 	return nil
 }
@@ -142,26 +248,141 @@ func (u *UserMaker) AddPasswordPolicy(username string) error {
 	return nil
 }
 
-// userExists checks the Users directory for the given username.
-func (u *UserMaker) userExists(username string) (bool, error) {
-	usersPath := "/Users"
+// checkAdmin checks if the current user is admin. If it fails to run,
+// it will return an error.
+//
+// The existence of the user is checked in the call and will return an error
+// if they do not exist.
+func (u *UserMaker) isAdmin(username string) (bool, error) {
+	cmd := `
+	#!/usr/bin/env bash
+	username=$0
 
-	dirs, err := os.ReadDir(usersPath)
+	user_group=$(groups "$username")
+	if [[ "$user_group" =~ "admin" ]]; then
+		echo true
+	else
+		echo false
+	fi
+	`
+	exist, err := u.userExists(username)
 	if err != nil {
-		u.log.Warn(fmt.Sprintf("Error reading directory: %v", err))
+		return false, err
+	}
+	if !exist {
+		return false, fmt.Errorf("user %s does not exist", username)
+	}
+
+	b, err := exec.Command("sudo", "bash", "-c", cmd, strings.ToLower(username)).CombinedOutput()
+	if err != nil {
 		return false, err
 	}
 
-	u.log.Debug(fmt.Sprintf("User directory content: %v", dirs))
+	out := strings.TrimSpace(string(b))
+	if out == "true" {
+		return true, nil
+	}
+
+	u.log.Debugf("Admin command output: %s", out)
+
+	return false, nil
+}
+
+// List lists the local users on the device. The slice contains the
+// internal usernames, not the display names.
+func (u *UserMaker) List() ([]string, error) {
+	usersPath := "/Users"
+
+	// cache is not used due to it potentially being stale
+	dirs, err := os.ReadDir(usersPath)
+	if err != nil {
+		u.log.Warn(fmt.Sprintf("Error reading users directory: %v", err))
+		return nil, err
+	}
+
+	u.log.Debugf("Found %d entries in %s", len(dirs), usersPath)
+	users := []string{}
+
+	for _, d := range dirs {
+		lowerDirName := strings.ToLower(d.Name())
+		if !u.isNotUser(lowerDirName) {
+			u.log.Debugf("User folder %s skipped", d)
+			continue
+		}
+
+		users = append(users, lowerDirName)
+	}
+
+	return users, nil
+}
+
+// userExists checks the Users directory for the given username.
+// This reads from the /Users directory on a MacBook.
+func (u *UserMaker) userExists(username string) (bool, error) {
+	// no dscl . -list /users due to it requiring more parsing and
+	// an additional subprocess exec
+	usersPath := "/Users"
+
+	_, ok := u.userCache[username]
+	if ok {
+		return true, nil
+	}
+
+	// reset the cache if the user does not exist
+	u.userCache = make(map[string]any)
+
+	dirs, err := os.ReadDir(usersPath)
+	if err != nil {
+		u.log.Warn(fmt.Sprintf("Error reading users directory: %v", err))
+		return false, err
+	}
+
+	u.log.Debugf("Found %d entries in %s", len(dirs), usersPath)
 
 	for _, dir := range dirs {
-		dirName := strings.ToLower(dir.Name())
-		lowerUsername := strings.ToLower(username)
-
-		if strings.Contains(dirName, lowerUsername) {
-			return true, nil
+		lowerDirName := strings.ToLower(dir.Name())
+		if !u.isNotUser(lowerDirName) {
+			u.log.Debugf("User folder %s skipped", dir)
+			continue
 		}
+
+		u.userCache[lowerDirName] = struct{}{}
+	}
+
+	lowerUsername := strings.ToLower(username)
+	_, ok = u.userCache[lowerUsername]
+	if ok {
+		return true, nil
 	}
 
 	return false, nil
+}
+
+// isNotUser checks if the given user string is a valid user.
+// Due to the /Users path containing non-users on a MacBook device,
+// this checks for the default folders that exist prior to no users.
+//
+// It is considered not a user if it is named or contains the following:
+//   - Deleted Users
+//   - Shared
+//   - Leading period
+func (u *UserMaker) isNotUser(user string) bool {
+	if len(user) == 0 {
+		return false
+	}
+
+	// probably subject to change
+	blacklistedWords := []string{
+		"deleted users",
+		"shared",
+	}
+
+	for _, word := range blacklistedWords {
+		user = strings.ToLower(user)
+		if strings.Contains(user, word) || user[0] == '.' {
+			return false
+		}
+	}
+
+	return true
 }

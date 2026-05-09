@@ -118,6 +118,7 @@ type varData struct {
 const (
 	distDirectory string = "dist"
 	zipFile       string = "deploy.zip"
+	defaultLogDir string = "logs/macdeploy"
 )
 
 var root RootData
@@ -839,8 +840,7 @@ func (r *RootData) initialize(isSubCommand bool) {
 		fmt.Printf("Failed to initialize sudo with given password: %v\n", err)
 	}
 
-	logPath := "logs/macdeploy"
-	defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, logPath)
+	defaultLogDir := fmt.Sprintf("%s/%s", metadata.Home, defaultLogDir)
 
 	// mkdir needs full permission for some reason.
 	// anything other than full will have permissions of 000.

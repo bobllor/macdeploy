@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -179,6 +180,21 @@ func (u *UserInfo) SetUsername() error {
 
 	user := strings.TrimSpace(string(out))
 	u.Username = user
+
+	return nil
+}
+
+// SetUsernameManual is used to set the username manually from
+// user input.
+func (u *UserInfo) SetUsernameManual() error {
+	scanner := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter username: ")
+	username, err := scanner.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("failed to read username: %v", err)
+	}
+
+	u.Username = username
 
 	return nil
 }
