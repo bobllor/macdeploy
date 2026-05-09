@@ -74,18 +74,20 @@ var fvDisableCmd = &cobra.Command{
 			}
 		}
 
-		status, err := root.dep.filevault.Disable(fvCobra.User.Username, fvCobra.User.Password)
+		_, err := root.dep.filevault.Disable(fvCobra.User.Username, fvCobra.User.Password)
 		if err != nil {
 			fmt.Println("An error occurred during an attempt to disable FileVault")
-			root.log.Warn(err)
+			root.log.Warnf("Failed to disable FileVault: %v", err)
 			return
 		}
 
-		if status {
-			fmt.Println("Disabled FileVault")
-		} else {
-			fmt.Println("FileVault did not get disabled")
+		status, err := root.dep.filevault.Status()
+		if err != nil {
+			fmt.Println("Failed to check FileVault status")
+			root.log.Warnf("Failed to check FileVault status: %v", err)
+			return
 		}
+		fmt.Printf("FileVault status: %v\n", status)
 	},
 }
 
