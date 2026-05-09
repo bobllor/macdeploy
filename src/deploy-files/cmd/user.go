@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	embedhandler "github.com/bobllor/macdeploy/src/config"
 	"github.com/bobllor/macdeploy/src/deploy-files/core"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+const userLogName = "macdeploy.user"
 
 func init() {
 	rootCmd.AddCommand(userCmd)
@@ -39,16 +42,23 @@ func InitializeUserCmd() {
 	userCmd.PersistentFlags().BoolVar(&userCobra.logvars.Debug, "debug", false, "Show debug level logging")
 
 	userCmd.AddCommand(userCreateCmd)
+	userCmd.AddCommand(userDeleteCmd)
 	userCmd.AddCommand(userAdminGrantCmd)
 	userCmd.AddCommand(userAdminRevokeCmd)
+	userCmd.AddCommand(userListCmd)
 }
 
 var userCreateCmd = &cobra.Command{
-	Use:   "create [flags]",
+	Use:   "create [<user>] [flags]",
 	Short: "Create a local user",
 	Long: "Creates a new local user on the device." +
 		"\nThe created account will automatically be added to the list of " +
 		"authorized users for FileVault.",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if len(args) > 0 {
+			userCobra.UserInfo.Username = args[0]
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		adminInfo, err := newAdminInfo()
 		if err != nil {
@@ -62,6 +72,8 @@ var userCreateCmd = &cobra.Command{
 			defer file.Close()
 		}
 
+		// used for applying password policies
+		// manual password policies are not supported at the time (5/8/2026)
 		config, err := yaml.NewConfig(embedhandler.YAMLBytes)
 		if err != nil {
 			log.Warnf("Failed to read config: %v", err)
@@ -80,7 +92,7 @@ var userCreateCmd = &cobra.Command{
 			log.Warnf("Failed to add secure token for user %s: %v", username, err)
 			err := usermaker.DeleteAccount(username)
 			if err != nil {
-				fmt.Printf("Failed to delete user %s\n", username)
+				fmt.Printf("Failed to delete user %s: %v\n", username, err)
 				log.Warnf("Failed to delete user: %v", err)
 			}
 
@@ -95,9 +107,9 @@ var userCreateCmd = &cobra.Command{
 			}
 
 			fmt.Printf("Added password policy for %s\n", username)
-		} else if config.Policy.ChangeOnLogin {
+		} else if userCobra.UserInfo.ApplyPolicy && !config.Policy.ChangeOnLogin {
 			log.Warnf("Key 'change_on_login' is %v, unable to apply policy", config.Policy.ChangeOnLogin)
-			fmt.Println("Key [policies] in YAML config requires 'change_on_login' to be true")
+			fmt.Println("Key [policies] in YAML config requires 'change_on_login' to be true to set the policy")
 		}
 	},
 }
@@ -105,8 +117,6 @@ var userCreateCmd = &cobra.Command{
 func initializeUserCreateCmd() {
 	userCreateCmd.Flags().BoolVarP(&userCobra.Admin, "admin", "a", false, "Grants admin to the user")
 
-	// IgnoreAdmin is not used here since user creation is manual
-	userCreateCmd.Flags().StringVarP(&userCobra.UserInfo.Username, "username", "u", "", "The username of the user")
 	// not recommended due to it being plain text, this is best left empty. but its an option!
 	userCreateCmd.Flags().StringVarP(&userCobra.UserInfo.Password, "password", "p", "", "The password of the user")
 	userCreateCmd.Flags().BoolVar(
@@ -117,13 +127,47 @@ func initializeUserCreateCmd() {
 	)
 }
 
-var userAdminGrantCmd = &cobra.Command{
-	Use:   "grantadmin <user> [<user>...]",
-	Short: "Grants admin privileges to the given user",
-	Long:  "Grants admin privileges to the given user or users",
+var userDeleteCmd = &cobra.Command{
+	Use:   "delete <user> [<user>...]",
+	Short: "Deletes a user",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			fmt.Println("Missing user operand\nTry 'macdeploy user admin grant -h' for more information")
+			fmt.Println("Missing user operand\nTry 'macdeploy user delete -h' for more information")
+			os.Exit(1)
+		}
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		adminInfo, err := newAdminInfo()
+		if err != nil {
+			fmt.Printf("Failed to set admin info: %v\n", err)
+			os.Exit(1)
+		}
+
+		um, _, log, file := newUserCmdStructs(adminInfo, getLogLevel(userCobra.logvars))
+		if file != nil {
+			defer file.Close()
+		}
+
+		for _, arg := range args {
+			err = um.DeleteAccount(arg)
+			if err != nil {
+				log.Warnf("Failed to delete user %s: %v", arg, err)
+				fmt.Printf("Failed to delete user %s: %v\n", arg, err)
+				continue
+			}
+
+			fmt.Printf("Deleted user %s\n", arg)
+			log.Infof("Deleted user %s", arg)
+		}
+	},
+}
+
+var userAdminGrantCmd = &cobra.Command{
+	Use:   "grantadmin <user> [<user>...]",
+	Short: "Grants admin privileges to users",
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			fmt.Println("Missing user operand\nTry 'macdeploy user grantadmin -h' for more information")
 			os.Exit(1)
 		}
 	},
@@ -141,14 +185,16 @@ var userAdminGrantCmd = &cobra.Command{
 		}
 
 		for _, arg := range args {
-			err := um.GrantAdmin(arg)
+			user := utils.FormatUsername(arg)
+			err := um.GrantAdmin(user)
 			if err != nil {
 				log.Warnf("User argument %s got an error while granting admin: %v", arg, err)
 				fmt.Printf("Failed to grant admin to user %s: %v\n", arg, err)
-			} else {
-				fmt.Printf("Granted admin to user %s", arg)
-				log.Infof("User %s granted admin", arg)
+				continue
 			}
+
+			fmt.Printf("Granted admin to user %s\n", arg)
+			log.Infof("User %s granted admin", arg)
 		}
 	},
 }
@@ -156,10 +202,9 @@ var userAdminGrantCmd = &cobra.Command{
 var userAdminRevokeCmd = &cobra.Command{
 	Use:   "revokeadmin <user> [<user>...]",
 	Short: "Revokes admin privileges to the given user",
-	Long:  "Revokes admin privileges to the given user or users",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			fmt.Println("Missing user operand\nTry 'macdeploy user admin grant -h' for more information")
+			fmt.Println("Missing user operand\nTry 'macdeploy user revokeadmin -h' for more information")
 			os.Exit(1)
 		}
 	},
@@ -177,15 +222,41 @@ var userAdminRevokeCmd = &cobra.Command{
 		}
 
 		for _, arg := range args {
-			err := um.RevokeAdmin(arg)
+			user := utils.FormatUsername(arg)
+			err := um.RevokeAdmin(user)
 			if err != nil {
 				log.Warnf("User argument %s got an error while revoking admin: %v", arg, err)
 				fmt.Printf("Failed to revoke admin to user %s: %v\n", arg, err)
 			} else {
-				fmt.Printf("Revoked admin to user %s", arg)
+				fmt.Printf("Revoked admin to user %s\n", arg)
 				log.Infof("User %s revoked admin", arg)
 			}
 		}
+	},
+}
+
+var userListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "Lists the current local users on the device",
+	Run: func(cmd *cobra.Command, args []string) {
+		logLevel := getLogLevel(userCobra.logvars)
+		log, file, err := logger.NewLoggerFile(utils.GetCurrOrHomePath()+"/"+defaultLogDir, userLogName, logLevel)
+		if err != nil {
+			log = logger.NewStdoutLogger(logLevel)
+		}
+		if file != nil {
+			defer file.Close()
+		}
+
+		um := core.NewUser(userCobra.UserInfo, scripts.NewScript(), log)
+
+		users, err := um.List()
+		if err != nil {
+			log.Warnf("Failed to list users: %v", err)
+			fmt.Printf("Failed to list users: %v\n", err)
+		}
+
+		fmt.Println(strings.Join(users, "\n"))
 	},
 }
 
@@ -223,7 +294,7 @@ func newAdminInfo() (*yaml.UserInfo, error) {
 		}
 	}
 
-	fmt.Println("Admin password required for sudo")
+	fmt.Println("Admin password required")
 	err = adminInfo.SetPassword(false)
 	if err != nil {
 		return nil, errors.New("failed to set admin password")
